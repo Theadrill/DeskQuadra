@@ -13,6 +13,7 @@
         Background="Transparent"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
         MinWidth="200"
         MinHeight="140"
         Width="{Binding Width, Mode=TwoWay}"

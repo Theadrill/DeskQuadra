@@ -32,12 +32,20 @@ public partial class QuadraWindow : Window
         ISnapEngine snapEngine,
         ILayoutCoordinator coordinator)
     {
-        InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
         _anchorService = anchorService;
         _snapEngine = snapEngine;
         _coordinator = coordinator;
+
+        // Configura posicionamento manual estrito antes da inicialização visual
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = viewModel.Left;
+        Top = viewModel.Top;
+        Width = viewModel.Width;
+        Height = viewModel.Height;
+
+        InitializeComponent();
 
         Loaded += (s, e) => _isInitializing = false;
         LocationChanged += OnPositionOrSizeChanged;
@@ -59,6 +67,19 @@ public partial class QuadraWindow : Window
 
         var helper = new WindowInteropHelper(this);
         IntPtr hwnd = helper.Handle;
+
+        // Posiciona a janela fisicamente nas coordenadas salvas antes de ancorar
+        var dpi = VisualTreeHelper.GetDpi(this);
+        int pxX = (int)Math.Round(_viewModel.Left * dpi.DpiScaleX);
+        int pxY = (int)Math.Round(_viewModel.Top * dpi.DpiScaleY);
+        int pxW = (int)Math.Round(_viewModel.Width * dpi.DpiScaleX);
+        int pxH = (int)Math.Round(_viewModel.Height * dpi.DpiScaleY);
+
+        NativeMethods.SetWindowPos(
+            hwnd,
+            IntPtr.Zero,
+            pxX, pxY, pxW, pxH,
+            NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
 
         // 1. Vincula a janela ao Desktop Shell (Progman)
         _anchorService.AnchorToDesktop(hwnd);
@@ -203,7 +224,7 @@ public partial class QuadraWindow : Window
 
     private void OnPositionOrSizeChanged(object? sender, EventArgs e)
     {
-        if (_isInitializing)
+        if (_isInitializing || double.IsNaN(Left) || double.IsNaN(Top) || double.IsNaN(Width) || double.IsNaN(Height))
         {
             return;
         }
