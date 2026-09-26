@@ -22,6 +22,15 @@ public partial class QuadraWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         _anchorService = anchorService;
+
+        // Garante que o estado minimizado nunca seja mantido se for acionado externamente
+        StateChanged += (s, e) =>
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+        };
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -31,24 +40,38 @@ public partial class QuadraWindow : Window
         var helper = new WindowInteropHelper(this);
         IntPtr hwnd = helper.Handle;
 
-        // 1. Executa a ancoragem estrutural Win32 na camada de desktop
+        // 1. Vincula a janela ao Desktop Shell (Progman)
         _anchorService.AnchorToDesktop(hwnd);
 
-        // 2. Instala o hook de janela para blindagem contra SWP_HIDEWINDOW (Win + D)
+        // 2. Instala o hook de janela para interceptar e neutralizar qualquer comando de ocultação (Win + D)
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(WndProc);
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        // Intercepta e neutraliza ordens do sistema para esconder ou minimizar a janela no Win + D
+        // Intercepta e neutraliza ordens do sistema para esconder a janela no atalho Win + D
         if (msg == NativeMethods.WM_WINDOWPOSCHANGING)
         {
             var pos = Marshal.PtrToStructure<NativeMethods.WINDOWPOS>(lParam);
+            bool modified = false;
+
+            // Neutraliza a flag SWP_HIDEWINDOW enviada pelo Shell no Win + D
             if ((pos.flags & NativeMethods.SWP_HIDEWINDOW) != 0)
             {
-                // Limpa a flag de ocultação forçada pelo Shell (Win + D)
                 pos.flags &= ~NativeMethods.SWP_HIDEWINDOW;
+                modified = true;
+            }
+
+            // Impede que o Shell estacione a janela fora da tela (-32000) no caso de tentativa de minimização
+            if (pos.x <= -30000 || pos.y <= -30000)
+            {
+                pos.flags |= NativeMethods.SWP_NOMOVE;
+                modified = true;
+            }
+
+            if (modified)
+            {
                 Marshal.StructureToPtr(pos, lParam, true);
             }
         }
@@ -57,6 +80,7 @@ public partial class QuadraWindow : Window
             int command = (int)wParam & 0xFFF0;
             if (command == NativeMethods.SC_MINIMIZE)
             {
+                // Rejeita qualquer comando direto de minimização
                 handled = true;
                 return IntPtr.Zero;
             }
@@ -75,7 +99,7 @@ public partial class QuadraWindow : Window
             }
             catch
             {
-                // Fallback para movimentação fluida quando a janela estiver como WS_CHILD de WorkerW
+                // Fallback para arrasto manual via captura de mouse
                 _isDragging = true;
                 _dragStartPoint = PointToScreen(e.GetPosition(this));
                 _initialLeft = Left;
