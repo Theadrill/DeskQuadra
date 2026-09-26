@@ -62,6 +62,7 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
 
             if (msg == NativeMethods.WM_RBUTTONDOWN)
             {
+                GlobalLeftClick?.Invoke(this, EventArgs.Empty);
                 var hookStruct = Marshal.PtrToStructure<NativeMethods.MSLLHOOKSTRUCT>(lParam);
                 IntPtr targetWindow = NativeMethods.WindowFromPoint(hookStruct.pt);
 

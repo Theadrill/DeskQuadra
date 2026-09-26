@@ -73,6 +73,7 @@ public partial class QuadraWindow : Window
         SizeChanged += OnPositionOrSizeChanged;
 
         GlobalItemSelected += OnGlobalItemSelected;
+        GlobalCloseMenusRequested += OnGlobalCloseMenusRequested;
 
         // Garante que o estado minimizado nunca seja mantido se for acionado externamente
         StateChanged += (s, e) =>
@@ -85,10 +86,28 @@ public partial class QuadraWindow : Window
     }
 
     public static event Action<DesktopItemViewModel?>? GlobalItemSelected;
+    public static event Action? GlobalCloseMenusRequested;
 
     public static void DeselectAllGlobally()
     {
         GlobalItemSelected?.Invoke(null);
+        GlobalCloseMenusRequested?.Invoke();
+    }
+
+    private ContextMenu? _activeOpenItemContextMenu;
+
+    private void OnGlobalCloseMenusRequested()
+    {
+        if (_activeOpenItemContextMenu != null && _activeOpenItemContextMenu.IsOpen)
+        {
+            _activeOpenItemContextMenu.IsOpen = false;
+            _activeOpenItemContextMenu = null;
+        }
+
+        if (TitleBarBorder?.ContextMenu != null && TitleBarBorder.ContextMenu.IsOpen)
+        {
+            TitleBarBorder.ContextMenu.IsOpen = false;
+        }
     }
 
     private void OnGlobalItemSelected(DesktopItemViewModel? selectedItem)
@@ -434,7 +453,7 @@ public partial class QuadraWindow : Window
                 // Desacopla o início do DoDragDrop da pipeline síncrona de eventos Touch para evitar conflito/deadlock no dispatcher
                 Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
                 {
-                    StartItemDragDrop(fe, item);
+                    StartItemDragDrop(item);
                 });
             }
         }
@@ -455,6 +474,9 @@ public partial class QuadraWindow : Window
             {
                 // Aplica dinamicamente o estilo ergonômico Touch (46px com hit targets amplos para dedos) apenas nos MenuItems
                 ApplyMenuDensity(menu, isTouch: true);
+                menu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
+                menu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
+                _activeOpenItemContextMenu = menu;
                 menu.PlacementTarget = _touchTargetElement;
                 menu.Placement = PlacementMode.Bottom;
                 menu.IsOpen = true;
@@ -475,6 +497,9 @@ public partial class QuadraWindow : Window
         {
             // Quando acionado pelo mouse, garante estilo compacto (~26px) apenas nos MenuItems
             ApplyMenuDensity(fe.ContextMenu, isTouch: false);
+            fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
+            fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
+            _activeOpenItemContextMenu = fe.ContextMenu;
         }
     }
 
@@ -518,16 +543,14 @@ public partial class QuadraWindow : Window
             Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
         {
             var item = _draggedItemCandidate;
-            var dragSource = sender as DependencyObject ?? this;
-            StartItemDragDrop(dragSource, item);
+            StartItemDragDrop(item);
         }
     }
 
-    private void StartItemDragDrop(DependencyObject dragSource, DesktopItemViewModel item)
+    private void StartItemDragDrop(DesktopItemViewModel item)
     {
         DragPreviewWindow? previewWindow = null;
         GiveFeedbackEventHandler? onGiveFeedback = null;
-        UIElement? uiDragSource = dragSource as UIElement;
 
         try
         {
@@ -558,17 +581,13 @@ public partial class QuadraWindow : Window
                 e.UseDefaultCursors = true;
             };
 
-            if (uiDragSource != null)
-            {
-                uiDragSource.GiveFeedback += onGiveFeedback;
-            }
-
+            GiveFeedback += onGiveFeedback;
             Mouse.Capture(null);
 
             DragDropEffects result = DragDropEffects.None;
             try
             {
-                result = DragDrop.DoDragDrop(dragSource, dataObject, DragDropEffects.Move | DragDropEffects.Copy);
+                result = DragDrop.DoDragDrop(this, dataObject, DragDropEffects.Move | DragDropEffects.Copy);
             }
             catch (Exception ex)
             {
@@ -583,9 +602,9 @@ public partial class QuadraWindow : Window
         }
         finally
         {
-            if (uiDragSource != null && onGiveFeedback != null)
+            if (onGiveFeedback != null)
             {
-                uiDragSource.GiveFeedback -= onGiveFeedback;
+                GiveFeedback -= onGiveFeedback;
             }
 
             previewWindow?.Close();
@@ -841,6 +860,7 @@ public partial class QuadraWindow : Window
     {
         CancelTouchHoldTimer();
         GlobalItemSelected -= OnGlobalItemSelected;
+        GlobalCloseMenusRequested -= OnGlobalCloseMenusRequested;
         LocationChanged -= OnPositionOrSizeChanged;
         SizeChanged -= OnPositionOrSizeChanged;
         base.OnClosed(e);

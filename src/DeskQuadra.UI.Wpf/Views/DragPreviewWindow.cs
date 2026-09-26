@@ -96,6 +96,29 @@ public sealed class DragPreviewWindow : Window
             hwnd,
             NativeMethods.GWL_EXSTYLE,
             new IntPtr(exStyle | NativeMethods.WS_EX_TRANSPARENT | NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_NOACTIVATE));
+
+        // Força a sincronização imediata dos estilos estendidos no kernel do Windows
+        NativeMethods.SetWindowPos(
+            hwnd,
+            IntPtr.Zero,
+            0, 0, 0, 0,
+            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_NOACTIVATE);
+
+        var source = HwndSource.FromHwnd(hwnd);
+        source?.AddHook(WndProc);
+    }
+
+    private static IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        const int WM_NCHITTEST = 0x0084;
+        const int HTTRANSPARENT = -1;
+
+        if (msg == WM_NCHITTEST)
+        {
+            handled = true;
+            return new IntPtr(HTTRANSPARENT);
+        }
+        return IntPtr.Zero;
     }
 
     public void UpdatePosition(int screenX, int screenY)
@@ -106,16 +129,16 @@ public sealed class DragPreviewWindow : Window
             NativeMethods.SetWindowPos(
                 hwnd,
                 IntPtr.Zero,
-                screenX + 16,
-                screenY + 16,
+                screenX + 24,
+                screenY + 24,
                 0,
                 0,
                 NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
         }
         else
         {
-            Left = (screenX / _dpiScaleX) + 14;
-            Top = (screenY / _dpiScaleY) + 14;
+            Left = (screenX / _dpiScaleX) + 24;
+            Top = (screenY / _dpiScaleY) + 24;
         }
     }
 }
