@@ -19,6 +19,7 @@ public partial class QuadraWindow : Window
     private readonly IWindowAnchorService _anchorService;
     private readonly ISnapEngine _snapEngine;
     private readonly ILayoutCoordinator _coordinator;
+    private readonly IFileLauncherService _launcherService;
 
     private bool _isInitializing = true;
     private bool _isDragging;
@@ -30,13 +31,15 @@ public partial class QuadraWindow : Window
         QuadraViewModel viewModel,
         IWindowAnchorService anchorService,
         ISnapEngine snapEngine,
-        ILayoutCoordinator coordinator)
+        ILayoutCoordinator coordinator,
+        IFileLauncherService launcherService)
     {
         _viewModel = viewModel;
         DataContext = viewModel;
         _anchorService = anchorService;
         _snapEngine = snapEngine;
         _coordinator = coordinator;
+        _launcherService = launcherService;
 
         // Configura posicionamento manual estrito antes da inicialização visual
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -235,6 +238,24 @@ public partial class QuadraWindow : Window
         _viewModel.Height = Height;
 
         _coordinator.NotifyQuadraChanged(_viewModel.Model);
+    }
+
+    private void DesktopItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
+            {
+                _launcherService.Launch(item.FilePath);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void RescanMenu_Click(object sender, RoutedEventArgs e)
+    {
+        _coordinator.RescanDesktopItems();
+        _viewModel.RefreshItems();
     }
 
     private void NewQuadraMenu_Click(object sender, RoutedEventArgs e)

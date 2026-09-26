@@ -21,5 +21,7 @@ public interface ILayoutCoordinator : IDisposable
 
     void NotifyQuadraChanged(Quadra quadra);
 
+    void RescanDesktopItems();
+
     Task SaveNowAsync(CancellationToken cancellationToken = default);
 }

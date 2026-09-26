@@ -26,6 +26,8 @@ public sealed class Quadra
 
     public bool IsHidden { get; set; }
 
+    public List<DesktopItem> Items { get; set; } = new();
+
     public Quadra()
     {
     }

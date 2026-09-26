@@ -17,6 +17,7 @@ public sealed class QuadraDto
     public bool IsLocked { get; set; }
     public bool IsCollapsed { get; set; }
     public bool IsHidden { get; set; }
+    public List<DesktopItemDto> Items { get; set; } = new();
 
     public Quadra ToDomain() => new()
     {
@@ -29,7 +30,8 @@ public sealed class QuadraDto
         IsDefault = IsDefault,
         IsLocked = IsLocked,
         IsCollapsed = IsCollapsed,
-        IsHidden = IsHidden
+        IsHidden = IsHidden,
+        Items = Items.Select(i => i.ToDomain()).ToList()
     };
 
     public static QuadraDto FromDomain(Quadra quadra) => new()
@@ -43,6 +45,40 @@ public sealed class QuadraDto
         IsDefault = quadra.IsDefault,
         IsLocked = quadra.IsLocked,
         IsCollapsed = quadra.IsCollapsed,
-        IsHidden = quadra.IsHidden
+        IsHidden = quadra.IsHidden,
+        Items = quadra.Items.Select(DesktopItemDto.FromDomain).ToList()
+    };
+}
+
+/// <summary>
+/// Modelo de transferência de dados (DTO) para serialização JSON de um atalho/arquivo da Quadra.
+/// </summary>
+public sealed class DesktopItemDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
+    public string? TargetPath { get; set; }
+    public bool IsDirectory { get; set; }
+    public int OrderIndex { get; set; }
+
+    public DesktopItem ToDomain() => new()
+    {
+        Id = Id,
+        Name = Name,
+        FilePath = FilePath,
+        TargetPath = TargetPath,
+        IsDirectory = IsDirectory,
+        OrderIndex = OrderIndex
+    };
+
+    public static DesktopItemDto FromDomain(DesktopItem item) => new()
+    {
+        Id = item.Id,
+        Name = item.Name,
+        FilePath = item.FilePath,
+        TargetPath = item.TargetPath,
+        IsDirectory = item.IsDirectory,
+        OrderIndex = item.OrderIndex
     };
 }

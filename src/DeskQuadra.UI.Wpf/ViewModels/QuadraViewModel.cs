@@ -1,4 +1,7 @@
+using System.Collections.ObjectModel;
+using System.Windows;
 using DeskQuadra.Core.Models;
+using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 
 namespace DeskQuadra.UI.Wpf.ViewModels;
 
@@ -90,8 +93,33 @@ public sealed class QuadraViewModel : ViewModelBase
         }
     }
 
-    public QuadraViewModel(Quadra quadra)
+    public bool HasItems => Items.Count > 0;
+
+    public Visibility EmptyMessageVisibility => Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public ObservableCollection<DesktopItemViewModel> Items { get; } = new();
+
+    private readonly IIconExtractorService _iconExtractor;
+
+    public QuadraViewModel(Quadra quadra, IIconExtractorService iconExtractor)
     {
         _quadra = quadra;
+        _iconExtractor = iconExtractor;
+
+        foreach (var item in quadra.Items)
+        {
+            Items.Add(new DesktopItemViewModel(item, iconExtractor));
+        }
+    }
+
+    public void RefreshItems()
+    {
+        Items.Clear();
+        foreach (var item in _quadra.Items)
+        {
+            Items.Add(new DesktopItemViewModel(item, _iconExtractor));
+        }
+        OnPropertyChanged(nameof(HasItems));
+        OnPropertyChanged(nameof(EmptyMessageVisibility));
     }
 }

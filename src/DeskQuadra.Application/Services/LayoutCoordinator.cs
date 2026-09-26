@@ -11,6 +11,7 @@ namespace DeskQuadra.Application.Services;
 public sealed class LayoutCoordinator : ILayoutCoordinator
 {
     private readonly ILayoutRepository _repository;
+    private readonly IDesktopScannerService _scannerService;
     private readonly ConcurrentDictionary<Guid, Quadra> _activeQuadras = new();
     private readonly object _lock = new();
     private CancellationTokenSource? _debounceCts;
@@ -22,9 +23,10 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
     public event EventHandler<Quadra>? QuadraCreated;
     public event EventHandler<Guid>? QuadraRemoved;
 
-    public LayoutCoordinator(ILayoutRepository repository)
+    public LayoutCoordinator(ILayoutRepository repository, IDesktopScannerService scannerService)
     {
         _repository = repository;
+        _scannerService = scannerService;
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -39,17 +41,37 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
             {
                 _activeQuadras[q.Id] = q;
             }
+
+            // Se nenhuma Quadra possuir itens (ex: transição da Fase 2 para Fase 3),
+            // realiza o onboarding automático populando a Quadra padrão com a varredura do desktop
+            if (!_activeQuadras.Values.Any(q => q.Items.Count > 0))
+            {
+                var targetQuadra = _activeQuadras.Values.FirstOrDefault(q => q.IsDefault) ?? _activeQuadras.Values.First();
+                if (targetQuadra.Title == "Quadra 1")
+                {
+                    targetQuadra.Title = "TUDO";
+                }
+                targetQuadra.IsDefault = true;
+
+                var scannedItems = _scannerService.ScanDesktopItems();
+                targetQuadra.Items.AddRange(scannedItems);
+                await _repository.SaveLayoutAsync(_activeQuadras.Values, cancellationToken).ConfigureAwait(false);
+            }
         }
         else
         {
-            // First-run: cria a Quadra padrão inicial
+            // First-run: Onboarding automático criando a Quadra "TUDO" com todos os atalhos encontrados
+            var scannedItems = _scannerService.ScanDesktopItems();
+
             var defaultQuadra = new Quadra(
-                title: "Quadra 1",
-                left: 200,
-                top: 150,
-                width: 340,
-                height: 260,
+                title: "TUDO",
+                left: 360,
+                top: 100,
+                width: 360,
+                height: 520,
                 isDefault: true);
+
+            defaultQuadra.Items.AddRange(scannedItems);
 
             _activeQuadras[defaultQuadra.Id] = defaultQuadra;
             await _repository.SaveLayoutAsync(_activeQuadras.Values, cancellationToken).ConfigureAwait(false);
@@ -85,6 +107,18 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
             });
 
             QuadraRemoved?.Invoke(this, id);
+        }
+    }
+
+    public void RescanDesktopItems()
+    {
+        var scanned = _scannerService.ScanDesktopItems();
+        var targetQuadra = _activeQuadras.Values.FirstOrDefault(q => q.IsDefault) ?? _activeQuadras.Values.FirstOrDefault();
+        if (targetQuadra != null)
+        {
+            targetQuadra.Items.Clear();
+            targetQuadra.Items.AddRange(scanned);
+            NotifyQuadraChanged(targetQuadra);
         }
     }
 

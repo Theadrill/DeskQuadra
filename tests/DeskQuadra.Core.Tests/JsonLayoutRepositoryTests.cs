@@ -115,4 +115,34 @@ public class JsonLayoutRepositoryTests : IDisposable
         Assert.Single(recovered);
         Assert.Equal("Backup Valido", recovered[0].Title);
     }
+
+    [Fact]
+    public async Task SaveLayoutAsync_WithDesktopItems_PreservesAllItemsCorrectly()
+    {
+        // Arrange
+        var quadra = new Quadra("TUDO", 200, 100, 360, 500, isDefault: true);
+        quadra.Items.Add(new DesktopItem("Chrome", @"C:\Program Files\Chrome.exe", orderIndex: 0));
+        quadra.Items.Add(new DesktopItem("Notas.txt", @"C:\Users\User\Desktop\Notas.txt", orderIndex: 1));
+        quadra.Items.Add(new DesktopItem("Meus Projetos", @"C:\Users\User\Desktop\Projetos", isDirectory: true, orderIndex: 2));
+
+        // Act
+        await _repository.SaveLayoutAsync(new[] { quadra });
+        var loaded = await _repository.LoadLayoutAsync();
+
+        // Assert
+        Assert.Single(loaded);
+        var loadedQuadra = loaded[0];
+        Assert.Equal("TUDO", loadedQuadra.Title);
+        Assert.Equal(3, loadedQuadra.Items.Count);
+
+        Assert.Equal("Chrome", loadedQuadra.Items[0].Name);
+        Assert.Equal(@"C:\Program Files\Chrome.exe", loadedQuadra.Items[0].FilePath);
+        Assert.False(loadedQuadra.Items[0].IsDirectory);
+
+        Assert.Equal("Notas.txt", loadedQuadra.Items[1].Name);
+        Assert.Equal(1, loadedQuadra.Items[1].OrderIndex);
+
+        Assert.Equal("Meus Projetos", loadedQuadra.Items[2].Name);
+        Assert.True(loadedQuadra.Items[2].IsDirectory);
+    }
 }

@@ -100,6 +100,8 @@
                         LostMouseCapture="TitleBar_LostMouseCapture">
                     <Border.ContextMenu>
                         <ContextMenu>
+                            <MenuItem Header="↻ Atualizar Atalhos do Desktop" Click="RescanMenu_Click"/>
+                            <Separator/>
                             <MenuItem Header="+ Nova Quadra (Teste de Snap)" Click="NewQuadraMenu_Click"/>
                             <Separator/>
                             <MenuItem Header="Fechar Quadra" Click="CloseButton_Click"/>
@@ -137,21 +139,90 @@
                     </Grid>
                 </Border>
 
-                <!-- Área interna / Body da Quadra -->
-                <Grid Grid.Row="1" Margin="8">
-                    <!-- Placeholder visual temporário para a Fase 1 -->
+                <!-- Área interna / Grid de Atalhos da Quadra -->
+                <Grid Grid.Row="1" Margin="6,4">
+                    <!-- Mensagem para Quadra vazia -->
                     <Border BorderBrush="#14FFFFFF"
                             BorderThickness="1"
                             CornerRadius="4"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
-                            Padding="12,8">
-                        <TextBlock Text="Área de Atalhos"
-                                   Foreground="#88FFFFFF"
+                            Padding="12,8"
+                            Visibility="{Binding EmptyMessageVisibility}">
+                        <TextBlock Text="Nenhum atalho nesta Quadra"
+                                   Foreground="#77FFFFFF"
                                    FontSize="11"
                                    FontStyle="Italic"
                                    HorizontalAlignment="Center"/>
                     </Border>
+
+                    <!-- Lista com rolagem suave de atalhos e ícones em WrapPanel -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="2"
+                                  Focusable="False">
+                        <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" ItemWidth="74" ItemHeight="84"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="Transparent"
+                                            CornerRadius="6"
+                                            Padding="4"
+                                            Margin="2"
+                                            Cursor="Hand"
+                                            ToolTip="{Binding FilePath}"
+                                            MouseLeftButtonDown="DesktopItem_MouseLeftButtonDown">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#25FFFFFF"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="46"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Ícone do arquivo em alta resolução -->
+                                            <Image Grid.Row="0"
+                                                   Source="{Binding Icon}"
+                                                   Width="40"
+                                                   Height="40"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                                            <!-- Nome do arquivo com sombra suave para legibilidade WCAG AA 4.5:1 -->
+                                            <TextBlock Grid.Row="1"
+                                                       Text="{Binding Name}"
+                                                       Foreground="#F5F5F5"
+                                                       FontSize="11"
+                                                       TextAlignment="Center"
+                                                       TextWrapping="Wrap"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxHeight="32"
+                                                       Margin="0,2,0,0">
+                                                <TextBlock.Effect>
+                                                    <DropShadowEffect BlurRadius="3"
+                                                                      ShadowDepth="1"
+                                                                      Opacity="0.85"
+                                                                      Color="#000000"/>
+                                                </TextBlock.Effect>
+                                            </TextBlock>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Grid>
             </Grid>
         </Border>

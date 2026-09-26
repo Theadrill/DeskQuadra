@@ -1,4 +1,5 @@
 using DeskQuadra.Core.Contracts;
+using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,10 @@ public static class DependencyInjection
     public static IServiceCollection AddWindowsShellInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<IWindowAnchorService, DesktopWindowAnchorService>();
+        services.AddSingleton<INativeDesktopIconService, NativeDesktopIconService>();
+        services.AddSingleton<IDesktopScannerService, DesktopScannerService>();
+        services.AddSingleton<IIconExtractorService, IconExtractorService>();
+        services.AddSingleton<IFileLauncherService, FileLauncherService>();
         return services;
     }
 }
