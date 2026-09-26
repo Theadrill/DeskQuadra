@@ -1,4 +1,7 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
+[assembly: InternalsVisibleTo("DeskQuadra.UI.Wpf")]
 
 namespace DeskQuadra.Infrastructure.WindowsShell.Native;
 
@@ -13,6 +16,35 @@ internal static class NativeMethods
     public const int WS_EX_TOOLWINDOW = 0x00000080;
     public const int WS_EX_NOACTIVATE = 0x08000000;
 
+    public const int WS_CHILD = 0x40000000;
+    public const int WS_POPUP = unchecked((int)0x80000000);
+
+    public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOMOVE = 0x0002;
+    public const uint SWP_NOZORDER = 0x0004;
+    public const uint SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_FRAMECHANGED = 0x0020;
+    public const uint SWP_SHOWWINDOW = 0x0040;
+    public const uint SWP_HIDEWINDOW = 0x0080;
+
+    public const int WM_WINDOWPOSCHANGING = 0x0046;
+    public const int WM_SYSCOMMAND = 0x0112;
+    public const int SC_MINIMIZE = 0xF020;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WINDOWPOS
+    {
+        public IntPtr hwnd;
+        public IntPtr hwndInsertAfter;
+        public int x;
+        public int y;
+        public int cx;
+        public int cy;
+        public uint flags;
+    }
+
+    public static readonly IntPtr HWND_BOTTOM = new(1);
+
     public const uint WM_SPAWN_WORKER = 0x052C;
     public const uint SMTO_NORMAL = 0x0000;
 
@@ -20,6 +52,26 @@ internal static class NativeMethods
     public const int HTCAPTION = 0x0002;
 
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int X,
+        int Y,
+        int cx,
+        int cy,
+        uint uFlags);
 
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);

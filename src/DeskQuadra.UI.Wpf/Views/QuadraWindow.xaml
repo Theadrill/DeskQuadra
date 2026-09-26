@@ -93,7 +93,9 @@
                         Background="#26FFFFFF"
                         BorderBrush="#1AFFFFFF"
                         BorderThickness="0,0,0,1"
-                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+                        MouseMove="TitleBar_MouseMove"
+                        MouseLeftButtonUp="TitleBar_MouseLeftButtonUp">
                     <Grid Margin="8,0,4,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
