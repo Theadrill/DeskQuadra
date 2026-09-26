@@ -283,12 +283,11 @@
                                             PreviewMouseLeftButtonUp="DesktopItem_PreviewMouseLeftButtonUp"
                                             PreviewTouchDown="DesktopItem_PreviewTouchDown">
                                         <Border.ContextMenu>
-                                            <ContextMenu Style="{StaticResource ModernContextMenuStyle}"
-                                                         ItemContainerStyle="{StaticResource MouseMenuItemStyle}">
-                                                <MenuItem Header="Abrir" Click="ItemMenuOpen_Click"/>
-                                                <MenuItem Header="Abrir local do arquivo" Click="ItemMenuOpenLocation_Click"/>
+                                            <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
+                                                <MenuItem Header="Abrir" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
+                                                <MenuItem Header="Abrir local do arquivo" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>
                                                 <Separator Background="#26FFFFFF" Margin="4,2"/>
-                                                <MenuItem Header="Remover desta Quadra" Click="ItemMenuRemove_Click"/>
+                                                <MenuItem Header="Remover desta Quadra" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <Border.Style>

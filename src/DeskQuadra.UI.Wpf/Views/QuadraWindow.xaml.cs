@@ -431,7 +431,11 @@ public partial class QuadraWindow : Window
                 _touchTargetItem = null;
                 _touchTargetElement = null;
 
-                StartItemDragDrop(fe, item);
+                // Desacopla o início do DoDragDrop da pipeline síncrona de eventos Touch para evitar conflito/deadlock no dispatcher
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+                {
+                    StartItemDragDrop(fe, item);
+                });
             }
         }
     }
@@ -449,8 +453,8 @@ public partial class QuadraWindow : Window
             var menu = _touchTargetElement.ContextMenu;
             if (menu != null)
             {
-                // Aplica dinamicamente o estilo ergonômico Touch (46px com hit targets amplos para dedos)
-                menu.ItemContainerStyle = (Style)FindResource("TouchMenuItemStyle");
+                // Aplica dinamicamente o estilo ergonômico Touch (46px com hit targets amplos para dedos) apenas nos MenuItems
+                ApplyMenuDensity(menu, isTouch: true);
                 menu.PlacementTarget = _touchTargetElement;
                 menu.Placement = PlacementMode.Bottom;
                 menu.IsOpen = true;
@@ -469,8 +473,20 @@ public partial class QuadraWindow : Window
     {
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
-            // Quando acionado pelo mouse, garante estilo compacto (~26px)
-            fe.ContextMenu.ItemContainerStyle = (Style)FindResource("MouseMenuItemStyle");
+            // Quando acionado pelo mouse, garante estilo compacto (~26px) apenas nos MenuItems
+            ApplyMenuDensity(fe.ContextMenu, isTouch: false);
+        }
+    }
+
+    private void ApplyMenuDensity(ContextMenu menu, bool isTouch)
+    {
+        var style = (Style)FindResource(isTouch ? "TouchMenuItemStyle" : "MouseMenuItemStyle");
+        foreach (var item in menu.Items)
+        {
+            if (item is MenuItem mi)
+            {
+                mi.Style = style;
+            }
         }
     }
 
@@ -547,7 +563,17 @@ public partial class QuadraWindow : Window
                 uiDragSource.GiveFeedback += onGiveFeedback;
             }
 
-            DragDropEffects result = DragDrop.DoDragDrop(dragSource, dataObject, DragDropEffects.Move | DragDropEffects.Copy);
+            Mouse.Capture(null);
+
+            DragDropEffects result = DragDropEffects.None;
+            try
+            {
+                result = DragDrop.DoDragDrop(dragSource, dataObject, DragDropEffects.Move | DragDropEffects.Copy);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[StartItemDragDrop] DragDrop error: {ex.Message}");
+            }
 
             if (payload.WasHandledAsMove)
             {

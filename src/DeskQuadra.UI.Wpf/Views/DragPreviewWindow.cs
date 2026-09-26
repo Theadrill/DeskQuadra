@@ -26,6 +26,7 @@ public sealed class DragPreviewWindow : Window
         Topmost = true;
         IsHitTestVisible = false;
         Focusable = false;
+        ShowActivated = false;
         SizeToContent = SizeToContent.WidthAndHeight;
 
         var border = new Border
@@ -99,7 +100,22 @@ public sealed class DragPreviewWindow : Window
 
     public void UpdatePosition(int screenX, int screenY)
     {
-        Left = (screenX / _dpiScaleX) + 14;
-        Top = (screenY / _dpiScaleY) + 14;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            NativeMethods.SetWindowPos(
+                hwnd,
+                IntPtr.Zero,
+                screenX + 16,
+                screenY + 16,
+                0,
+                0,
+                NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+        }
+        else
+        {
+            Left = (screenX / _dpiScaleX) + 14;
+            Top = (screenY / _dpiScaleY) + 14;
+        }
     }
 }
