@@ -1,0 +1,180 @@
+<Window x:Class="DeskQuadra.UI.Wpf.Views.QuadraWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+        xmlns:viewmodels="clr-namespace:DeskQuadra.UI.Wpf.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=viewmodels:QuadraViewModel}"
+        Title="{Binding Title}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        MinWidth="200"
+        MinHeight="140"
+        Width="{Binding Width, Mode=TwoWay}"
+        Height="{Binding Height, Mode=TwoWay}"
+        Left="{Binding Left, Mode=TwoWay}"
+        Top="{Binding Top, Mode=TwoWay}">
+
+    <Window.Resources>
+        <!-- Estilo base para os manipuladores transparentes de redimensionamento -->
+        <Style x:Key="ResizeThumbStyle" TargetType="primitives:Thumb">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="primitives:Thumb">
+                        <Border Background="{TemplateBinding Background}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo do botão fechar na barra de título -->
+        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#33FFFFFF"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#4DFFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Grid principal contendo margem externa para a sombra projetada -->
+    <Grid Margin="10">
+        <!-- Container visual da Quadra: cantos arredondados, acrílico translúcido e borda suave -->
+        <Border x:Name="QuadraContainer"
+                Background="#47141418"
+                BorderBrush="#38FFFFFF"
+                BorderThickness="1"
+                CornerRadius="8"
+                ClipToBounds="True">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="16"
+                                  ShadowDepth="2"
+                                  Opacity="0.45"
+                                  Color="#000000"/>
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <!-- Barra de título compacta (~28px conforme Sessão 24 - Modo Normal) -->
+                    <RowDefinition Height="28"/>
+                    <!-- Área do conteúdo / atalhos -->
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Barra de título interativa -->
+                <Border Grid.Row="0"
+                        Background="#26FFFFFF"
+                        BorderBrush="#1AFFFFFF"
+                        BorderThickness="0,0,0,1"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Grid Margin="8,0,4,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Título com sombra para contraste em papéis de parede claros ou escuros -->
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Title}"
+                                   Foreground="#F5F5F5"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis">
+                            <TextBlock.Effect>
+                                <DropShadowEffect BlurRadius="2"
+                                                  ShadowDepth="1"
+                                                  Opacity="0.85"
+                                                  Color="#000000"/>
+                            </TextBlock.Effect>
+                        </TextBlock>
+
+                        <!-- Botão Fechar / Ocultar -->
+                        <Button Grid.Column="1"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                ToolTip="Fechar Quadra"
+                                Click="CloseButton_Click">
+                            <TextBlock Text="✕" FontSize="10" FontWeight="Bold"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Área interna / Body da Quadra -->
+                <Grid Grid.Row="1" Margin="8">
+                    <!-- Placeholder visual temporário para a Fase 1 -->
+                    <Border BorderBrush="#14FFFFFF"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Padding="12,8">
+                        <TextBlock Text="Área de Atalhos"
+                                   Foreground="#88FFFFFF"
+                                   FontSize="11"
+                                   FontStyle="Italic"
+                                   HorizontalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ========================================== -->
+        <!-- Manipuladores de Redimensionamento (Thumbs) -->
+        <!-- ========================================== -->
+
+        <!-- Bordas Simples -->
+        <primitives:Thumb Height="6" VerticalAlignment="Top" Margin="6,0,6,0"
+                          Cursor="SizeNS" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeTop_DragDelta"/>
+        <primitives:Thumb Height="6" VerticalAlignment="Bottom" Margin="6,0,6,0"
+                          Cursor="SizeNS" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeBottom_DragDelta"/>
+        <primitives:Thumb Width="6" HorizontalAlignment="Left" Margin="0,6,0,6"
+                          Cursor="SizeWE" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeLeft_DragDelta"/>
+        <primitives:Thumb Width="6" HorizontalAlignment="Right" Margin="0,6,0,6"
+                          Cursor="SizeWE" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeRight_DragDelta"/>
+
+        <!-- Cantos (Diagonal) -->
+        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
+                          Cursor="SizeNWSE" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeTopLeft_DragDelta"/>
+        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Cursor="SizeNESW" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeTopRight_DragDelta"/>
+        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                          Cursor="SizeNESW" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeBottomLeft_DragDelta"/>
+        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                          Cursor="SizeNWSE" Style="{StaticResource ResizeThumbStyle}"
+                          DragDelta="ResizeBottomRight_DragDelta"/>
+    </Grid>
+</Window>
