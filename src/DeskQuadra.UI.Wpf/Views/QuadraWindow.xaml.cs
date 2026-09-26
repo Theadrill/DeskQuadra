@@ -22,7 +22,7 @@ public partial class QuadraWindow : Window
 
     private bool _isInitializing = true;
     private bool _isDragging;
-    private Point _dragStartPoint;
+    private Point _dragStartScreenPoint;
     private double _initialLeft;
     private double _initialTop;
 
@@ -95,24 +95,62 @@ public partial class QuadraWindow : Window
                 Marshal.StructureToPtr(pos, lParam, true);
             }
         }
-        else if (msg == NativeMethods.WM_MOVING)
+        else if (msg == NativeMethods.WM_SYSCOMMAND)
         {
+            int command = (int)wParam & 0xFFF0;
+            if (command == NativeMethods.SC_MINIMIZE)
+            {
+                // Rejeita qualquer comando direto de minimização
+                handled = true;
+                return IntPtr.Zero;
+            }
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
+        {
+            if (NativeMethods.GetCursorPos(out var pt))
+            {
+                _isDragging = true;
+                _dragStartScreenPoint = new Point(pt.X, pt.Y);
+                _initialLeft = Left;
+                _initialTop = Top;
+                (sender as UIElement)?.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void TitleBar_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_isDragging && e.LeftButton == MouseButtonState.Pressed)
+        {
+            if (!NativeMethods.GetCursorPos(out var pt))
+            {
+                return;
+            }
+
             var dpi = VisualTreeHelper.GetDpi(this);
-            var rect = Marshal.PtrToStructure<NativeMethods.RECT>(lParam);
+            double deltaX = (pt.X - _dragStartScreenPoint.X) / dpi.DpiScaleX;
+            double deltaY = (pt.Y - _dragStartScreenPoint.Y) / dpi.DpiScaleY;
 
-            double leftDip = rect.Left / dpi.DpiScaleX;
-            double topDip = rect.Top / dpi.DpiScaleY;
-            double widthDip = (rect.Right - rect.Left) / dpi.DpiScaleX;
-            double heightDip = (rect.Bottom - rect.Top) / dpi.DpiScaleY;
+            // Posição virtual livre calculada diretamente do ponto de partida, sem acúmulo de snap
+            double rawLeft = _initialLeft + deltaX;
+            double rawTop = _initialTop + deltaY;
 
-            var currentRect = new Rect2D(leftDip, topDip, widthDip, heightDip);
+            var proposed = new Rect2D(rawLeft, rawTop, Width, Height);
 
-            // Obter WorkArea do monitor onde a janela está sendo movimentada
-            Rect2D workAreaRect;
-            IntPtr hMonitor = NativeMethods.MonitorFromWindow(hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            // Obter WorkArea do monitor onde a janela se encontra
+            var helper = new WindowInteropHelper(this);
+            IntPtr hMonitor = NativeMethods.MonitorFromWindow(helper.Handle, NativeMethods.MONITOR_DEFAULTTONEAREST);
             var monitorInfo = new NativeMethods.MONITORINFO();
             monitorInfo.cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>();
 
+            Rect2D workAreaRect;
             if (hMonitor != IntPtr.Zero && NativeMethods.GetMonitorInfo(hMonitor, ref monitorInfo))
             {
                 workAreaRect = new Rect2D(
@@ -135,73 +173,11 @@ public partial class QuadraWindow : Window
                 .Select(q => new Rect2D(q.Left, q.Top, q.Width, q.Height))
                 .ToList();
 
-            var snapResult = _snapEngine.CalculateSnap(currentRect, workAreaRect, obstacles, threshold: 24, gap: 0);
-
-            if (snapResult.SnappedX || snapResult.SnappedY)
-            {
-                rect.Left = (int)Math.Round(snapResult.X * dpi.DpiScaleX);
-                rect.Top = (int)Math.Round(snapResult.Y * dpi.DpiScaleY);
-                rect.Right = rect.Left + (int)Math.Round(widthDip * dpi.DpiScaleX);
-                rect.Bottom = rect.Top + (int)Math.Round(heightDip * dpi.DpiScaleY);
-
-                Marshal.StructureToPtr(rect, lParam, true);
-                handled = true;
-                return (IntPtr)1;
-            }
-        }
-        else if (msg == NativeMethods.WM_SYSCOMMAND)
-        {
-            int command = (int)wParam & 0xFFF0;
-            if (command == NativeMethods.SC_MINIMIZE)
-            {
-                // Rejeita qualquer comando direto de minimização
-                handled = true;
-                return IntPtr.Zero;
-            }
-        }
-
-        return IntPtr.Zero;
-    }
-
-    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ClickCount == 1)
-        {
-            try
-            {
-                DragMove();
-            }
-            catch
-            {
-                // Fallback para arrasto manual via captura de mouse
-                _isDragging = true;
-                _dragStartPoint = PointToScreen(e.GetPosition(this));
-                _initialLeft = Left;
-                _initialTop = Top;
-                (sender as UIElement)?.CaptureMouse();
-            }
-        }
-    }
-
-    private void TitleBar_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (_isDragging && e.LeftButton == MouseButtonState.Pressed)
-        {
-            Point currentScreen = PointToScreen(e.GetPosition(this));
-            double deltaX = currentScreen.X - _dragStartPoint.X;
-            double deltaY = currentScreen.Y - _dragStartPoint.Y;
-
-            var proposed = new Rect2D(_initialLeft + deltaX, _initialTop + deltaY, Width, Height);
-            var workArea = new Rect2D(SystemParameters.WorkArea.Left, SystemParameters.WorkArea.Top, SystemParameters.WorkArea.Width, SystemParameters.WorkArea.Height);
-            var obstacles = _coordinator.ActiveQuadras
-                .Where(q => q.Id != _viewModel.Id)
-                .Select(q => new Rect2D(q.Left, q.Top, q.Width, q.Height))
-                .ToList();
-
-            var snap = _snapEngine.CalculateSnap(proposed, workArea, obstacles, threshold: 24, gap: 0);
+            var snap = _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: 0);
 
             Left = snap.X;
             Top = snap.Y;
+            e.Handled = true;
         }
     }
 
@@ -211,7 +187,13 @@ public partial class QuadraWindow : Window
         {
             _isDragging = false;
             (sender as UIElement)?.ReleaseMouseCapture();
+            e.Handled = true;
         }
+    }
+
+    private void TitleBar_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        _isDragging = false;
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)

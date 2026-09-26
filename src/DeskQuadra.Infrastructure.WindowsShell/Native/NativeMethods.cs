@@ -34,6 +34,13 @@ internal static class NativeMethods
     public const int SC_MINIMIZE = 0xF020;
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct RECT
     {
         public int Left;
@@ -41,6 +48,10 @@ internal static class NativeMethods
         public int Right;
         public int Bottom;
     }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetCursorPos(out POINT lpPoint);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct WINDOWPOS

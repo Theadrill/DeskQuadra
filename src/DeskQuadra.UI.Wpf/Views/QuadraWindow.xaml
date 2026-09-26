@@ -95,7 +95,8 @@
                         BorderThickness="0,0,0,1"
                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                         MouseMove="TitleBar_MouseMove"
-                        MouseLeftButtonUp="TitleBar_MouseLeftButtonUp">
+                        MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
+                        LostMouseCapture="TitleBar_LostMouseCapture">
                     <Border.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="+ Nova Quadra (Teste de Snap)" Click="NewQuadraMenu_Click"/>
