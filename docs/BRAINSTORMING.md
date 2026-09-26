@@ -151,6 +151,85 @@
     `%APPDATA%\DeskQuadra\quadras.json` (resolvido programaticamente via `Environment.SpecialFolder.ApplicationData`).
   - *Benefício Adicional:* O usuário pode atualizar o executável portátil substituindo o `.exe` por uma versão nova e seu layout e atalhos permanecerão 100% intactos e preservados.
 
+### 17. Sincronização em Tempo Real com o Sistema de Arquivos (Live Sync)
+- **Decisão de Produto:** Sincronização ativa bidirecional de eventos do sistema operacional.
+- **Resolução de Caminhos do Desktop (Três Fontes Físicas):**
+  - *Desktop do Usuário:* Obtido via `SHGetKnownFolderPath(FOLDERID_Desktop)` para resolver automaticamente redirecionamentos para o **OneDrive** (ex: `C:\Users\<User>\OneDrive\Desktop`).
+  - *Desktop Público (All Users):* `FOLDERID_PublicDesktop` (`C:\Users\Public\Desktop`), capturando atalhos de instaladores de programas e jogos.
+  - *Desktop Local Legado:* Monitoramento de fallback caso a sincronização do OneDrive seja alternada pelo usuário.
+- **Regras de Exibição de Arquivos Ocultos e de Sistema:**
+  - O DeskQuadra respeita as preferências globais do Windows Explorer (`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced`):
+    - Se o usuário marcou *"Mostrar arquivos ocultos"* no Windows, a Quadra exibe os arquivos com atributo `Hidden` com visual semitransparente sutil (comportamento nativo do Explorer).
+    - Se marcou *"Ocultar arquivos protegidos do sistema (Recomendado)"*, arquivos como `desktop.ini` e temporários de edição do Office (`~$*.*`) permanecem estritamente filtrados e ocultos.
+- **Estabilização de Eventos (Debounce):**
+  - Aplicação de buffer/debounce de ~250ms no `FileSystemWatcher` para neutralizar oscilações e evitar efeito de piscar (*flicker*) durante operações complexas de escrita/renomeação no disco.
+
+### 18. Mecânica de Arraste entre Quadras (Drag & Drop: Mover vs. Duplicar)
+- **Semântica Padrão (Sem tecla modificadora):** Operação de **MOVER** o atalho/item entre Quadras. O arquivo físico permanece único no disco; apenas a sua vinculação muda da Quadra de origem para a Quadra de destino.
+- **Operação de Duplicação Física (`Ctrl + Drag`):**
+  - **Fidelidade ao Windows Explorer:** Se o usuário segurar a tecla `Ctrl` durante o arraste e soltar, o DeskQuadra cria uma **cópia física real** do arquivo ou atalho no disco (ex: `Documento - Copia.docx`).
+  - **Uso da API Win32 `IFileOperation`:** A duplicação física utiliza a interface COM nativa do Windows Shell para garantir:
+    - Suporte nativo ao Desfazer do Windows (`Ctrl + Z`).
+    - Nomenclatura automática de colisões (*" - Copia"*, *" - Copia (2)"*).
+    - Barra de progresso nativa do Windows caso o usuário copie um arquivo grande de múltiplos gigabytes.
+  - **Destino Fora de Quadras:** Se o usuário soltar a cópia em uma área livre do papel de parede (fora de qualquer Quadra), o novo arquivo cai na Quadra "TUDO" (se ativa) ou fica no desktop físico aguardando inclusão manual via botão "+".
+- **Comportamento *Spring-Loaded* em Quadras Recolhidas (Roll-up):**
+  - Ao passar o mouse arrastando um arquivo sobre a barra de título de uma Quadra recolhida, ela se expande temporariamente após um atraso deliberado de ~400ms.
+  - Se o usuário soltar o arquivo, o item é inserido e a Quadra permanece no estado expandido.
+  - Se o usuário retirar o cursor sem soltar o arquivo, a Quadra se recolhe novamente de forma automática.
+
+### 19. Criação de Quadras Desenhando com o Botão Direito
+- **Fluxo de Interação:**
+  - O usuário pressiona o botão direito do mouse sobre uma área livre do papel de parede e arrasta para delimitar o retângulo da nova Quadra.
+  - Um retângulo translúcido suave acompanha o cursor em tempo real.
+- **Menu Dual de Confirmação ao Soltar (Decisão B):**
+  - Ao soltar o botão direito, surge um menu minimalista no ponto do cursor com duas opções claras:
+    1. `[ + Criar Quadra Aqui ]`: Instancia a Quadra com as dimensões desenhadas e coloca o título em modo de edição imediata.
+    2. `[ 🗔 Cancelar e Exibir Menu do Windows ]`: Cancela o retângulo e abre instantaneamente o menu de contexto nativo do Windows (para quem pretendia apenas usar o desktop normal).
+- **Engenharia de Proteção contra Cliques Acidentais (*Drag Threshold*):**
+  - *O Problema:* Ao dar um clique simples com o botão direito para ver o menu do Windows, a mão do usuário move naturalmente 1 ou 2 pixels.
+  - *A Solução:* Aplicação do limiar métrico do Windows (`SM_CXDRAG` / `SM_CYDRAG`, calibrado em ~15px). Se o movimento do mouse for menor que 15 pixels, o DeskQuadra considera um **clique simples** e repassa imediatamente para o Windows abrir o menu normal, sem abrir o retângulo ou o diálogo de criação de Quadra.
+
+### 20. Resiliência contra Reinicialização do `Explorer.exe` (Auto-Healing & Watchdog)
+- **Cenário de Estresse:** O processo do Windows Explorer sofre um *crash* ou reinicialização (algo frequente durante atualizações, travamentos de drivers de vídeo ou bugs do Windows 11).
+- **Mecanismo Primário de Auto-Cura (In-Memory Healing):**
+  - O DeskQuadra registra e escuta a mensagem de broadcast do sistema operacional `RegisterWindowMessage("TaskbarCreated")`.
+  - Ao receber a mensagem, o sistema aguarda a estabilização do novo desktop (~150ms), reextrai o identificador `HWND` do novo `WorkerW` gerado pelo Windows e reancora (`SetParent`) todas as Quadras ativas de forma transparente e instantânea.
+- **Mecanismo de Fallback (Watchdog / Cold Restart):**
+  - **Temporizador de Integridade:** Se em até 3,0 segundos após a notificação o `WorkerW` válido não for localizado ou as janelas não confirmarem reancoragem bem-sucedida (estado de corrupção do subsistema gráfico do Explorer):
+    - O DeskQuadra salva o estado atual e dispara uma reinicialização limpa do próprio processo (`Process.Start(Environment.ProcessPath)` com a flag `--recovery`), encerrando a instância zumbi com `Environment.Exit(0)`.
+  - **Garantia:** O software nunca fica "congelado" ou invisível após falhas do sistema operacional.
+
+### 21. Integridade de Persistência, Backups Rotativos & Recuperação de Queda de Energia
+- **Ciclo Transacional de Gravação (Double-Buffering):**
+  1. *Gatilho com Debounce:* Alterações de layout acumulam em memória e aguardam ~400ms de inatividade do mouse.
+  2. *Escrita Transacional:* O novo JSON é serializado primeiramente no arquivo temporário `quadras.json.tmp`.
+  3. *Rotação Segura do Backup:*
+     - O arquivo atual `quadras.json` é copiado/rotacionado para `quadras.json.bak` (garantindo sempre uma cópia estável garantida).
+     - O arquivo `quadras.json.tmp` é renomeado atomicamente para `quadras.json`.
+     - O arquivo `.tmp` é purgado ao concluir a transação com sucesso.
+- **Detecção de Queda de Energia / Crash no Boot (Arquivo `.tmp` Órfão):**
+  - Se ao inicializar o DeskQuadra for encontrado um arquivo `quadras.json.tmp` residual no disco, isso indica que o computador sofreu corte repentino de energia no meio de uma gravação.
+  - **Validação de Integridade Automatizada:**
+    - O sistema valida a sintaxe do `.tmp`:
+      - *Se o `.tmp` estiver íntegro e for mais recente:* Exibe um diálogo amigável de recuperação: *"O Windows foi encerrado inesperadamente durante sua última organização. Deseja restaurar o layout mais recente?"* com opções claras: `[ Restaurar Recente ]` ou `[ Manter Anterior ]`.
+      - *Se o `.tmp` estiver truncado ou corrompido:* O arquivo quebrado é descartado silenciosamente e o sistema sobe a versão saudável `quadras.json` (ou `.bak`), sem gerar mensagens de erro confusas para o usuário.
+
+### 22. Otimização de Boot & Eliminação de Flicker (Zero-Flicker Startup)
+- **Problema de Usabilidade no Boot do Windows:**
+  - O `Explorer.exe` renderiza os ícones da área de trabalho antes da execução dos aplicativos de inicialização do usuário. Se o utilitário atrasar, o usuário visualiza os ícones nativos surgirem e sumirem abruptamente (*flicker* perceptível).
+- **Técnica de Ocultação Ultra-Precoce (Ponto de Entrada `Main`):**
+  - No método de entrada da aplicação (`Main()`), **antes** de instanciar o pipeline gráfico do WPF ou inicializar bibliotecas pesadas de XAML, o DeskQuadra dispara a chamada Win32 `ShowWindow(hDesktopListView, SW_HIDE)`.
+  - **Tempo de Execução:** Menos de 2 milissegundos a partir do início da thread, limpando a área de trabalho antes que o olho humano perceba qualquer transição.
+- **Transição Visual Suave:**
+  - As Quadras são renderizadas em memória e surgem no desktop com um efeito suave de *Fade-in* (~200ms), entregando acabamento profissional superior ao padrão do mercado.
+
+
+
+
+
+
+
 
 
 
