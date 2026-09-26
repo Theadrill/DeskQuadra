@@ -185,6 +185,8 @@
                                   PanningRatio="1.0"
                                   PanningDeceleration="0.001"
                                   ManipulationBoundaryFeedback="ScrollViewer_ManipulationBoundaryFeedback"
+                                  PreviewTouchMove="ItemsScrollViewer_PreviewTouchMove"
+                                  PreviewTouchUp="ItemsScrollViewer_PreviewTouchUp"
                                   Padding="2"
                                   Focusable="False">
                         <ItemsControl ItemsSource="{Binding Items}">
@@ -201,9 +203,19 @@
                                             Margin="2"
                                             Cursor="Hand"
                                             ToolTip="{Binding FilePath}"
+                                            Stylus.IsPressAndHoldEnabled="False"
                                             PreviewMouseLeftButtonDown="DesktopItem_PreviewMouseLeftButtonDown"
                                             PreviewMouseMove="DesktopItem_PreviewMouseMove"
-                                            PreviewMouseLeftButtonUp="DesktopItem_PreviewMouseLeftButtonUp">
+                                            PreviewMouseLeftButtonUp="DesktopItem_PreviewMouseLeftButtonUp"
+                                            PreviewTouchDown="DesktopItem_PreviewTouchDown">
+                                        <Border.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Abrir" Click="ItemMenuOpen_Click"/>
+                                                <MenuItem Header="Abrir local do arquivo" Click="ItemMenuOpenLocation_Click"/>
+                                                <Separator/>
+                                                <MenuItem Header="Remover desta Quadra" Click="ItemMenuRemove_Click"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="Transparent"/>

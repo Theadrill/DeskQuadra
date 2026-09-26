@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -6,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using DeskQuadra.Application.Services;
 using DeskQuadra.Application.Snap;
 using DeskQuadra.Core.Contracts;
@@ -35,6 +37,13 @@ public partial class QuadraWindow : Window
     private Point _itemDragStartPos;
     private DesktopItemViewModel? _draggedItemCandidate;
     private bool _isItemDragging;
+
+    // Estado do gesto de toque prolongado (Touch Press & Hold)
+    private DispatcherTimer? _touchHoldTimer;
+    private DesktopItemViewModel? _touchTargetItem;
+    private FrameworkElement? _touchTargetElement;
+    private Point _touchStartPoint;
+    private bool _isTouchHoldActive;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -360,6 +369,109 @@ public partial class QuadraWindow : Window
         }
     }
 
+    private void DesktopItem_PreviewTouchDown(object sender, TouchEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
+        {
+            _touchTargetElement = fe;
+            _touchTargetItem = item;
+            _touchStartPoint = e.GetTouchPoint(this).Position;
+            _isTouchHoldActive = false;
+
+            CancelTouchHoldTimer();
+            _touchHoldTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(380)
+            };
+            _touchHoldTimer.Tick += OnTouchHoldTimerTick;
+            _touchHoldTimer.Start();
+        }
+    }
+
+    private void OnTouchHoldTimerTick(object? sender, EventArgs e)
+    {
+        CancelTouchHoldTimer();
+
+        if (_touchTargetItem != null && _touchTargetElement != null)
+        {
+            _isTouchHoldActive = true;
+            GlobalItemSelected?.Invoke(_touchTargetItem);
+
+            // Desativa temporariamente o PanningMode para permitir que o movimento posterior arraste o item
+            ItemsScrollViewer.PanningMode = PanningMode.None;
+        }
+    }
+
+    private void ItemsScrollViewer_PreviewTouchMove(object sender, TouchEventArgs e)
+    {
+        Point currentPoint = e.GetTouchPoint(this).Position;
+        Vector delta = currentPoint - _touchStartPoint;
+
+        // Se o usuário mover mais de 12px antes dos 380ms, é uma rolagem (scroll): cancela o timer de Hold
+        if (_touchHoldTimer != null && _touchHoldTimer.IsEnabled)
+        {
+            if (delta.Length > 12)
+            {
+                CancelTouchHoldTimer();
+                _touchTargetItem = null;
+                _touchTargetElement = null;
+                _isTouchHoldActive = false;
+            }
+            return;
+        }
+
+        // Se já está em Hold e o usuário moveu o dedo além do limiar, inicia o Drag & Drop do atalho!
+        if (_isTouchHoldActive && _touchTargetItem != null && _touchTargetElement != null)
+        {
+            if (delta.Length > 10)
+            {
+                _isTouchHoldActive = false;
+                var item = _touchTargetItem;
+                var fe = _touchTargetElement;
+                _touchTargetItem = null;
+                _touchTargetElement = null;
+
+                StartItemDragDrop(fe, item);
+            }
+        }
+    }
+
+    private void ItemsScrollViewer_PreviewTouchUp(object sender, TouchEventArgs e)
+    {
+        CancelTouchHoldTimer();
+
+        // Se o usuário manteve o dedo pressionado e soltou no mesmo lugar: abre o Menu de Contexto (botão direito)!
+        if (_isTouchHoldActive && _touchTargetElement != null)
+        {
+            _isTouchHoldActive = false;
+            ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
+
+            var menu = _touchTargetElement.ContextMenu;
+            if (menu != null)
+            {
+                menu.PlacementTarget = _touchTargetElement;
+                menu.Placement = PlacementMode.Bottom;
+                menu.IsOpen = true;
+            }
+        }
+        else
+        {
+            ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
+        }
+
+        _touchTargetItem = null;
+        _touchTargetElement = null;
+    }
+
+    private void CancelTouchHoldTimer()
+    {
+        if (_touchHoldTimer != null)
+        {
+            _touchHoldTimer.Stop();
+            _touchHoldTimer = null;
+        }
+    }
+
     private void DesktopItem_PreviewMouseMove(object sender, MouseEventArgs e)
     {
         if (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
@@ -378,8 +490,17 @@ public partial class QuadraWindow : Window
         if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
             Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
         {
-            _isItemDragging = true;
             var item = _draggedItemCandidate;
+            var dragSource = sender as DependencyObject ?? this;
+            StartItemDragDrop(dragSource, item);
+        }
+    }
+
+    private void StartItemDragDrop(DependencyObject dragSource, DesktopItemViewModel item)
+    {
+        try
+        {
+            _isItemDragging = true;
             var payload = new QuadraDragPayload(_viewModel.Id, item);
             var dataObject = new DataObject();
             dataObject.SetData(typeof(QuadraDragPayload), payload);
@@ -389,7 +510,6 @@ public partial class QuadraWindow : Window
                 dataObject.SetData(DataFormats.FileDrop, new[] { item.FilePath });
             }
 
-            var dragSource = sender as DependencyObject ?? this;
             DragDropEffects result = DragDrop.DoDragDrop(dragSource, dataObject, DragDropEffects.Move | DragDropEffects.Copy);
 
             if (payload.WasHandledAsMove)
@@ -397,9 +517,51 @@ public partial class QuadraWindow : Window
                 _viewModel.RemoveItem(payload.Item);
                 _coordinator.NotifyQuadraChanged(_viewModel.Model);
             }
-
+        }
+        finally
+        {
             _isItemDragging = false;
             _draggedItemCandidate = null;
+            ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
+        }
+    }
+
+    private void ItemMenuOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
+        {
+            _launcherService.Launch(item.FilePath);
+        }
+    }
+
+    private void ItemMenuOpenLocation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
+        {
+            try
+            {
+                if (File.Exists(item.FilePath))
+                {
+                    Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{item.FilePath}\"") { UseShellExecute = true });
+                }
+                else if (Directory.Exists(item.FilePath))
+                {
+                    Process.Start(new ProcessStartInfo("explorer.exe", $"\"{item.FilePath}\"") { UseShellExecute = true });
+                }
+            }
+            catch
+            {
+                // Silencioso
+            }
+        }
+    }
+
+    private void ItemMenuRemove_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
+        {
+            _viewModel.RemoveItem(item);
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
         }
     }
 
@@ -608,6 +770,7 @@ public partial class QuadraWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        CancelTouchHoldTimer();
         GlobalItemSelected -= OnGlobalItemSelected;
         LocationChanged -= OnPositionOrSizeChanged;
         SizeChanged -= OnPositionOrSizeChanged;
