@@ -1,0 +1,127 @@
+# Plano de Implementação em Fases Testáveis — DeskQuadra
+
+> Documento oficial de engenharia que detalha a rota de desenvolvimento orientada a metas verificáveis (*Goal-Driven Execution*), em conformidade com as 25 seções aprovadas no [BRAINSTORMING.md](BRAINSTORMING.md).
+> Cada fase produz um executável ou resultado tangível que o Product Owner (PO) pode compilar, executar e testar diretamente no seu ambiente Windows.
+
+---
+
+## Visão Geral da Arquitetura da Solução
+
+O projeto DeskQuadra é dividido em 5 camadas estritas (.NET 8 LTS / Clean Architecture):
+
+```
+DeskQuadra/
+├── src/
+│   ├── DeskQuadra.Core/                         # Domínio Puro (Entidades: Quadra, ShortcutItem, BoundingBox, Enums, Contratos)
+│   ├── DeskQuadra.Application/                  # Casos de Uso, Motor de Snap Magnético, Orquestrador de Layout, Serviços
+│   ├── DeskQuadra.Infrastructure.WindowsShell/  # P/Invoke Win32 (WorkerW parenting, ShellExecute, IFileOperation, SHGetFileInfo, Hotkeys)
+│   ├── DeskQuadra.Infrastructure.Persistence/   # Repositório JSON transacional (Double-buffering: .tmp -> .bak -> .json)
+│   └── DeskQuadra.UI.Wpf/                       # Views XAML (Fluent Design), ViewModels (MVVM), ResourceDictionaries e App Entrypoint
+└── tests/
+    ├── DeskQuadra.Core.Tests/                   # Testes unitários de regras de domínio e validação
+    └── DeskQuadra.Application.Tests/            # Testes unitários do motor matemático de Snap Magnético e ordenação
+```
+
+---
+
+## Fases de Execução & Critérios de Aceite
+
+```
+                                      ROTA DE DESENVOLVIMENTO
+                                      
+  ┌────────────────┐     ┌────────────────┐     ┌────────────────┐     ┌────────────────┐     ┌────────────────┐
+  │     FASE 1     │ ──> │     FASE 2     │ ──> │     FASE 3     │ ──> │     FASE 4     │ ──> │     FASE 5     │
+  │   Fundação &   │     │ Persistência & │     │ Varredura &    │     │  Gestão & Drag │     │   Tray, Touch  │
+  │ 1ª Quadra Viva │     │ Snap Magnético │     │ Onboarding     │     │    and Drop    │     │   & Resiliência│
+  └────────────────┘     └────────────────┘     └────────────────┘     └────────────────┘     └────────────────┘
+```
+
+---
+
+### Fase 1: Fundação Estrutural & A Primeira Quadra Viva
+* **Objetivo:** Estabelecer a Solution .NET 8, configurar as referências dos projetos modulares e renderizar a primeira janela translúcida de Quadra acoplada ao nível do desktop.
+* **Escopo Técnico:**
+  - Criação de `DeskQuadra.sln` e dos 5 projetos `.csproj`.
+  - Configuração do `.gitignore` padrão .NET.
+  - Implementação inicial de `QuadraWindow.xaml` com efeito translúcido acrílico/Mica e cantos arredondados.
+  - P/Invoke inicial no `WindowsShell`: integração de Z-order (`WorkerW`/`Progman`) para tornar a janela imune ao atalho `Win + D`.
+  - Manipuladores de movimentação (*drag*) e redimensionamento livre (*resize grips/adorners*).
+* **Critério de Teste do PO (O que você vai testar):**
+  - Você executará `DeskQuadra.UI.Wpf.exe`.
+  - Uma Quadra elegante aparecerá na área de trabalho.
+  - Ao pressionar `Win + D`, todas as outras janelas do Windows se minimizam, mas a Quadra permanece visível no papel de parede.
+  - Você consegue arrastar a Quadra pela barra de título e redimensioná-la pelas bordas com o mouse.
+
+---
+
+### Fase 2: Motor de Snap Magnético & Persistência Transacional
+* **Objetivo:** Implementar o algoritmo geométrico de Snap Magnético e a gravação atômica do layout em disco.
+* **Escopo Técnico:**
+  - Desenvolvimento do motor de cálculo de colisão e proximidade em `DeskQuadra.Application` (com suporte a espaçamento configurável *Snap Gap* e alinhamento às bordas `WorkArea` do monitor).
+  - Implementação de `JsonLayoutRepository` em `DeskQuadra.Infrastructure.Persistence` com rotação de segurança (`quadras.json.tmp` ➔ `.bak` ➔ `.json`) e *Debounce* de ~400ms para poupar I/O.
+  - Persistência das coordenadas $(X, Y)$, largura, altura e títulos no diretório `%APPDATA%\DeskQuadra\quadras.json`.
+  - Criação da suite de testes automatizados para o algoritmo de Snap (`DeskQuadra.Application.Tests`).
+* **Critério de Teste do PO (O que você vai testar):**
+  - Ao arrastar a Quadra perto da borda do monitor ou perto de outra Quadra, você sentirá a atração magnética suave puxando e alinhando perfeitamente.
+  - Ao soltar, fechar o programa e reabri-lo, a Quadra reaparecerá exatamente no mesmo local e dimensão onde você a deixou.
+
+---
+
+### Fase 3: Varredura de Ícones & Onboarding Automático ("TUDO")
+* **Objetivo:** Ocultar os ícones nativos do Windows e criar a experiência de primeiro uso (*First-Run*) com a Quadra "TUDO".
+* **Escopo Técnico:**
+  - Extração da lista de atalhos e arquivos das três origens: Desktop do Usuário (incluindo OneDrive), Desktop Público (`C:\Users\Public\Desktop`) e atalhos locais.
+  - Filtro inteligente de arquivos de sistema (`desktop.ini`, temporários `~$*.*`).
+  - Ocultação dos ícones nativos via Win32 `ShowWindow(hDesktopListView, SW_HIDE)` no segundo zero de inicialização.
+  - Criação automática da Quadra padrão com flag técnica `IsDefault = true` posicionada dinamicamente à direita da tela.
+  - Extração de ícones em alta resolução nativa (32px, 48px e 96px Jumbo) e execução com duplo clique via `ShellExecute`.
+  - Restauração instantânea dos ícones nativos no evento de saída ou falha.
+* **Critério de Teste do PO (O que você vai testar):**
+  - Ao abrir o app pela primeira vez, seu desktop nativo fica imediatamente limpo.
+  - Surge no canto direito uma Quadra chamada "TUDO" contendo todos os seus atalhos com ícones nítidos e nomes legíveis.
+  - Ao dar duplo clique em qualquer ícone da Quadra, o programa/arquivo abre normalmente.
+  - Ao fechar o app, todos os ícones nativos originais do Windows voltam instantaneamente para o mesmo lugar.
+
+---
+
+### Fase 4: Gestão de Quadras, Ordenação & Drag and Drop entre Quadras
+* **Objetivo:** Permitir a criação de múltiplas Quadras, reorganização de atalhos e transferências por arraste.
+* **Escopo Técnico:**
+  - Criação de novas Quadras desenhando retângulos com o botão direito no desktop (com *Drag Threshold* de 15px e Menu Dual de confirmação).
+  - Suporte a adicionar atalhos manualmente pelo botão "+".
+  - Arraste de ícones entre Quadras (operação de **MOVER**).
+  - Duplicação física no disco ao arrastar segurando a tecla `Ctrl` (`Ctrl + Drag`) via API COM `IFileOperation`.
+  - Ordenação automática por submenu (*Nome*, *Tipo*, *Data*) e ordenação manual mantendo o grid (*slot-based*).
+* **Critério de Teste do PO (O que você vai testar):**
+  - Desenhar com o botão direito numa área vazia do desktop e clicar em *"Criar Quadra Aqui"*.
+  - Arrastar ícones do "TUDO" para a nova Quadra.
+  - Segurar `Ctrl` e arrastar para criar uma cópia real do arquivo.
+  - Alternar a classificação por Nome ou reordenar livremente os ícones dentro da grade.
+
+---
+
+### Fase 5: System Tray, Modo Roll-up & Acessibilidade Dual (Touch/Mouse)
+* **Objetivo:** Implementar o hub de controle na bandeja do sistema, modo gaveta e suporte a telas portáteis/touch.
+* **Escopo Técnico:**
+  - Ícone na System Tray (bandeja junto ao relógio) com menu de contexto: *"Mostrar Quadras Escondidas"*, *"Travar todas as Quadras"*, *"Configurações"* e *"Sair"*.
+  - Diálogo do botão "X" de cada Quadra (*"Esconder"* vs. *"Excluir"* com regras de proteção da Quadra Padrão).
+  - Modo Roll-up na barra de título (duplo clique recolhe, botão chevron dedicado e expansão temporária *Spring-Loaded* ao arrastar arquivo por cima).
+  - Arquitetura de Densidade Dual: Modo Normal (28px de barra, 24px de botão) vs. Modo Touch (42px de barra, 44px de hitbox para Steam Deck/telas táteis).
+* **Critério de Teste do PO (O que você vai testar):**
+  - Clicar duas vezes no título para recolher a Quadra em uma barrinha fina.
+  - Fechar uma Quadra com itens e vê-la na lista da bandeja para reativar com 1 clique.
+  - Testar a alternância entre o Modo Normal e o Modo Touch.
+
+---
+
+### Fase 6: Resiliência Máxima, Watchdog do Explorer & Panic Button
+* **Objetivo:** Blindar o sistema contra qualquer falha catastrófica do sistema operacional ou travamento.
+* **Escopo Técnico:**
+  - Monitoramento contínuo do Desktop físico via `FileSystemWatcher` com suporte a OneDrive e debounce de 250ms.
+  - Registro de broadcast `TaskbarCreated` e Watchdog Timer de 3.0s para recuperação automática caso o `Explorer.exe` reinicie.
+  - Registro da Global Hotkey de Pânico: `Ctrl + Shift + Alt + Q` via `RegisterHotKey`.
+  - Detecção e recuperação de encerramento anormal através de arquivo `.tmp` órfão no boot.
+  - Ocultação ultra-precoce na função `Main()` com fade-in suave de 200ms para eliminação completa de flicker.
+* **Critério de Teste do PO (O que você vai testar):**
+  - Matar o processo `explorer.exe` no Gerenciador de Tarefas e ver o DeskQuadra se auto-recuperar sozinho em ~150ms.
+  - Pressionar `Ctrl + Shift + Alt + Q` a qualquer momento para ver o app encerrar em modo de emergência e o desktop nativo reaparecer imediatamente.
