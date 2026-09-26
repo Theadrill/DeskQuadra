@@ -43,6 +43,13 @@ public partial class App : System.Windows.Application
         _serviceProvider = services.BuildServiceProvider();
 
         _nativeIconService = _serviceProvider.GetRequiredService<INativeDesktopIconService>();
+
+        if (e.Args.Contains("--restore-icons", StringComparer.OrdinalIgnoreCase))
+        {
+            _nativeIconService.ShowDesktopIcons();
+            Shutdown();
+            return;
+        }
         var coordinator = _serviceProvider.GetRequiredService<ILayoutCoordinator>();
         var anchorService = _serviceProvider.GetRequiredService<IWindowAnchorService>();
         var snapEngine = _serviceProvider.GetRequiredService<ISnapEngine>();
