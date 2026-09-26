@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DeskQuadra.Core\DeskQuadra.Core.csproj" />
+    <ProjectReference Include="..\..\src\DeskQuadra.Infrastructure.Persistence\DeskQuadra.Infrastructure.Persistence.csproj" />
   </ItemGroup>
 
 </Project>
