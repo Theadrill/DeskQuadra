@@ -9,6 +9,14 @@
 - **Stack & Performance:** C# / .NET 8 (LTS) e WPF. Foco em pegada ultraleve de memória (~30MB RAM) e aceleração de hardware (DirectX), descartando engines pesadas como Chromium/WebView2.
 - **Integração Win32 / Desktop:** Ancoragem das janelas no nível do papel de parede do Windows (`WorkerW` / `Progman`), mantendo as Quadras imunes ao atalho `Win + D` e com ícones nativos do Windows ocultos.
 - **Arquitetura Anti-Monólito:** Separação estrita em camadas (Clean Architecture): `Core`, `Application`, `Infrastructure.WindowsShell`, `Infrastructure.Persistence` e `UI.Wpf`.
+- **Governança de Engenharia & Uso Mandatório de Skills:** A cada passo, fase ou tarefa técnica, o Tech Lead deve **SEMPRE selecionar e aplicar as melhores skills especializadas** disponíveis no repositório (`.agent/skills/`) para guiar a implementação. É mandatório cruzar o escopo do que será feito com as diretrizes correspondentes:
+  - Interop Win32 / Shell / WorkerW / Handles ➔ `dotnet-pinvoke` e `wpf-windows-desktop`
+  - Telas WPF, Acrylic, Densidade Dual, Hitboxes e XAML ➔ `wpf-windows-desktop`, `ui-ux-pro-max` e `ui-visual-validator`
+  - Clean Code, Simplicidade Cirúrgica e Anti-Overengineering ➔ `coding-guidelines` e `csharp-refactoring`
+  - Performance, Baixo Consumo de RAM (~30MB) e Benchmarks ➔ `analyzing-dotnet-performance` e `microbenchmarking`
+  - Configuração de Projetos e Builds .NET ➔ `msbuild-modernization`
+  - Testes Automatizados Unitários (xUnit) ➔ `run-tests`, `assertion-quality`, `test-anti-patterns` e `test-smell-detection`
+  - Atualização e Rigor de Documentação Técnica ➔ `docs-writer`
 
 ---
 

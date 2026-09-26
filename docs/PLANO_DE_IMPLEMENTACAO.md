@@ -24,6 +24,22 @@ DeskQuadra/
 
 ---
 
+## Matriz de Governança por Skills (`.agent/skills/`)
+
+Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a execução de cada passo/fase deve **obrigatoriamente selecionar e ativar as melhores skills** do repositório:
+
+| Domínio de Atuação | Skills Mandatórias |
+|--------------------|-------------------|
+| **Interoperabilidade Win32 & Shell** | `dotnet-pinvoke`, `wpf-windows-desktop` |
+| **Interfaces WPF, XAML, Acrylic & Usabilidade** | `wpf-windows-desktop`, `ui-ux-pro-max`, `ui-visual-validator` |
+| **Clean Code, Arquitetura & Refatoração** | `coding-guidelines`, `csharp-refactoring` |
+| **Performance, Memória (~30MB) & Benchmarks** | `analyzing-dotnet-performance`, `microbenchmarking` |
+| **Estrutura de Projetos & Compilação MSBuild** | `msbuild-modernization` |
+| **Testes Automatizados (xUnit)** | `run-tests`, `assertion-quality`, `test-anti-patterns`, `test-smell-detection` |
+| **Documentação Técnica & Registros de Decisão** | `docs-writer` |
+
+---
+
 ## Fases de Execução & Critérios de Aceite
 
 ```
@@ -40,6 +56,7 @@ DeskQuadra/
 
 ### Fase 1: Fundação Estrutural & A Primeira Quadra Viva
 * **Objetivo:** Estabelecer a Solution .NET 8, configurar as referências dos projetos modulares e renderizar a primeira janela translúcida de Quadra acoplada ao nível do desktop.
+* **Skills Mandatórias:** `msbuild-modernization`, `dotnet-pinvoke`, `wpf-windows-desktop`, `coding-guidelines`, `ui-ux-pro-max`.
 * **Escopo Técnico:**
   - Criação de `DeskQuadra.sln` e dos 5 projetos `.csproj`.
   - Configuração do `.gitignore` padrão .NET.
@@ -56,6 +73,7 @@ DeskQuadra/
 
 ### Fase 2: Motor de Snap Magnético & Persistência Transacional
 * **Objetivo:** Implementar o algoritmo geométrico de Snap Magnético e a gravação atômica do layout em disco.
+* **Skills Mandatórias:** `coding-guidelines`, `csharp-refactoring`, `analyzing-dotnet-performance`, `run-tests`, `assertion-quality`.
 * **Escopo Técnico:**
   - Desenvolvimento do motor de cálculo de colisão e proximidade em `DeskQuadra.Application` (com suporte a espaçamento configurável *Snap Gap* e alinhamento às bordas `WorkArea` do monitor).
   - Implementação de `JsonLayoutRepository` em `DeskQuadra.Infrastructure.Persistence` com rotação de segurança (`quadras.json.tmp` ➔ `.bak` ➔ `.json`) e *Debounce* de ~400ms para poupar I/O.
@@ -69,6 +87,7 @@ DeskQuadra/
 
 ### Fase 3: Varredura de Ícones & Onboarding Automático ("TUDO")
 * **Objetivo:** Ocultar os ícones nativos do Windows e criar a experiência de primeiro uso (*First-Run*) com a Quadra "TUDO".
+* **Skills Mandatórias:** `dotnet-pinvoke`, `wpf-windows-desktop`, `analyzing-dotnet-performance`, `coding-guidelines`, `ui-ux-pro-max`, `ui-visual-validator`.
 * **Escopo Técnico:**
   - Extração da lista de atalhos e arquivos das três origens: Desktop do Usuário (incluindo OneDrive), Desktop Público (`C:\Users\Public\Desktop`) e atalhos locais.
   - Filtro inteligente de arquivos de sistema (`desktop.ini`, temporários `~$*.*`).
@@ -86,6 +105,7 @@ DeskQuadra/
 
 ### Fase 4: Gestão de Quadras, Ordenação & Drag and Drop entre Quadras
 * **Objetivo:** Permitir a criação de múltiplas Quadras, reorganização de atalhos e transferências por arraste.
+* **Skills Mandatórias:** `dotnet-pinvoke`, `wpf-windows-desktop`, `coding-guidelines`, `ui-ux-pro-max`, `ui-visual-validator`.
 * **Escopo Técnico:**
   - Criação de novas Quadras desenhando retângulos com o botão direito no desktop (com *Drag Threshold* de 15px e Menu Dual de confirmação).
   - Suporte a adicionar atalhos manualmente pelo botão "+".
@@ -102,6 +122,7 @@ DeskQuadra/
 
 ### Fase 5: System Tray, Modo Roll-up & Acessibilidade Dual (Touch/Mouse)
 * **Objetivo:** Implementar o hub de controle na bandeja do sistema, modo gaveta e suporte a telas portáteis/touch.
+* **Skills Mandatórias:** `wpf-windows-desktop`, `ui-ux-pro-max`, `ui-visual-validator`, `coding-guidelines`.
 * **Escopo Técnico:**
   - Ícone na System Tray (bandeja junto ao relógio) com menu de contexto: *"Mostrar Quadras Escondidas"*, *"Travar todas as Quadras"*, *"Configurações"* e *"Sair"*.
   - Diálogo do botão "X" de cada Quadra (*"Esconder"* vs. *"Excluir"* com regras de proteção da Quadra Padrão).
@@ -116,6 +137,7 @@ DeskQuadra/
 
 ### Fase 6: Resiliência Máxima, Watchdog do Explorer & Panic Button
 * **Objetivo:** Blindar o sistema contra qualquer falha catastrófica do sistema operacional ou travamento.
+* **Skills Mandatórias:** `dotnet-pinvoke`, `wpf-windows-desktop`, `analyzing-dotnet-performance`, `coding-guidelines`, `docs-writer`.
 * **Escopo Técnico:**
   - Monitoramento contínuo do Desktop físico via `FileSystemWatcher` com suporte a OneDrive e debounce de 250ms.
   - Registro de broadcast `TaskbarCreated` e Watchdog Timer de 3.0s para recuperação automática caso o `Explorer.exe` reinicie.
