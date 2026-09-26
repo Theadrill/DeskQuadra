@@ -549,9 +549,6 @@ public partial class QuadraWindow : Window
 
     private void StartItemDragDrop(DesktopItemViewModel item)
     {
-        DragPreviewWindow? previewWindow = null;
-        GiveFeedbackEventHandler? onGiveFeedback = null;
-
         try
         {
             _isItemDragging = true;
@@ -564,24 +561,6 @@ public partial class QuadraWindow : Window
                 dataObject.SetData(DataFormats.FileDrop, new[] { item.FilePath });
             }
 
-            // Exibe a janela fantasma do atalho flutuando junto ao cursor/dedo
-            previewWindow = new DragPreviewWindow(item.Icon, item.Name);
-            if (NativeMethods.GetCursorPos(out var pt))
-            {
-                previewWindow.UpdatePosition(pt.X, pt.Y);
-            }
-            previewWindow.Show();
-
-            onGiveFeedback = (s, e) =>
-            {
-                if (NativeMethods.GetCursorPos(out var currentPt))
-                {
-                    previewWindow?.UpdatePosition(currentPt.X, currentPt.Y);
-                }
-                e.UseDefaultCursors = true;
-            };
-
-            GiveFeedback += onGiveFeedback;
             Mouse.Capture(null);
 
             DragDropEffects result = DragDropEffects.None;
@@ -602,12 +581,6 @@ public partial class QuadraWindow : Window
         }
         finally
         {
-            if (onGiveFeedback != null)
-            {
-                GiveFeedback -= onGiveFeedback;
-            }
-
-            previewWindow?.Close();
             _isItemDragging = false;
             _draggedItemCandidate = null;
             ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
