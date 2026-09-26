@@ -11,6 +11,7 @@ namespace DeskQuadra.Infrastructure.WindowsShell.Services;
 public sealed class NativeDesktopIconService : INativeDesktopIconService
 {
     private IntPtr _cachedListViewHandle = IntPtr.Zero;
+    private IntPtr _cachedShellViewHandle = IntPtr.Zero;
     private bool _areIconsHidden;
     private bool _isDisposed;
 
@@ -32,12 +33,21 @@ public sealed class NativeDesktopIconService : INativeDesktopIconService
     public bool ShowDesktopIcons()
     {
         IntPtr hListView = GetDesktopListViewHandle();
-        if (hListView == IntPtr.Zero)
+        if (hListView == IntPtr.Zero && _cachedShellViewHandle == IntPtr.Zero)
         {
             return false;
         }
 
-        bool result = NativeMethods.ShowWindow(hListView, NativeMethods.SW_SHOW);
+        if (_cachedShellViewHandle != IntPtr.Zero)
+        {
+            NativeMethods.ShowWindow(_cachedShellViewHandle, NativeMethods.SW_SHOW);
+        }
+
+        if (hListView != IntPtr.Zero)
+        {
+            NativeMethods.ShowWindow(hListView, NativeMethods.SW_SHOW);
+        }
+
         _areIconsHidden = false;
         return true;
     }
@@ -107,6 +117,7 @@ public sealed class NativeDesktopIconService : INativeDesktopIconService
         }
 
         // Se a classe interna não for encontrada, o próprio SHELLDLL_DefView é a camada controladora
+        _cachedShellViewHandle = shellView;
         _cachedListViewHandle = listView != IntPtr.Zero ? listView : shellView;
         return _cachedListViewHandle;
     }

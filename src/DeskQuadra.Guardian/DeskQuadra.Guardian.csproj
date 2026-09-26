@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeskQuadra.Core\DeskQuadra.Core.csproj" />
+    <ProjectReference Include="..\DeskQuadra.Infrastructure.WindowsShell\DeskQuadra.Infrastructure.WindowsShell.csproj" />
+  </ItemGroup>
+
+</Project>

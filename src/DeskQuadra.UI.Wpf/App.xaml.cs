@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -60,7 +62,10 @@ public partial class App : System.Windows.Application
         // 1. Oculta os ícones nativos do desktop do Windows (Zero-Flicker)
         _nativeIconService.HideDesktopIcons();
 
-        // 2. Registra ouvinte para abrir janelas de novas Quadras criadas durante a execução
+        // 2. Inicia o Processo Guardião (Sidecar Watcher) para restaurar ícones em caso de encerramento abrupto/crash
+        SpawnGuardianProcess();
+
+        // 3. Registra ouvinte para abrir janelas de novas Quadras criadas durante a execução
         coordinator.QuadraCreated += (s, quadra) =>
         {
             Dispatcher.Invoke(() =>
@@ -238,5 +243,38 @@ public partial class App : System.Windows.Application
         }
 
         base.OnExit(e);
+    }
+
+    private static void SpawnGuardianProcess()
+    {
+        try
+        {
+            string baseDir = AppContext.BaseDirectory;
+            string[] possiblePaths =
+            [
+                Path.Combine(baseDir, "DeskQuadra.Guardian.exe"),
+                Path.GetFullPath(Path.Combine(baseDir, @"..\..\..\..\DeskQuadra.Guardian\bin\Debug\net8.0-windows\DeskQuadra.Guardian.exe")),
+                Path.GetFullPath(Path.Combine(baseDir, @"..\..\..\..\DeskQuadra.Guardian\bin\Release\net8.0-windows\DeskQuadra.Guardian.exe"))
+            ];
+
+            string? guardianExe = possiblePaths.FirstOrDefault(File.Exists);
+            if (guardianExe != null)
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = guardianExe,
+                    Arguments = $"--parent-pid {Environment.ProcessId}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+
+                Process.Start(psi);
+            }
+        }
+        catch
+        {
+            // O guardião é um mecanismo de segurança autônomo e não deve bloquear o app
+        }
     }
 }

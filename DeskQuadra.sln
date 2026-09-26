@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeskQuadra.Core.Tests", "te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeskQuadra.Application.Tests", "tests\DeskQuadra.Application.Tests\DeskQuadra.Application.Tests.csproj", "{8E3469FE-2D4C-4F0F-A134-7954D3819524}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeskQuadra.Guardian", "src\DeskQuadra.Guardian\DeskQuadra.Guardian.csproj", "{CD2207D9-6E04-4F80-8FAD-4D32DEF9CE62}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,6 +60,10 @@ Global
 		{8E3469FE-2D4C-4F0F-A134-7954D3819524}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E3469FE-2D4C-4F0F-A134-7954D3819524}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E3469FE-2D4C-4F0F-A134-7954D3819524}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD2207D9-6E04-4F80-8FAD-4D32DEF9CE62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD2207D9-6E04-4F80-8FAD-4D32DEF9CE62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD2207D9-6E04-4F80-8FAD-4D32DEF9CE62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD2207D9-6E04-4F80-8FAD-4D32DEF9CE62}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4567FAB0-A0BB-400F-873D-2ED3B57414D7} = {9EA04036-F71D-4D95-A2BB-74EAA8A2FBA5}
@@ -67,5 +73,6 @@ Global
 		{7BBC7F37-8AFF-479F-9D3D-3980E12A378B} = {9EA04036-F71D-4D95-A2BB-74EAA8A2FBA5}
 		{A777DCDE-ED91-44CA-8DDE-11FCF582DBCC} = {8D1240ED-55A2-4C3F-8F3E-68CD013172E1}
 		{8E3469FE-2D4C-4F0F-A134-7954D3819524} = {8D1240ED-55A2-4C3F-8F3E-68CD013172E1}
+		{CD2207D9-6E04-4F80-8FAD-4D32DEF9CE62} = {9EA04036-F71D-4D95-A2BB-74EAA8A2FBA5}
 	EndGlobalSection
 EndGlobal
