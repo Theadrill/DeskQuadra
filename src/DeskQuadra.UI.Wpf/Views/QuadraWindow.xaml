@@ -177,9 +177,14 @@
                                    HorizontalAlignment="Center"/>
                     </Border>
 
-                    <!-- Lista com rolagem suave de atalhos e ícones em WrapPanel -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                    <!-- Lista com rolagem suave de atalhos e ícones em WrapPanel com suporte nativo a toque -->
+                    <ScrollViewer x:Name="ItemsScrollViewer"
+                                  VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
+                                  PanningMode="VerticalOnly"
+                                  PanningRatio="1.0"
+                                  PanningDeceleration="0.001"
+                                  ManipulationBoundaryFeedback="ScrollViewer_ManipulationBoundaryFeedback"
                                   Padding="2"
                                   Focusable="False">
                         <ItemsControl ItemsSource="{Binding Items}">

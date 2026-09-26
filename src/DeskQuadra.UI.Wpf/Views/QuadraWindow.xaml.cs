@@ -329,8 +329,16 @@ public partial class QuadraWindow : Window
         }
     }
 
+    private void ScrollViewer_ManipulationBoundaryFeedback(object sender, ManipulationBoundaryFeedbackEventArgs e)
+    {
+        // Neutraliza o tremor/salto da janela nos limites superior e inferior da rolagem
+        e.Handled = true;
+    }
+
     private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        bool isTouch = e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch;
+
         if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
         {
             GlobalItemSelected?.Invoke(item);
@@ -343,7 +351,9 @@ public partial class QuadraWindow : Window
             }
         }
 
-        if (e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
+        // Evita captura imediata de arraste quando o usuário estiver usando toque na tela (dedo),
+        // permitindo que o gesto de deslize execute o Panning suave no ScrollViewer
+        if (!isTouch && e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
         {
             _itemDragStartPos = e.GetPosition(this);
             _draggedItemCandidate = (sender as FrameworkElement)?.DataContext as DesktopItemViewModel;
@@ -352,6 +362,11 @@ public partial class QuadraWindow : Window
 
     private void DesktopItem_PreviewMouseMove(object sender, MouseEventArgs e)
     {
+        if (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
+        {
+            return;
+        }
+
         if (_isItemDragging || _draggedItemCandidate == null || e.LeftButton != MouseButtonState.Pressed)
         {
             return;
