@@ -81,7 +81,7 @@ public partial class App : System.Windows.Application
 
         _drawingService.DrawingProgress += (s, rect) =>
         {
-            Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(() =>
             {
                 if (_selectionWindow != null)
                 {
@@ -91,7 +91,7 @@ public partial class App : System.Windows.Application
                         _selectionWindow.Show();
                     }
                 }
-            });
+            }, System.Windows.Threading.DispatcherPriority.Render);
         };
 
         _drawingService.DrawingCancelled += (s, ev) =>

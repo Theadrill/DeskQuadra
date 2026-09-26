@@ -80,6 +80,18 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
             {
                 if (_isDownOnDesktop)
                 {
+                    // Se o botão direito não estiver mais pressionado fisicamente (ex: solto durante Alt+Tab), cancela
+                    if ((NativeMethods.GetKeyState(NativeMethods.VK_RBUTTON) & 0x8000) == 0)
+                    {
+                        _isDownOnDesktop = false;
+                        if (_isDragging)
+                        {
+                            _isDragging = false;
+                            DrawingCancelled?.Invoke(this, EventArgs.Empty);
+                        }
+                        return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+                    }
+
                     var hookStruct = Marshal.PtrToStructure<NativeMethods.MSLLHOOKSTRUCT>(lParam);
                     double dx = hookStruct.pt.X - _startPt.X;
                     double dy = hookStruct.pt.Y - _startPt.Y;

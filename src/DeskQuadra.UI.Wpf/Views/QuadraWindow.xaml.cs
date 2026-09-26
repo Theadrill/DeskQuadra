@@ -354,11 +354,20 @@ public partial class QuadraWindow : Window
         _isItemDragging = false;
     }
 
+    private static bool IsCopyRequested(DragEventArgs e)
+    {
+        return (e.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey
+            || Keyboard.IsKeyDown(Key.LeftCtrl)
+            || Keyboard.IsKeyDown(Key.RightCtrl)
+            || Keyboard.Modifiers.HasFlag(ModifierKeys.Control)
+            || (NativeMethods.GetKeyState(0x11 /* VK_CONTROL */) & 0x8000) != 0;
+    }
+
     private void Quadra_DragOver(object sender, DragEventArgs e)
     {
         if (e.Data.GetDataPresent(typeof(QuadraDragPayload)) || e.Data.GetDataPresent(DataFormats.FileDrop))
         {
-            bool isControlPressed = (e.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
+            bool isControlPressed = IsCopyRequested(e);
             e.Effects = isControlPressed ? DragDropEffects.Copy : DragDropEffects.Move;
             e.Handled = true;
         }
@@ -370,29 +379,30 @@ public partial class QuadraWindow : Window
 
     private void Quadra_Drop(object sender, DragEventArgs e)
     {
+        bool isCopy = IsCopyRequested(e);
+
         if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
         {
             var payload = e.Data.GetData(typeof(QuadraDragPayload)) as QuadraDragPayload;
             if (payload != null)
             {
-                if (payload.SourceQuadraId == _viewModel.Id)
+                if (payload.SourceQuadraId == _viewModel.Id && !isCopy)
                 {
-                    // Mesmo container, sem movimentação necessária
+                    // Mesmo container sem Ctrl: nenhuma ação necessária
                     e.Handled = true;
                     return;
                 }
 
-                bool isCopy = (e.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
                 if (isCopy)
                 {
-                    // Duplicação física no disco (Ctrl + Drag)
+                    // Duplicação física no disco (Ctrl + Drag), tanto na mesma Quadra quanto entre Quadras
                     string duplicatedPath = DuplicateFileOnDisk(payload.Item.FilePath);
                     _viewModel.AddItem(duplicatedPath);
                     e.Effects = DragDropEffects.Copy;
                 }
                 else
                 {
-                    // Mover item entre Quadras
+                    // Mover item entre Quadras distintas
                     payload.WasHandledAsMove = true;
                     _viewModel.AddItem(payload.Item.Model);
                     e.Effects = DragDropEffects.Move;
@@ -411,7 +421,8 @@ public partial class QuadraWindow : Window
             {
                 foreach (var file in files)
                 {
-                    _viewModel.AddItem(file);
+                    string targetFile = isCopy ? DuplicateFileOnDisk(file) : file;
+                    _viewModel.AddItem(targetFile);
                 }
 
                 _coordinator.NotifyQuadraChanged(_viewModel.Model);
@@ -441,8 +452,26 @@ public partial class QuadraWindow : Window
                     targetPath = Path.Combine(dir, targetName);
                 }
 
-                File.Copy(path, targetPath);
-                return targetPath;
+                try
+                {
+                    File.Copy(path, targetPath);
+                    return targetPath;
+                }
+                catch
+                {
+                    // Fallback para o Desktop do usuário se o diretório for protegido (ex: Public Desktop)
+                    string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                    string fallbackTarget = Path.Combine(userDesktop, targetName);
+                    while (File.Exists(fallbackTarget))
+                    {
+                        copyIndex++;
+                        targetName = $"{nameWithoutExt} - Cópia ({copyIndex}){ext}";
+                        fallbackTarget = Path.Combine(userDesktop, targetName);
+                    }
+
+                    File.Copy(path, fallbackTarget);
+                    return fallbackTarget;
+                }
             }
 
             if (Directory.Exists(path))
@@ -461,8 +490,25 @@ public partial class QuadraWindow : Window
                     targetPath = Path.Combine(parent, targetName);
                 }
 
-                CopyDirectoryRecursively(path, targetPath);
-                return targetPath;
+                try
+                {
+                    CopyDirectoryRecursively(path, targetPath);
+                    return targetPath;
+                }
+                catch
+                {
+                    string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                    string fallbackTarget = Path.Combine(userDesktop, targetName);
+                    while (Directory.Exists(fallbackTarget))
+                    {
+                        copyIndex++;
+                        targetName = $"{dirName} - Cópia ({copyIndex})";
+                        fallbackTarget = Path.Combine(userDesktop, targetName);
+                    }
+
+                    CopyDirectoryRecursively(path, fallbackTarget);
+                    return fallbackTarget;
+                }
             }
         }
         catch

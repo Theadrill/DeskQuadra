@@ -203,7 +203,11 @@ internal static class NativeMethods
     public const int WM_MOUSEMOVE = 0x0200;
     public const int WM_RBUTTONDOWN = 0x0204;
     public const int WM_RBUTTONUP = 0x0205;
+    public const int VK_RBUTTON = 0x02;
     public const uint GA_ROOT = 2;
+
+    [DllImport("user32.dll")]
+    public static extern short GetKeyState(int nVirtKey);
 
     public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
