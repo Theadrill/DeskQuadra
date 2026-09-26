@@ -6,6 +6,8 @@ public sealed class QuadraViewModel : ViewModelBase
 {
     private readonly Quadra _quadra;
 
+    public Quadra Model => _quadra;
+
     public Guid Id => _quadra.Id;
 
     public string Title

@@ -96,6 +96,13 @@
                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                         MouseMove="TitleBar_MouseMove"
                         MouseLeftButtonUp="TitleBar_MouseLeftButtonUp">
+                    <Border.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="+ Nova Quadra (Teste de Snap)" Click="NewQuadraMenu_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Fechar Quadra" Click="CloseButton_Click"/>
+                        </ContextMenu>
+                    </Border.ContextMenu>
                     <Grid Margin="8,0,4,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
