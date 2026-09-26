@@ -235,6 +235,32 @@
   3. *Encerramento Limpo:* Executa `Environment.Exit(0)` sem travar o sistema.
 - **Divulgação de Segurança:** O atalho é explicitamente informado na barra de status da janela de Configurações e no guia de primeiro uso.
 
+### 24. Design System, Acessibilidade e Contraste (Padrão `ui-ux-pro-max` / WCAG)
+- **Princípio:** *Smart Defaults* (padrão de fábrica inteligente) com *Override* total pelo usuário.
+- **Legibilidade de Texto sobre Papéis de Parede Arbitrários (WCAG AA 4.5:1):**
+  - **Comportamento Padrão (Ativo):** Rótulos de atalhos e títulos de Quadras utilizam renderização com sombra suave projetada (*DropShadow* acelerado por hardware: `BlurRadius = 2`, `ShadowDepth = 1`, `Opacity = 0.8`), garantindo legibilidade imediata em 100% dos papéis de parede (claros, escuros ou com alto contraste visual).
+  - **Override do Usuário:** O usuário pode desativar a sombra e escolher cores sólidas personalizadas via seletor de cores da Quadra.
+- **Tratamento de Nomes Longos de Arquivos (Truncamento & Tooltip):**
+  - Nomes extensos são limitados a no máximo **2 linhas com reticências** (*text-overflow: ellipsis*) no grid de ícones.
+  - Tooltip informativo surge em *hover* (ou toque contínuo) exibindo o nome completo do arquivo, tipo e tamanho.
+- **Arquitetura de Densidade Dual: Modo Normal (Mouse) vs. Modo Touch (Tablet/Portáteis):**
+  - *O Problema de Usabilidade Apontado pelo PO:* Em uma barra de título compacta de desktop (~28px), uma hitbox invisível de 44x44px invade a área de arraste do mouse, causando cliques acidentais e recolhimento involuntário da Quadra quando o usuário tenta apenas movê-la.
+  - *A Solução Arquitetural (Sistema de Densidade Dinâmica via WPF Resources):*
+    1. **Modo Normal (Mouse & Teclado - Padrão):**
+       - Barra de título compacta (altura de ~28px).
+       - Alvo de clique do chevron restrito a 24x24px (sem vazamento para a área de arraste).
+       - Espaçamento denso e eficiente entre atalhos no grid.
+    2. **Modo Touch / Portátil (Steam Deck, ROG Ally, Tablets):**
+       - Barra de título expandida (altura de ~42px).
+       - Alvo de clique amplo de 44x44px (fácil para toque de polegar/indicador).
+       - Espaçamento (*padding*) entre os ícones aumentado para evitar toques duplos acidentais com os dedos.
+    3. **Controle de Ativação:**
+       - *Automático:* Detecção de tela de toque via Win32 `GetSystemMetrics(SM_DIGITIZER)`.
+       - *Manual:* Toggle nas Configurações Gerais: `[ Auto | Normal (Mouse) | Touch (Tablet/Portátil) ]`.
+
+
+
+
 
 
 
