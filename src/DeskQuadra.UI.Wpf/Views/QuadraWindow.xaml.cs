@@ -449,6 +449,8 @@ public partial class QuadraWindow : Window
             var menu = _touchTargetElement.ContextMenu;
             if (menu != null)
             {
+                // Aplica dinamicamente o estilo ergonômico Touch (46px com hit targets amplos para dedos)
+                menu.ItemContainerStyle = (Style)FindResource("TouchMenuItemStyle");
                 menu.PlacementTarget = _touchTargetElement;
                 menu.Placement = PlacementMode.Bottom;
                 menu.IsOpen = true;
@@ -461,6 +463,15 @@ public partial class QuadraWindow : Window
 
         _touchTargetItem = null;
         _touchTargetElement = null;
+    }
+
+    private void DesktopItem_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.ContextMenu != null)
+        {
+            // Quando acionado pelo mouse, garante estilo compacto (~26px)
+            fe.ContextMenu.ItemContainerStyle = (Style)FindResource("MouseMenuItemStyle");
+        }
     }
 
     private void CancelTouchHoldTimer()
@@ -498,6 +509,10 @@ public partial class QuadraWindow : Window
 
     private void StartItemDragDrop(DependencyObject dragSource, DesktopItemViewModel item)
     {
+        DragPreviewWindow? previewWindow = null;
+        GiveFeedbackEventHandler? onGiveFeedback = null;
+        UIElement? uiDragSource = dragSource as UIElement;
+
         try
         {
             _isItemDragging = true;
@@ -510,6 +525,28 @@ public partial class QuadraWindow : Window
                 dataObject.SetData(DataFormats.FileDrop, new[] { item.FilePath });
             }
 
+            // Exibe a janela fantasma do atalho flutuando junto ao cursor/dedo
+            previewWindow = new DragPreviewWindow(item.Icon, item.Name);
+            if (NativeMethods.GetCursorPos(out var pt))
+            {
+                previewWindow.UpdatePosition(pt.X, pt.Y);
+            }
+            previewWindow.Show();
+
+            onGiveFeedback = (s, e) =>
+            {
+                if (NativeMethods.GetCursorPos(out var currentPt))
+                {
+                    previewWindow?.UpdatePosition(currentPt.X, currentPt.Y);
+                }
+                e.UseDefaultCursors = true;
+            };
+
+            if (uiDragSource != null)
+            {
+                uiDragSource.GiveFeedback += onGiveFeedback;
+            }
+
             DragDropEffects result = DragDrop.DoDragDrop(dragSource, dataObject, DragDropEffects.Move | DragDropEffects.Copy);
 
             if (payload.WasHandledAsMove)
@@ -520,6 +557,12 @@ public partial class QuadraWindow : Window
         }
         finally
         {
+            if (uiDragSource != null && onGiveFeedback != null)
+            {
+                uiDragSource.GiveFeedback -= onGiveFeedback;
+            }
+
+            previewWindow?.Close();
             _isItemDragging = false;
             _draggedItemCandidate = null;
             ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
