@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -291,11 +292,29 @@ public partial class QuadraWindow : Window
         _coordinator.NotifyQuadraChanged(_viewModel.Model);
     }
 
+    private void QuadraContainer_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        // Se clicar em espaço vazio (não sobre um item), limpa a seleção
+        if (e.OriginalSource is not Image && e.OriginalSource is not TextBlock)
+        {
+            foreach (var item in _viewModel.Items)
+            {
+                item.IsSelected = false;
+            }
+        }
+    }
+
     private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount == 2)
+        if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
         {
-            if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
+            // Atualiza a seleção visual do item clicado
+            foreach (var other in _viewModel.Items)
+            {
+                other.IsSelected = (other == item);
+            }
+
+            if (e.ClickCount == 2)
             {
                 _launcherService.Launch(item.FilePath);
                 e.Handled = true;

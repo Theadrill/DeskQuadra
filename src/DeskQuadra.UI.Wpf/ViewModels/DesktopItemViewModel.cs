@@ -25,6 +25,20 @@ public sealed class DesktopItemViewModel : ViewModelBase
 
     public DateTime LastModified => _item.LastModified;
 
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ImageSource Icon
     {
         get
