@@ -23,6 +23,7 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
     public event EventHandler<Rect2D>? DrawingProgress;
     public event EventHandler<Rect2D>? DrawingCompleted;
     public event EventHandler? DrawingCancelled;
+    public event EventHandler? GlobalLeftClick;
 
     public DesktopDrawingService()
     {
@@ -137,7 +138,18 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
                     }
                 }
             }
-            else if (msg is NativeMethods.WM_WINDOWPOSCHANGING or 0x0201 /* WM_LBUTTONDOWN */)
+            else if (msg == 0x0201 /* WM_LBUTTONDOWN */)
+            {
+                GlobalLeftClick?.Invoke(this, EventArgs.Empty);
+
+                if (_isDragging)
+                {
+                    _isDownOnDesktop = false;
+                    _isDragging = false;
+                    DrawingCancelled?.Invoke(this, EventArgs.Empty);
+                }
+            }
+            else if (msg == NativeMethods.WM_WINDOWPOSCHANGING)
             {
                 if (_isDragging)
                 {

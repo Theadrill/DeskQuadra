@@ -63,6 +63,8 @@ public partial class QuadraWindow : Window
         LocationChanged += OnPositionOrSizeChanged;
         SizeChanged += OnPositionOrSizeChanged;
 
+        GlobalItemSelected += OnGlobalItemSelected;
+
         // Garante que o estado minimizado nunca seja mantido se for acionado externamente
         StateChanged += (s, e) =>
         {
@@ -71,6 +73,21 @@ public partial class QuadraWindow : Window
                 WindowState = WindowState.Normal;
             }
         };
+    }
+
+    public static event Action<DesktopItemViewModel?>? GlobalItemSelected;
+
+    public static void DeselectAllGlobally()
+    {
+        GlobalItemSelected?.Invoke(null);
+    }
+
+    private void OnGlobalItemSelected(DesktopItemViewModel? selectedItem)
+    {
+        foreach (var item in _viewModel.Items)
+        {
+            item.IsSelected = (selectedItem != null && item == selectedItem);
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -294,13 +311,21 @@ public partial class QuadraWindow : Window
 
     private void QuadraContainer_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        // Se clicar em espaço vazio (não sobre um item), limpa a seleção
-        if (e.OriginalSource is not Image && e.OriginalSource is not TextBlock)
+        var dep = e.OriginalSource as DependencyObject;
+        bool isOverItem = false;
+        while (dep != null && dep != this)
         {
-            foreach (var item in _viewModel.Items)
+            if (dep is FrameworkElement fe && fe.DataContext is DesktopItemViewModel)
             {
-                item.IsSelected = false;
+                isOverItem = true;
+                break;
             }
+            dep = VisualTreeHelper.GetParent(dep);
+        }
+
+        if (!isOverItem)
+        {
+            DeselectAllGlobally();
         }
     }
 
@@ -308,11 +333,7 @@ public partial class QuadraWindow : Window
     {
         if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
         {
-            // Atualiza a seleção visual do item clicado
-            foreach (var other in _viewModel.Items)
-            {
-                other.IsSelected = (other == item);
-            }
+            GlobalItemSelected?.Invoke(item);
 
             if (e.ClickCount == 2)
             {
@@ -572,6 +593,7 @@ public partial class QuadraWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        GlobalItemSelected -= OnGlobalItemSelected;
         LocationChanged -= OnPositionOrSizeChanged;
         SizeChanged -= OnPositionOrSizeChanged;
         base.OnClosed(e);

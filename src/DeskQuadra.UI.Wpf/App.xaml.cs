@@ -14,6 +14,7 @@ using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.Persistence;
 using DeskQuadra.Infrastructure.WindowsShell;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
+using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.UI.Wpf.ViewModels;
 using DeskQuadra.UI.Wpf.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -97,6 +98,22 @@ public partial class App : System.Windows.Application
         _drawingService.DrawingCancelled += (s, ev) =>
         {
             Dispatcher.Invoke(() => _selectionWindow?.Hide());
+        };
+
+        _drawingService.GlobalLeftClick += (s, ev) =>
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (NativeMethods.GetCursorPos(out var pt))
+                {
+                    IntPtr hwndUnder = NativeMethods.WindowFromPoint(pt);
+                    NativeMethods.GetWindowThreadProcessId(hwndUnder, out uint pid);
+                    if (pid != Environment.ProcessId)
+                    {
+                        QuadraWindow.DeselectAllGlobally();
+                    }
+                }
+            }, System.Windows.Threading.DispatcherPriority.Background);
         };
 
         _drawingService.DrawingCompleted += (s, rect) =>

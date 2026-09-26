@@ -31,4 +31,9 @@ public interface IDesktopDrawingService : IDisposable
     /// Disparado quando o desenho é cancelado ou interrompido.
     /// </summary>
     event EventHandler? DrawingCancelled;
+
+    /// <summary>
+    /// Disparado em qualquer clique com o botão esquerdo do mouse no sistema.
+    /// </summary>
+    event EventHandler? GlobalLeftClick;
 }

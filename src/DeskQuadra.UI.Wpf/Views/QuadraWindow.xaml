@@ -185,14 +185,14 @@
                         <ItemsControl ItemsSource="{Binding Items}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal" ItemWidth="74" ItemHeight="84"/>
+                                    <WrapPanel Orientation="Horizontal" ItemWidth="78" ItemHeight="96"/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="Transparent"
                                             CornerRadius="6"
-                                            Padding="4"
+                                            Padding="4,4,4,2"
                                             Margin="2"
                                             Cursor="Hand"
                                             ToolTip="{Binding FilePath}"
@@ -218,15 +218,15 @@
                                         </Border.Style>
                                         <Grid>
                                             <Grid.RowDefinitions>
-                                                <RowDefinition Height="46"/>
-                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="44"/>
+                                                <RowDefinition Height="*"/>
                                             </Grid.RowDefinitions>
 
                                             <!-- Ícone do arquivo em alta resolução -->
                                             <Image Grid.Row="0"
                                                    Source="{Binding Icon}"
-                                                   Width="40"
-                                                   Height="40"
+                                                   Width="38"
+                                                   Height="38"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
                                                    RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -236,11 +236,13 @@
                                                        Text="{Binding Name}"
                                                        Foreground="#F5F5F5"
                                                        FontSize="11"
+                                                       LineHeight="14"
+                                                       LineStackingStrategy="BlockLineHeight"
                                                        TextAlignment="Center"
                                                        TextWrapping="Wrap"
                                                        TextTrimming="CharacterEllipsis"
-                                                       MaxHeight="32"
-                                                       Margin="0,2,0,0">
+                                                       MaxHeight="34"
+                                                       Margin="0,3,0,0">
                                                 <TextBlock.Effect>
                                                     <DropShadowEffect BlurRadius="3"
                                                                       ShadowDepth="1"
