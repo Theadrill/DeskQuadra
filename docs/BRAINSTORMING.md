@@ -224,6 +224,18 @@
 - **Transição Visual Suave:**
   - As Quadras são renderizadas em memória e surgem no desktop com um efeito suave de *Fade-in* (~200ms), entregando acabamento profissional superior ao padrão do mercado.
 
+### 23. Botão de Pânico Global (Emergency Panic Hotkey / Kill-Switch)
+- **Motivação:** Garantir ao usuário controle soberano absoluto e fuga de qualquer cenário de pane, travamento de tela ou estado de "tela vazia".
+- **Implementação Técnica (Win32 Global Hotkey):**
+  - Registro de atalho global do sistema via `RegisterHotKey` na inicialização.
+  - **Combinação Oficial:** `Ctrl + Shift + Alt + Q` (ou `Ctrl + Shift + Alt + D`), garantindo zero colisão com atalhos de jogos, navegadores ou atalhos nativos do Windows.
+- **Protocolo de Execução do Pânico:**
+  1. *Restauração Forçada:* Invoca imediatamente `ShowWindow(hDesktopListView, SW_SHOW)` na camada nativa do Windows Explorer.
+  2. *Notificação de Segurança:* Dispara uma notificação sutil na bandeja do sistema: *"DeskQuadra encerrado em modo de emergência. Sua área de trabalho foi restaurada."*
+  3. *Encerramento Limpo:* Executa `Environment.Exit(0)` sem travar o sistema.
+- **Divulgação de Segurança:** O atalho é explicitamente informado na barra de status da janela de Configurações e no guia de primeiro uso.
+
+
 
 
 
