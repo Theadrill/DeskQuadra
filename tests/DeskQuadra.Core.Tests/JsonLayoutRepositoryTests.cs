@@ -145,4 +145,26 @@ public class JsonLayoutRepositoryTests : IDisposable
         Assert.Equal("Meus Projetos", loadedQuadra.Items[2].Name);
         Assert.True(loadedQuadra.Items[2].IsDirectory);
     }
+
+    [Fact]
+    public async Task SaveLayoutAsync_WithSortModeAndLastModified_PreservesCorrectly()
+    {
+        // Arrange
+        var testDate = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc);
+        var quadra = new Quadra("Ordenada", 150, 150, 400, 300)
+        {
+            SortMode = SortMode.Date
+        };
+        quadra.Items.Add(new DesktopItem("Arquivo.txt", @"C:\Test\Arquivo.txt", orderIndex: 0, lastModified: testDate));
+
+        // Act
+        await _repository.SaveLayoutAsync(new[] { quadra });
+        var loaded = await _repository.LoadLayoutAsync();
+
+        // Assert
+        Assert.Single(loaded);
+        Assert.Equal(SortMode.Date, loaded[0].SortMode);
+        Assert.Single(loaded[0].Items);
+        Assert.Equal(testDate, loaded[0].Items[0].LastModified);
+    }
 }

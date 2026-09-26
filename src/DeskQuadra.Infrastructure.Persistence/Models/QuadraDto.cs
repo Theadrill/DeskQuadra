@@ -17,6 +17,7 @@ public sealed class QuadraDto
     public bool IsLocked { get; set; }
     public bool IsCollapsed { get; set; }
     public bool IsHidden { get; set; }
+    public SortMode SortMode { get; set; } = SortMode.Manual;
     public List<DesktopItemDto> Items { get; set; } = new();
 
     public Quadra ToDomain() => new()
@@ -31,6 +32,7 @@ public sealed class QuadraDto
         IsLocked = IsLocked,
         IsCollapsed = IsCollapsed,
         IsHidden = IsHidden,
+        SortMode = SortMode,
         Items = Items.Select(i => i.ToDomain()).ToList()
     };
 
@@ -46,6 +48,7 @@ public sealed class QuadraDto
         IsLocked = quadra.IsLocked,
         IsCollapsed = quadra.IsCollapsed,
         IsHidden = quadra.IsHidden,
+        SortMode = quadra.SortMode,
         Items = quadra.Items.Select(DesktopItemDto.FromDomain).ToList()
     };
 }
@@ -61,6 +64,7 @@ public sealed class DesktopItemDto
     public string? TargetPath { get; set; }
     public bool IsDirectory { get; set; }
     public int OrderIndex { get; set; }
+    public DateTime LastModified { get; set; } = DateTime.Now;
 
     public DesktopItem ToDomain() => new()
     {
@@ -69,7 +73,8 @@ public sealed class DesktopItemDto
         FilePath = FilePath,
         TargetPath = TargetPath,
         IsDirectory = IsDirectory,
-        OrderIndex = OrderIndex
+        OrderIndex = OrderIndex,
+        LastModified = LastModified
     };
 
     public static DesktopItemDto FromDomain(DesktopItem item) => new()
@@ -79,6 +84,7 @@ public sealed class DesktopItemDto
         FilePath = item.FilePath,
         TargetPath = item.TargetPath,
         IsDirectory = item.IsDirectory,
-        OrderIndex = item.OrderIndex
+        OrderIndex = item.OrderIndex,
+        LastModified = item.LastModified
     };
 }

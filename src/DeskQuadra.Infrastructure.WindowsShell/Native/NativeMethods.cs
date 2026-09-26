@@ -199,6 +199,46 @@ internal static class NativeMethods
         public string szTypeName;
     }
 
+    public const int WH_MOUSE_LL = 14;
+    public const int WM_MOUSEMOVE = 0x0200;
+    public const int WM_RBUTTONDOWN = 0x0204;
+    public const int WM_RBUTTONUP = 0x0205;
+    public const uint GA_ROOT = 2;
+
+    public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MSLLHOOKSTRUCT
+    {
+        public POINT pt;
+        public uint mouseData;
+        public uint flags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT Point);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern IntPtr GetModuleHandle(string? lpModuleName);
+
     [DllImport("shell32.dll", CharSet = CharSet.Auto)]
     public static extern IntPtr SHGetFileInfo(
         string pszPath,

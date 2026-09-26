@@ -23,6 +23,8 @@ public sealed class DesktopItemViewModel : ViewModelBase
 
     public bool IsDirectory => _item.IsDirectory;
 
+    public DateTime LastModified => _item.LastModified;
+
     public ImageSource Icon
     {
         get

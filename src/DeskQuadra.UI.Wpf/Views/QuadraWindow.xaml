@@ -73,7 +73,10 @@
                 BorderBrush="#38FFFFFF"
                 BorderThickness="1"
                 CornerRadius="8"
-                ClipToBounds="True">
+                ClipToBounds="True"
+                AllowDrop="True"
+                DragOver="Quadra_DragOver"
+                Drop="Quadra_Drop">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="16"
                                   ShadowDepth="2"
@@ -102,6 +105,13 @@
                         <ContextMenu>
                             <MenuItem Header="↻ Atualizar Atalhos do Desktop" Click="RescanMenu_Click"/>
                             <Separator/>
+                            <MenuItem Header="Ordenar por">
+                                <MenuItem Header="Nome (A-Z)" Click="SortByName_Click"/>
+                                <MenuItem Header="Tipo de Arquivo" Click="SortByType_Click"/>
+                                <MenuItem Header="Data de Modificação" Click="SortByDate_Click"/>
+                                <MenuItem Header="Manual" Click="SortByManual_Click"/>
+                            </MenuItem>
+                            <Separator/>
                             <MenuItem Header="+ Nova Quadra (Teste de Snap)" Click="NewQuadraMenu_Click"/>
                             <Separator/>
                             <MenuItem Header="Fechar Quadra" Click="CloseButton_Click"/>
@@ -110,6 +120,7 @@
                     <Grid Margin="8,0,4,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
@@ -129,8 +140,17 @@
                             </TextBlock.Effect>
                         </TextBlock>
 
-                        <!-- Botão Fechar / Ocultar -->
+                        <!-- Botão Adicionar Atalho / Arquivo -->
                         <Button Grid.Column="1"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                ToolTip="Adicionar Atalhos ou Arquivos"
+                                Click="AddFileButton_Click"
+                                Margin="0,0,2,0">
+                            <TextBlock Text="+" FontSize="14" FontWeight="Bold"/>
+                        </Button>
+
+                        <!-- Botão Fechar / Ocultar -->
+                        <Button Grid.Column="2"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="Fechar Quadra"
                                 Click="CloseButton_Click">
@@ -175,7 +195,9 @@
                                             Margin="2"
                                             Cursor="Hand"
                                             ToolTip="{Binding FilePath}"
-                                            MouseLeftButtonDown="DesktopItem_MouseLeftButtonDown">
+                                            PreviewMouseLeftButtonDown="DesktopItem_PreviewMouseLeftButtonDown"
+                                            PreviewMouseMove="DesktopItem_PreviewMouseMove"
+                                            PreviewMouseLeftButtonUp="DesktopItem_PreviewMouseLeftButtonUp">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Style.Triggers>

@@ -18,16 +18,25 @@ public sealed class DesktopItem
 
     public int OrderIndex { get; set; }
 
+    public DateTime LastModified { get; set; } = DateTime.Now;
+
     public DesktopItem()
     {
     }
 
-    public DesktopItem(string name, string filePath, string? targetPath = null, bool isDirectory = false, int orderIndex = 0)
+    public DesktopItem(
+        string name,
+        string filePath,
+        string? targetPath = null,
+        bool isDirectory = false,
+        int orderIndex = 0,
+        DateTime? lastModified = null)
     {
         Name = name;
         FilePath = filePath;
         TargetPath = targetPath;
         IsDirectory = isDirectory;
         OrderIndex = orderIndex;
+        LastModified = lastModified ?? DateTime.Now;
     }
 }

@@ -50,7 +50,8 @@ public sealed class DesktopScannerService : IDesktopScannerService
                             filePath: subDir.FullName,
                             targetPath: subDir.FullName,
                             isDirectory: true,
-                            orderIndex: orderIndex++));
+                            orderIndex: orderIndex++,
+                            lastModified: subDir.LastWriteTime));
                     }
                 }
 
@@ -73,7 +74,8 @@ public sealed class DesktopScannerService : IDesktopScannerService
                             filePath: file.FullName,
                             targetPath: file.FullName,
                             isDirectory: false,
-                            orderIndex: orderIndex++));
+                            orderIndex: orderIndex++,
+                            lastModified: file.LastWriteTime));
                     }
                 }
             }

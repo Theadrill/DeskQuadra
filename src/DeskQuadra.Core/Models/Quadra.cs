@@ -28,6 +28,8 @@ public sealed class Quadra
 
     public List<DesktopItem> Items { get; set; } = new();
 
+    public SortMode SortMode { get; set; } = SortMode.Manual;
+
     public Quadra()
     {
     }

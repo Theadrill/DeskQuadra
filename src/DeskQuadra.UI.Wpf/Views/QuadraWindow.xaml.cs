@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls.Primitives;
@@ -9,7 +10,9 @@ using DeskQuadra.Application.Snap;
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
+using DeskQuadra.UI.Wpf.Models;
 using DeskQuadra.UI.Wpf.ViewModels;
+using Microsoft.Win32;
 
 namespace DeskQuadra.UI.Wpf.Views;
 
@@ -26,6 +29,11 @@ public partial class QuadraWindow : Window
     private Point _dragStartScreenPoint;
     private double _initialLeft;
     private double _initialTop;
+
+    // Estado do Drag and Drop de itens internos
+    private Point _itemDragStartPos;
+    private DesktopItemViewModel? _draggedItemCandidate;
+    private bool _isItemDragging;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -240,7 +248,50 @@ public partial class QuadraWindow : Window
         _coordinator.NotifyQuadraChanged(_viewModel.Model);
     }
 
-    private void DesktopItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void AddFileButton_Click(object sender, RoutedEventArgs e)
+    {
+        var openFileDialog = new OpenFileDialog
+        {
+            Multiselect = true,
+            Title = "Adicionar Atalhos ou Arquivos à Quadra"
+        };
+
+        if (openFileDialog.ShowDialog() == true)
+        {
+            foreach (var file in openFileDialog.FileNames)
+            {
+                _viewModel.AddItem(file);
+            }
+
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        }
+    }
+
+    private void SortByName_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SortItems(SortMode.Name);
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+    }
+
+    private void SortByType_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SortItems(SortMode.Type);
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+    }
+
+    private void SortByDate_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SortItems(SortMode.Date);
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+    }
+
+    private void SortByManual_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SortItems(SortMode.Manual);
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+    }
+
+    private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)
         {
@@ -248,7 +299,192 @@ public partial class QuadraWindow : Window
             {
                 _launcherService.Launch(item.FilePath);
                 e.Handled = true;
+                return;
             }
+        }
+
+        if (e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
+        {
+            _itemDragStartPos = e.GetPosition(this);
+            _draggedItemCandidate = (sender as FrameworkElement)?.DataContext as DesktopItemViewModel;
+        }
+    }
+
+    private void DesktopItem_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_isItemDragging || _draggedItemCandidate == null || e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        Point currentPos = e.GetPosition(this);
+        Vector diff = _itemDragStartPos - currentPos;
+
+        if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+            Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+        {
+            _isItemDragging = true;
+            var item = _draggedItemCandidate;
+            var payload = new QuadraDragPayload(_viewModel.Id, item);
+            var dataObject = new DataObject();
+            dataObject.SetData(typeof(QuadraDragPayload), payload);
+
+            if (File.Exists(item.FilePath) || Directory.Exists(item.FilePath))
+            {
+                dataObject.SetData(DataFormats.FileDrop, new[] { item.FilePath });
+            }
+
+            var dragSource = sender as DependencyObject ?? this;
+            DragDropEffects result = DragDrop.DoDragDrop(dragSource, dataObject, DragDropEffects.Move | DragDropEffects.Copy);
+
+            if (payload.WasHandledAsMove)
+            {
+                _viewModel.RemoveItem(payload.Item);
+                _coordinator.NotifyQuadraChanged(_viewModel.Model);
+            }
+
+            _isItemDragging = false;
+            _draggedItemCandidate = null;
+        }
+    }
+
+    private void DesktopItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _draggedItemCandidate = null;
+        _isItemDragging = false;
+    }
+
+    private void Quadra_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(typeof(QuadraDragPayload)) || e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            bool isControlPressed = (e.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
+            e.Effects = isControlPressed ? DragDropEffects.Copy : DragDropEffects.Move;
+            e.Handled = true;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+    }
+
+    private void Quadra_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
+        {
+            var payload = e.Data.GetData(typeof(QuadraDragPayload)) as QuadraDragPayload;
+            if (payload != null)
+            {
+                if (payload.SourceQuadraId == _viewModel.Id)
+                {
+                    // Mesmo container, sem movimentação necessária
+                    e.Handled = true;
+                    return;
+                }
+
+                bool isCopy = (e.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
+                if (isCopy)
+                {
+                    // Duplicação física no disco (Ctrl + Drag)
+                    string duplicatedPath = DuplicateFileOnDisk(payload.Item.FilePath);
+                    _viewModel.AddItem(duplicatedPath);
+                    e.Effects = DragDropEffects.Copy;
+                }
+                else
+                {
+                    // Mover item entre Quadras
+                    payload.WasHandledAsMove = true;
+                    _viewModel.AddItem(payload.Item.Model);
+                    e.Effects = DragDropEffects.Move;
+                }
+
+                _coordinator.NotifyQuadraChanged(_viewModel.Model);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (files != null && files.Length > 0)
+            {
+                foreach (var file in files)
+                {
+                    _viewModel.AddItem(file);
+                }
+
+                _coordinator.NotifyQuadraChanged(_viewModel.Model);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private static string DuplicateFileOnDisk(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                string dir = Path.GetDirectoryName(path) ?? string.Empty;
+                string nameWithoutExt = Path.GetFileNameWithoutExtension(path);
+                string ext = Path.GetExtension(path);
+
+                int copyIndex = 1;
+                string targetName = $"{nameWithoutExt} - Cópia{ext}";
+                string targetPath = Path.Combine(dir, targetName);
+
+                while (File.Exists(targetPath))
+                {
+                    copyIndex++;
+                    targetName = $"{nameWithoutExt} - Cópia ({copyIndex}){ext}";
+                    targetPath = Path.Combine(dir, targetName);
+                }
+
+                File.Copy(path, targetPath);
+                return targetPath;
+            }
+
+            if (Directory.Exists(path))
+            {
+                string parent = Directory.GetParent(path)?.FullName ?? string.Empty;
+                string dirName = Path.GetFileName(path);
+
+                int copyIndex = 1;
+                string targetName = $"{dirName} - Cópia";
+                string targetPath = Path.Combine(parent, targetName);
+
+                while (Directory.Exists(targetPath))
+                {
+                    copyIndex++;
+                    targetName = $"{dirName} - Cópia ({copyIndex})";
+                    targetPath = Path.Combine(parent, targetName);
+                }
+
+                CopyDirectoryRecursively(path, targetPath);
+                return targetPath;
+            }
+        }
+        catch
+        {
+            // Em caso de falha de I/O, usa o item original sem interromper a interface
+        }
+
+        return path;
+    }
+
+    private static void CopyDirectoryRecursively(string sourceDir, string targetDir)
+    {
+        Directory.CreateDirectory(targetDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
+        }
+
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            CopyDirectoryRecursively(dir, Path.Combine(targetDir, Path.GetFileName(dir)));
         }
     }
 
