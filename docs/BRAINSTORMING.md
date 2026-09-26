@@ -258,6 +258,14 @@
        - *Automático:* Detecção de tela de toque via Win32 `GetSystemMetrics(SM_DIGITIZER)`.
        - *Manual:* Toggle nas Configurações Gerais: `[ Auto | Normal (Mouse) | Touch (Tablet/Portátil) ]`.
 
+### 25. Metodologia de Execução: Fases Iterativas e Testáveis (Goal-Driven Execution)
+- **Princípio:** Nenhuma fase de código é entregue sem um executável testável ou resultado visual concreto para validação pelo PO.
+- **Ciclo de Trabalho:**
+  1. *Definição do Objetivo:* Cada fase resolve uma fatia vertical funcional com critério de sucesso claro.
+  2. *Implementação Cirúrgica:* Código mínimo e desacoplado que resolve exatamente a meta da fase.
+  3. *Checkpoint de Validação:* O Tech Lead disponibiliza a versão compilada, e o PO testa a funcionalidade na prática no seu próprio Windows antes de liberar o próximo passo.
+
+
 
 
 
