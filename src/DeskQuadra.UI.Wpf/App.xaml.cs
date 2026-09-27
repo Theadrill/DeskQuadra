@@ -40,6 +40,25 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // Dono do botão de pânico é o Guardian (hotkey global vive lá: com a UI travada o app não recebe WM_HOTKEY).
+        // Aqui o app só escuta o pedido de saída limpa do Guardian; caminho não-crítico (se travar, o Guardian faz kill).
+        try
+        {
+            var gracefulExit = new EventWaitHandle(false, EventResetMode.AutoReset, "DeskQuadraGracefulExit");
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    if (gracefulExit.WaitOne())
+                    {
+                        Dispatcher.Invoke(() => Shutdown());
+                    }
+                }
+                catch { /* saída limpa é best-effort; o Guardian segue para o kill */ }
+            });
+        }
+        catch { /* evento nomeado indisponível: o Guardian segue para o kill; nunca derruba o startup */ }
+
         // Proteção técnica global para garantir que os ícones do Windows sejam restaurados em caso de falha não tratada
         AppDomain.CurrentDomain.UnhandledException += (s, args) => _nativeIconService?.ShowDesktopIcons();
         DispatcherUnhandledException += (s, args) => _nativeIconService?.ShowDesktopIcons();
@@ -238,6 +257,16 @@ public partial class App : System.Windows.Application
         menu.Items.Add(lockAll);
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add(exit);
+
+        // HangTestSwitch (TESTE DE FOGO, temporário): item que congela a UI de verdade.
+        // Remover junto com Services/HangTestSwitch.cs quando a Fase 5 for validada.
+        if (Services.HangTestSwitch.Enabled)
+        {
+            var hangTest = new WinForms.ToolStripMenuItem(Services.HangTestSwitch.MenuLabel);
+            hangTest.Click += (s, e) => Services.HangTestSwitch.FreezeUi();
+            menu.Items.Add(new WinForms.ToolStripSeparator());
+            menu.Items.Add(hangTest);
+        }
 
         // Reconstrói o submenu a cada abertura (lista de escondidas é dinâmica)
         menu.Opening += (s, e) => RebuildTrayMenu(hiddenRoot, showAll, lockAll);
@@ -442,6 +471,7 @@ public partial class App : System.Windows.Application
             string? guardianExe = possiblePaths.FirstOrDefault(File.Exists);
             if (guardianExe != null)
             {
+                LogGuardianSpawn(guardianExe);
                 var psi = new ProcessStartInfo
                 {
                     FileName = guardianExe,
@@ -453,10 +483,45 @@ public partial class App : System.Windows.Application
 
                 Process.Start(psi);
             }
+            else
+            {
+                LogGuardianSpawn("<nenhum Guardian encontrado nos caminhos conhecidos>");
+            }
         }
         catch
         {
             // O guardião é um mecanismo de segurança autônomo e não deve bloquear o app
+        }
+    }
+
+    // Diagnóstico: registra QUAL binário do Guardian foi disparado (caminho + data), no mesmo
+    // guardian.log do Guardian — se o Guardian que roda é velho, aparece aqui na hora.
+    private static void LogGuardianSpawn(string guardianExe)
+    {
+        try
+        {
+            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeskQuadra");
+            Directory.CreateDirectory(dir);
+            string detail = guardianExe;
+            try
+            {
+                if (File.Exists(guardianExe))
+                {
+                    detail += $" (modificado em {File.GetLastWriteTime(guardianExe):dd/MM HH:mm})";
+                }
+            }
+            catch
+            {
+                // Detalhe best-effort: o caminho basta para o diagnóstico.
+            }
+
+            File.AppendAllText(
+                Path.Combine(dir, "guardian.log"),
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [App PID {Environment.ProcessId}] Guardian disparado: {detail}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Log best-effort: nunca interfere no startup.
         }
     }
 }

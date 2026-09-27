@@ -11,6 +11,24 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
   </ItemGroup>
 
+  <!-- O App localiza o Guardian primeiro em $(TargetDir); sem esta cópia o exe/dll ao lado
+       do UI fica obsoleto e o pânico (hotkey nova) não existe no processo em execução.
+       ATENÇÃO: copiar exe+dll+pdb+deps.json+runtimeconfig (o código gerenciado vive na DLL;
+       só o exe é o apphost nativo — copiar só o exe mantém o Guardian velho!).
+       ReferenceOutputAssembly=false: só garante o build do Guardian antes, sem referenciar. -->
+  <ItemGroup>
+    <ProjectReference Include="..\DeskQuadra.Guardian\DeskQuadra.Guardian.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Target Name="CopyGuardianToOutput" AfterTargets="Build">
+    <Copy SourceFiles="..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.exe;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.dll;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.pdb;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.deps.json;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.runtimeconfig.json"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>

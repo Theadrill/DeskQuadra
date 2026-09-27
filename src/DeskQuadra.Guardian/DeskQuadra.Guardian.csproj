@@ -5,6 +5,9 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- A hotkey global precisa de message loop numa janela real: Form oculto (sem P/Invoke manual,
+         que é frágil — classe de sistema não aceita WndProc próprio). Sem pacote NuGet, é in-box. -->
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
