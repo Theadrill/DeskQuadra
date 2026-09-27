@@ -9,7 +9,7 @@ namespace DeskQuadra.UI.Wpf.Services;
 /// travamento real: o pedido gracioso do Guardian bloqueia, expiram os 2500ms e ele
 /// parte para o kill por PID, restaura os ícones e se encerra junto).
 ///
-/// COMO REMOVER (quando a Fase 5 for validada): deletar este arquivo + o bloco marcado
+/// COMO REMOVER (somente no final do projeto): deletar este arquivo + o bloco marcado
 /// com "HangTestSwitch" em `App.CreateTrayIcon`. Nada mais referencia este módulo.
 /// </summary>
 internal static class HangTestSwitch

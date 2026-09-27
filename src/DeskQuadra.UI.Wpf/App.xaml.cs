@@ -257,12 +257,24 @@ public partial class App : System.Windows.Application
         menu.Items.Add(lockAll);
 
         // HangTestSwitch (TESTE DE FOGO, temporário): item que congela a UI de verdade.
-        // Remover junto com Services/HangTestSwitch.cs quando a Fase 5 for validada.
+        // Remover junto com Services/HangTestSwitch.cs somente no final do projeto.
         // (Antes do separador/Sair de propósito: Sair é sempre o último item do menu.)
         if (Services.HangTestSwitch.Enabled)
         {
             var hangTest = new WinForms.ToolStripMenuItem(Services.HangTestSwitch.MenuLabel);
-            hangTest.Click += (s, e) => Services.HangTestSwitch.FreezeUi();
+            hangTest.Click += (s, e) =>
+            {
+                var owner = System.Windows.Application.Current?.MainWindow;
+                const string mensagem = "Deseja realmente executar o teste de travamento do aplicativo?\n\nA interface vai congelar de propósito e será preciso usar a tecla de emergência (Ctrl+Shift+Alt+Q) para encerrar o aplicativo.";
+                const string titulo = "Confirmar teste de travamento";
+                System.Windows.MessageBoxResult resposta = owner != null
+                    ? System.Windows.MessageBox.Show(owner, mensagem, titulo, System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning)
+                    : System.Windows.MessageBox.Show(mensagem, titulo, System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+                if (resposta == System.Windows.MessageBoxResult.Yes)
+                {
+                    Services.HangTestSwitch.FreezeUi();
+                }
+            };
             menu.Items.Add(hangTest);
         }
 
