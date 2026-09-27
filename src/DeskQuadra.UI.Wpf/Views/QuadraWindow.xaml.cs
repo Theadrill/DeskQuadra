@@ -46,6 +46,11 @@ public partial class QuadraWindow : Window
     private bool _springExpanded; // expansão temporária do spring-loaded (ainda não persistida)
     private DispatcherTimer? _springTimer; // timer único one-shot (~400ms) do spring-loaded
 
+    // Hover-peek do roll-up (seção 10 do BRAINSTORMING): expansão temporária por hover com debounce de saída
+    private bool _peekExpanded; // expansão temporária do peek (ainda não persistida)
+    private DispatcherTimer? _peekEnterTimer; // one-shot de entrada (~350ms) antes de expandir
+    private DispatcherTimer? _peekExitTimer; // debounce de saída (~350ms) antes de recolher
+
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -90,6 +95,10 @@ public partial class QuadraWindow : Window
         ItemsScrollViewer.PreviewMouseLeftButtonDown += ItemsScrollViewer_TouchScrollDown;
         ItemsScrollViewer.PreviewMouseMove += ItemsScrollViewer_TouchScrollMove;
         ItemsScrollViewer.PreviewMouseLeftButtonUp += ItemsScrollViewer_TouchScrollUp;
+
+        // Hover-peek do roll-up (seção 10): entrada arma expansão temporária, saída recolhe com debounce
+        MouseEnter += Quadra_PeekMouseEnter;
+        MouseLeave += Quadra_PeekMouseLeave;
 
         GlobalItemSelected += OnGlobalItemSelected;
         GlobalCloseMenusRequested += OnGlobalCloseMenusRequested;
@@ -161,7 +170,111 @@ public partial class QuadraWindow : Window
     {
         CancelSpringTimer();
         _springExpanded = false;
+        CancelPeekTimers();
+        _peekExpanded = false;
         ApplyCollapsed(!_viewModel.IsCollapsed, persist: true);
+    }
+
+    // Hover-peek (seção 10): só com Quadra recolhida e mouse real; toque promovido nunca arma
+    private void Quadra_PeekMouseEnter(object sender, MouseEventArgs e)
+    {
+        // Re-entrar cancela o debounce de saída (não fecha na cara do usuário)
+        CancelPeekExitTimer();
+        if (!_viewModel.IsCollapsed || _peekExpanded)
+        {
+            return;
+        }
+        // Caminho touch segue só com chevron/duplo-toque (dedo gera mouse promovido no Deck)
+        if (_isTouchActive || IsTouchPromotedMouse(e))
+        {
+            return;
+        }
+        // Peek e spring-loaded nunca brigam: com spring ou drag em curso, o peek não arma
+        if (_springExpanded || _springTimer != null || _isItemDragging || _isDragging || _peekEnterTimer != null)
+        {
+            return;
+        }
+        _peekEnterTimer = new DispatcherTimer(DispatcherPriority.Normal)
+        {
+            Interval = TimeSpan.FromMilliseconds(350)
+        };
+        _peekEnterTimer.Tick += PeekEnterTimer_Tick;
+        _peekEnterTimer.Start();
+    }
+
+    private void PeekEnterTimer_Tick(object? sender, EventArgs e)
+    {
+        CancelPeekEnterTimer();
+        // Revalida no tick: só expande se ainda recolhido e sem spring/drag em curso
+        if (!_viewModel.IsCollapsed || _peekExpanded)
+        {
+            return;
+        }
+        if (_springExpanded || _springTimer != null || _isItemDragging || _isDragging)
+        {
+            return;
+        }
+        _peekExpanded = true;
+        ApplyCollapsed(false, persist: false);
+    }
+
+    // Debounce de saída (~350ms): se o mouse escapar brevemente, não recolhe abruptamente
+    private void Quadra_PeekMouseLeave(object sender, MouseEventArgs e)
+    {
+        // Saiu antes do atraso de entrada: só desarma
+        CancelPeekEnterTimer();
+        if (!_peekExpanded)
+        {
+            return;
+        }
+        // Com spring ou drag em curso, o peek não recolhe
+        if (_springExpanded || _springTimer != null || _isItemDragging || _isDragging || _peekExitTimer != null)
+        {
+            return;
+        }
+        _peekExitTimer = new DispatcherTimer(DispatcherPriority.Normal)
+        {
+            Interval = TimeSpan.FromMilliseconds(350)
+        };
+        _peekExitTimer.Tick += PeekExitTimer_Tick;
+        _peekExitTimer.Start();
+    }
+
+    private void PeekExitTimer_Tick(object? sender, EventArgs e)
+    {
+        CancelPeekExitTimer();
+        // O estado persistido continua recolhido (persist: false); só recolhe sem drag em curso
+        if (_peekExpanded && !_springExpanded && _springTimer == null && !_isItemDragging && !_isDragging)
+        {
+            _peekExpanded = false;
+            ApplyCollapsed(true, persist: false);
+        }
+    }
+
+    private void CancelPeekEnterTimer()
+    {
+        if (_peekEnterTimer != null)
+        {
+            _peekEnterTimer.Stop();
+            _peekEnterTimer.Tick -= PeekEnterTimer_Tick;
+            _peekEnterTimer = null;
+        }
+    }
+
+    private void CancelPeekExitTimer()
+    {
+        if (_peekExitTimer != null)
+        {
+            _peekExitTimer.Stop();
+            _peekExitTimer.Tick -= PeekExitTimer_Tick;
+            _peekExitTimer = null;
+        }
+    }
+
+    private void CancelPeekTimers()
+    {
+        CancelPeekEnterTimer();
+        CancelPeekExitTimer();
     }
 
     private void CollapseButton_Click(object sender, RoutedEventArgs e)
@@ -1135,6 +1248,12 @@ public partial class QuadraWindow : Window
         }
 
         // Spring-loaded (seção 18): sobre Quadra recolhida, arma timer único de ~400ms (one-shot)
+        // Com peek já expandido não há o que o spring fazer (nunca brigam); só segura o debounce de saída
+        if (_peekExpanded)
+        {
+            CancelPeekExitTimer();
+            return;
+        }
         if (_viewModel.IsCollapsed && _springTimer == null)
         {
             _springTimer = new DispatcherTimer(DispatcherPriority.Normal)
@@ -1183,6 +1302,10 @@ public partial class QuadraWindow : Window
         CancelSpringTimer();
         bool wasSpringExpanded = _springExpanded;
         _springExpanded = false;
+        // Drop converte o peek em expandido persistido (mesmo padrão do spring: Notify abaixo persiste o estado expandido)
+        bool wasPeekExpanded = _peekExpanded;
+        _peekExpanded = false;
+        CancelPeekTimers();
 
         bool isCopy = IsCopyRequested(e);
 
@@ -1193,8 +1316,8 @@ public partial class QuadraWindow : Window
             {
                 if (payload.SourceQuadraId == _viewModel.Id && !isCopy)
                 {
-                    // Mesmo container sem Ctrl: nenhuma ação necessária (mas persiste se o spring havia expandido)
-                    if (wasSpringExpanded)
+                    // Mesmo container sem Ctrl: nenhuma ação necessária (mas persiste se spring ou peek haviam expandido)
+                    if (wasSpringExpanded || wasPeekExpanded)
                     {
                         _coordinator.NotifyQuadraChanged(_viewModel.Model);
                     }
@@ -1378,6 +1501,9 @@ public partial class QuadraWindow : Window
     {
         _touchInertiaTimer?.Stop();
         CancelSpringTimer();
+        CancelPeekTimers();
+        MouseEnter -= Quadra_PeekMouseEnter;
+        MouseLeave -= Quadra_PeekMouseLeave;
         GlobalItemSelected -= OnGlobalItemSelected;
         GlobalCloseMenusRequested -= OnGlobalCloseMenusRequested;
         LocationChanged -= OnPositionOrSizeChanged;
