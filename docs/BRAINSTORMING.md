@@ -242,6 +242,7 @@
   2. *Notificação de Segurança:* Dispara uma notificação sutil na bandeja do sistema: *"DeskQuadra encerrado em modo de emergência. Sua área de trabalho foi restaurada."*
   3. *Encerramento Limpo:* Executa `Environment.Exit(0)` sem travar o sistema.
 - **Divulgação de Segurança:** O atalho é explicitamente informado na barra de status da janela de Configurações e no guia de primeiro uso.
+- **Errata 2026-09-27: dono atual é o Guardian.** O texto original desta seção (mantido acima para histórico) descrevia `RegisterHotKey` na inicialização do app — está desatualizado. Implementação atual: o pânico é do processo Guardian (Form oculto, `Ctrl + Shift + Alt + Q`, encerramento gracioso de 2,5s + kill por PID, log em `%APPDATA%\DeskQuadra\guardian.log`).
 
 ### 24. Design System, Acessibilidade e Contraste (Padrão `ui-ux-pro-max` / WCAG)
 - **Princípio:** *Smart Defaults* (padrão de fábrica inteligente) com *Override* total pelo usuário.
