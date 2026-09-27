@@ -38,26 +38,26 @@
         <!-- Estilo do botão fechar na barra de título -->
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#CCCCCC"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="24"/>
-            <Setter Property="Height" Value="24"/>
+            <Setter Property="Foreground" Value="{DynamicResource Quadra.TitleButton.Foreground}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource Quadra.TitleButton.BorderThickness}"/>
+            <Setter Property="Width" Value="{DynamicResource Quadra.TitleButton.Size}"/>
+            <Setter Property="Height" Value="{DynamicResource Quadra.TitleButton.Size}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="ButtonBorder"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="4">
+                                CornerRadius="{DynamicResource Quadra.TitleButton.CornerRadius}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#33FFFFFF"/>
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource Quadra.TitleButton.Hover.Background}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Quadra.TitleButton.Hover.Foreground}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#4DFFFFFF"/>
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource Quadra.TitleButton.Pressed.Background}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -67,21 +67,21 @@
 
         <!-- Estilo moderno do Menu de Contexto (Acrílico Escuro Fluent) -->
         <Style x:Key="ModernContextMenuStyle" TargetType="ContextMenu">
-            <Setter Property="Background" Value="#EB1C1C22"/>
-            <Setter Property="BorderBrush" Value="#44FFFFFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="#F5F5F5"/>
-            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Background" Value="{DynamicResource Menu.Background}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Menu.BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource Menu.BorderThickness}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Menu.Foreground}"/>
+            <Setter Property="Padding" Value="{DynamicResource Menu.Padding}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ContextMenu">
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="{DynamicResource Menu.CornerRadius}"
                                 Padding="{TemplateBinding Padding}">
                             <Border.Effect>
-                                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.55" Color="#000000"/>
+                                <DropShadowEffect BlurRadius="{DynamicResource Menu.Shadow.BlurRadius}" ShadowDepth="{DynamicResource Menu.Shadow.Depth}" Opacity="{DynamicResource Menu.Shadow.Opacity}" Color="{DynamicResource Menu.Shadow.Color}"/>
                             </Border.Effect>
                             <StackPanel IsItemsHost="True"/>
                         </Border>
@@ -92,19 +92,19 @@
 
         <!-- Estilo Compacto para Mouse (~26px) -->
         <Style x:Key="MouseMenuItemStyle" TargetType="MenuItem">
-            <Setter Property="Foreground" Value="#EEEEEE"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="MinHeight" Value="26"/>
-            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Foreground" Value="{DynamicResource Menu.MouseItem.Foreground}"/>
+            <Setter Property="FontSize" Value="{DynamicResource Menu.MouseItem.FontSize}"/>
+            <Setter Property="MinHeight" Value="{DynamicResource Menu.MouseItem.MinHeight}"/>
+            <Setter Property="Padding" Value="{DynamicResource Menu.MouseItem.Padding}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.MouseItem.CornerRadius}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#2EFFFFFF"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.MouseItem.Hover.Background}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -114,23 +114,23 @@
 
         <!-- Estilo Ergonômico Espaçoso para Toque com o Dedo (Touch - 46px) -->
         <Style x:Key="TouchMenuItemStyle" TargetType="MenuItem">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="Medium"/>
-            <Setter Property="MinHeight" Value="46"/>
-            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Foreground" Value="{DynamicResource Menu.TouchItem.Foreground}"/>
+            <Setter Property="FontSize" Value="{DynamicResource Menu.TouchItem.FontSize}"/>
+            <Setter Property="FontWeight" Value="{DynamicResource Menu.TouchItem.FontWeight}"/>
+            <Setter Property="MinHeight" Value="{DynamicResource Menu.TouchItem.MinHeight}"/>
+            <Setter Property="Padding" Value="{DynamicResource Menu.TouchItem.Padding}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.TouchItem.CornerRadius}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#4D0078D4"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.TouchItem.Hover.Background}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#800078D4"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.TouchItem.Pressed.Background}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -143,10 +143,10 @@
     <Grid Margin="10">
         <!-- Container visual da Quadra: cantos arredondados, acrílico translúcido e borda suave -->
         <Border x:Name="QuadraContainer"
-                Background="#47141418"
-                BorderBrush="#38FFFFFF"
-                BorderThickness="1"
-                CornerRadius="8"
+                Background="{DynamicResource Quadra.Background}"
+                BorderBrush="{DynamicResource Quadra.BorderBrush}"
+                BorderThickness="{DynamicResource Quadra.BorderThickness}"
+                CornerRadius="{DynamicResource Quadra.CornerRadius}"
                 ClipToBounds="True"
                 AllowDrop="True"
                 DragOver="Quadra_DragOver"
@@ -154,10 +154,10 @@
                 DragLeave="Quadra_DragLeave"
                 PreviewMouseDown="QuadraContainer_PreviewMouseDown">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="16"
-                                  ShadowDepth="2"
-                                  Opacity="0.45"
-                                  Color="#000000"/>
+                <DropShadowEffect BlurRadius="{DynamicResource Quadra.Shadow.BlurRadius}"
+                                   ShadowDepth="{DynamicResource Quadra.Shadow.Depth}"
+                                   Opacity="{DynamicResource Quadra.Shadow.Opacity}"
+                                   Color="{DynamicResource Quadra.Shadow.Color}"/>
             </Border.Effect>
 
             <Grid>
@@ -171,9 +171,9 @@
                 <!-- Barra de título interativa -->
                 <Border x:Name="TitleBarBorder"
                         Grid.Row="0"
-                        Background="#26FFFFFF"
-                        BorderBrush="#1AFFFFFF"
-                        BorderThickness="0,0,0,1"
+                        Background="{DynamicResource Quadra.Title.Background}"
+                        BorderBrush="{DynamicResource Quadra.Title.BorderBrush}"
+                        BorderThickness="{DynamicResource Quadra.Title.BorderThickness}"
                          MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                          MouseMove="TitleBar_MouseMove"
                         MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
@@ -209,16 +209,16 @@
                         <!-- Título com sombra para contraste em papéis de parede claros ou escuros -->
                         <TextBlock Grid.Column="0"
                                    Text="{Binding Title}"
-                                   Foreground="#F5F5F5"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Quadra.Title.Foreground}"
+                                   FontSize="{DynamicResource Quadra.Title.FontSize}"
+                                   FontWeight="{DynamicResource Quadra.Title.FontWeight}"
                                    VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis">
                             <TextBlock.Effect>
-                                <DropShadowEffect BlurRadius="2"
-                                                  ShadowDepth="1"
-                                                  Opacity="0.85"
-                                                  Color="#000000"/>
+                                <DropShadowEffect BlurRadius="{DynamicResource Quadra.Title.Shadow.BlurRadius}"
+                                                  ShadowDepth="{DynamicResource Quadra.Title.Shadow.Depth}"
+                                                  Opacity="{DynamicResource Quadra.Title.Shadow.Opacity}"
+                                                  Color="{DynamicResource Quadra.Title.Shadow.Color}"/>
                             </TextBlock.Effect>
                         </TextBlock>
 
@@ -226,7 +226,7 @@
                         <TextBlock x:Name="LockIndicator"
                                    Grid.Column="1"
                                    Text="🔒"
-                                   FontSize="11"
+                                   FontSize="{DynamicResource Quadra.Lock.FontSize}"
                                    VerticalAlignment="Center"
                                    Margin="6,0,0,0"
                                    Visibility="Collapsed"
@@ -239,7 +239,7 @@
                                 ToolTip="{x:Static properties:Strings.Quadra_CollapseTooltip}"
                                 Click="CollapseButton_Click"
                                 Margin="0,0,2,0">
-                            <TextBlock x:Name="CollapseGlyph" Text="˄" FontSize="12" FontWeight="Bold"/>
+                            <TextBlock x:Name="CollapseGlyph" Text="˄" FontSize="{DynamicResource Quadra.CollapseGlyph.FontSize}" FontWeight="Bold"/>
                         </Button>
 
                         <!-- Botão Adicionar Atalho / Arquivo -->
@@ -248,7 +248,7 @@
                                  ToolTip="{x:Static properties:Strings.Quadra_AddTooltip}"
                                  Click="AddFileButton_Click"
                                  Margin="0,0,2,0">
-                             <TextBlock Text="+" FontSize="14" FontWeight="Bold"/>
+                             <TextBlock Text="+" FontSize="{DynamicResource Quadra.AddGlyph.FontSize}" FontWeight="Bold"/>
                          </Button>
 
                           <!-- Botão Fechar / Ocultar -->
@@ -256,7 +256,7 @@
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="{x:Static properties:Strings.Quadra_CloseTooltip}"
                                 Click="CloseButton_Click">
-                            <TextBlock Text="✕" FontSize="10" FontWeight="Bold"/>
+                            <TextBlock Text="✕" FontSize="{DynamicResource Quadra.CloseGlyph.FontSize}" FontWeight="Bold"/>
                         </Button>
                     </Grid>
                 </Border>
@@ -264,17 +264,17 @@
                 <!-- Área interna / Grid de Atalhos da Quadra -->
                 <Grid x:Name="ContentArea" Grid.Row="1" Margin="6,4">
                     <!-- Mensagem para Quadra vazia -->
-                    <Border BorderBrush="#14FFFFFF"
-                            BorderThickness="1"
-                            CornerRadius="4"
+                    <Border BorderBrush="{DynamicResource Quadra.Empty.BorderBrush}"
+                            BorderThickness="{DynamicResource Quadra.Empty.BorderThickness}"
+                            CornerRadius="{DynamicResource Quadra.Empty.CornerRadius}"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
-                            Padding="12,8"
+                            Padding="{DynamicResource Quadra.Empty.Padding}"
                             Visibility="{Binding EmptyMessageVisibility}">
                         <TextBlock Text="{x:Static properties:Strings.Quadra_EmptyMessage}"
-                                   Foreground="#77FFFFFF"
-                                   FontSize="11"
-                                   FontStyle="Italic"
+                                   Foreground="{DynamicResource Quadra.Empty.Foreground}"
+                                   FontSize="{DynamicResource Quadra.Empty.FontSize}"
+                                   FontStyle="{DynamicResource Quadra.Empty.FontStyle}"
                                    HorizontalAlignment="Center"/>
                     </Border>
 
@@ -298,9 +298,9 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="Transparent"
-                                            CornerRadius="6"
-                                            Padding="4,4,4,2"
-                                            Margin="2"
+                                            CornerRadius="{DynamicResource Quadra.Item.CornerRadius}"
+                                            Padding="{DynamicResource Quadra.Item.Padding}"
+                                            Margin="{DynamicResource Quadra.Item.Margin}"
                                             Cursor="Hand"
                                             ToolTip="{Binding FilePath}"
                                             ContextMenuOpening="DesktopItem_ContextMenuOpening"
@@ -311,7 +311,7 @@
                                             <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Open}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_OpenLocation}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>
-                                                <Separator Background="#26FFFFFF" Margin="4,2"/>
+                                                <Separator Background="{DynamicResource Quadra.Separator.Background}" Margin="{DynamicResource Quadra.Separator.Margin}"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Remove}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
@@ -319,15 +319,15 @@
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="Transparent"/>
                                                 <Setter Property="BorderBrush" Value="Transparent"/>
-                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="BorderThickness" Value="{DynamicResource Quadra.Item.BorderThickness}"/>
                                                 <Style.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#25FFFFFF"/>
-                                                        <Setter Property="BorderBrush" Value="#20FFFFFF"/>
+                                                        <Setter Property="Background" Value="{DynamicResource Quadra.Item.Hover.Background}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource Quadra.Item.Hover.BorderBrush}"/>
                                                     </Trigger>
                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="Background" Value="#380078D4"/>
-                                                        <Setter Property="BorderBrush" Value="#7060CDFF"/>
+                                                        <Setter Property="Background" Value="{DynamicResource Quadra.Item.Selected.Background}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource Quadra.Item.Selected.BorderBrush}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -350,9 +350,9 @@
                                             <!-- Nome do arquivo com sombra suave para legibilidade WCAG AA 4.5:1 -->
                                             <TextBlock Grid.Row="1"
                                                        Text="{Binding Name}"
-                                                       Foreground="#F5F5F5"
-                                                       FontSize="11"
-                                                       LineHeight="14"
+                                                       Foreground="{DynamicResource Quadra.Item.Foreground}"
+                                                       FontSize="{DynamicResource Quadra.Item.FontSize}"
+                                                       LineHeight="{DynamicResource Quadra.Item.LineHeight}"
                                                        LineStackingStrategy="BlockLineHeight"
                                                        TextAlignment="Center"
                                                        TextWrapping="Wrap"
@@ -360,10 +360,10 @@
                                                        MaxHeight="34"
                                                        Margin="0,3,0,0">
                                                 <TextBlock.Effect>
-                                                    <DropShadowEffect BlurRadius="3"
-                                                                      ShadowDepth="1"
-                                                                      Opacity="0.85"
-                                                                      Color="#000000"/>
+                                                    <DropShadowEffect BlurRadius="{DynamicResource Quadra.Item.Shadow.BlurRadius}"
+                                                                      ShadowDepth="{DynamicResource Quadra.Item.Shadow.Depth}"
+                                                                      Opacity="{DynamicResource Quadra.Item.Shadow.Opacity}"
+                                                                      Color="{DynamicResource Quadra.Item.Shadow.Color}"/>
                                                 </TextBlock.Effect>
                                             </TextBlock>
                                         </Grid>

@@ -404,19 +404,23 @@ public partial class App : System.Windows.Application
             PopupAnimation = PopupAnimation.Fade
         };
 
+        // Seam de temas (Default): valores idênticos aos literais anteriores via DynamicResource/TryFindResource.
+        static T Theme<T>(string key, T fallback) =>
+            Current?.TryFindResource(key) is T hit ? hit : fallback;
+
         var border = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(4),
+            Background = Theme("CreationMenu.Background", new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24))),
+            BorderBrush = Theme("CreationMenu.BorderBrush", new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF))),
+            BorderThickness = Theme("CreationMenu.BorderThickness", new Thickness(1)),
+            CornerRadius = Theme("CreationMenu.CornerRadius", new CornerRadius(8)),
+            Padding = Theme("CreationMenu.Padding", new Thickness(4)),
             Effect = new DropShadowEffect
             {
-                BlurRadius = 14,
-                ShadowDepth = 2,
-                Opacity = 0.55,
-                Color = Colors.Black
+                BlurRadius = Theme("CreationMenu.Shadow.BlurRadius", 14.0),
+                ShadowDepth = Theme("CreationMenu.Shadow.Depth", 2.0),
+                Opacity = Theme("CreationMenu.Shadow.Opacity", 0.55),
+                Color = Theme("CreationMenu.Shadow.Color", Colors.Black)
             }
         };
 
@@ -426,30 +430,31 @@ public partial class App : System.Windows.Application
         {
             Content = UiStrings.CreationMenuCreateQuadraHere,
             Background = Brushes.Transparent,
-            Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
-            BorderThickness = new Thickness(0),
-            Padding = new Thickness(12, 8, 12, 8),
+            Foreground = Theme("CreationMenu.Primary.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
+            BorderThickness = Theme("CreationMenu.Button.BorderThickness", new Thickness(0)),
+            Padding = Theme("CreationMenu.Primary.Padding", new Thickness(12, 8, 12, 8)),
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Cursor = Cursors.Hand,
-            FontWeight = FontWeights.SemiBold,
-            FontSize = 12
+            FontWeight = Theme("CreationMenu.Primary.FontWeight", FontWeights.SemiBold),
+            FontSize = Theme("CreationMenu.Primary.FontSize", 12.0)
         };
 
         var btnCancel = new Button
         {
             Content = UiStrings.CreationMenuCancelAndShowWindowsMenu,
             Background = Brushes.Transparent,
-            Foreground = new SolidColorBrush(Color.FromRgb(0xBB, 0xBB, 0xBB)),
-            BorderThickness = new Thickness(0),
-            Padding = new Thickness(12, 6, 12, 6),
+            Foreground = Theme("CreationMenu.Secondary.Foreground", new SolidColorBrush(Color.FromRgb(0xBB, 0xBB, 0xBB))),
+            BorderThickness = Theme("CreationMenu.Button.BorderThickness", new Thickness(0)),
+            Padding = Theme("CreationMenu.Secondary.Padding", new Thickness(12, 6, 12, 6)),
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Cursor = Cursors.Hand,
-            FontSize = 11
+            FontSize = Theme("CreationMenu.Secondary.FontSize", 11.0)
         };
 
-        btnCreate.MouseEnter += (s, e) => btnCreate.Background = new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+        var hoverBrush = Theme("CreationMenu.Hover.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)));
+        btnCreate.MouseEnter += (s, e) => btnCreate.Background = hoverBrush;
         btnCreate.MouseLeave += (s, e) => btnCreate.Background = Brushes.Transparent;
-        btnCancel.MouseEnter += (s, e) => btnCancel.Background = new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+        btnCancel.MouseEnter += (s, e) => btnCancel.Background = hoverBrush;
         btnCancel.MouseLeave += (s, e) => btnCancel.Background = Brushes.Transparent;
 
         btnCreate.Click += (s, e) =>
@@ -467,8 +472,8 @@ public partial class App : System.Windows.Application
         stack.Children.Add(btnCreate);
         stack.Children.Add(new Separator
         {
-            Margin = new Thickness(4, 2, 4, 2),
-            Background = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF))
+            Margin = Theme("CreationMenu.Separator.Margin", new Thickness(4, 2, 4, 2)),
+            Background = Theme("CreationMenu.Separator.Background", new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF)))
         });
         stack.Children.Add(btnCancel);
 

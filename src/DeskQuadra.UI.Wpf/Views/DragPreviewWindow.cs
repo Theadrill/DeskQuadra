@@ -29,19 +29,23 @@ public sealed class DragPreviewWindow : Window
         ShowActivated = false;
         SizeToContent = SizeToContent.WidthAndHeight;
 
+        // Seam de temas (Default): valores idênticos aos literais anteriores via TryFindResource.
+        static T Theme<T>(string key, T fallback) =>
+            System.Windows.Application.Current?.TryFindResource(key) is T hit ? hit : fallback;
+
         var border = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(220, 24, 24, 30)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(8, 6, 12, 6),
+            Background = Theme("DragPreview.Background", new SolidColorBrush(Color.FromArgb(220, 24, 24, 30))),
+            BorderBrush = Theme("DragPreview.BorderBrush", new SolidColorBrush(Color.FromArgb(90, 255, 255, 255))),
+            BorderThickness = Theme("DragPreview.BorderThickness", new Thickness(1)),
+            CornerRadius = Theme("DragPreview.CornerRadius", new CornerRadius(8)),
+            Padding = Theme("DragPreview.Padding", new Thickness(8, 6, 12, 6)),
             Effect = new DropShadowEffect
             {
-                BlurRadius = 14,
-                ShadowDepth = 3,
-                Opacity = 0.55,
-                Color = Colors.Black
+                BlurRadius = Theme("DragPreview.Shadow.BlurRadius", 14.0),
+                ShadowDepth = Theme("DragPreview.Shadow.Depth", 3.0),
+                Opacity = Theme("DragPreview.Shadow.Opacity", 0.55),
+                Color = Theme("DragPreview.Shadow.Color", Colors.Black)
             }
         };
 
@@ -68,9 +72,9 @@ public sealed class DragPreviewWindow : Window
         var text = new TextBlock
         {
             Text = name,
-            Foreground = new SolidColorBrush(Color.FromRgb(245, 245, 245)),
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
+            Foreground = Theme("DragPreview.Foreground", new SolidColorBrush(Color.FromRgb(245, 245, 245))),
+            FontSize = Theme("DragPreview.FontSize", 12.0),
+            FontWeight = Theme("DragPreview.FontWeight", FontWeights.SemiBold),
             VerticalAlignment = VerticalAlignment.Center,
             MaxWidth = 180,
             TextTrimming = TextTrimming.CharacterEllipsis

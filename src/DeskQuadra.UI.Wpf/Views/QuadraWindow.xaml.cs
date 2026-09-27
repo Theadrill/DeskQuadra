@@ -662,17 +662,21 @@ public partial class QuadraWindow : Window
         return confirmed;
     }
 
+    // Seam de temas (Default): valores idênticos aos literais anteriores via TryFindResource.
+    private static T Theme<T>(string key, T fallback) =>
+        System.Windows.Application.Current?.TryFindResource(key) is T hit ? hit : fallback;
+
     // Janela modal escura no padrão visual do app para as escolhas de fechamento
     private Window CreateDarkDialog(string title, string message, out StackPanel buttonPanel)
     {
-        var panel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(16) };
+        var panel = new StackPanel { Orientation = Orientation.Vertical, Margin = Theme("Dialog.Panel.Margin", new Thickness(16)) };
         panel.Children.Add(new TextBlock
         {
             Text = message,
-            Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
-            FontSize = 13,
+            Foreground = Theme("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
+            FontSize = Theme("Dialog.Message.FontSize", 13.0),
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 14)
+            Margin = Theme("Dialog.Message.Margin", new Thickness(0, 0, 0, 14))
         });
 
         buttonPanel = new StackPanel
@@ -692,7 +696,7 @@ public partial class QuadraWindow : Window
             ResizeMode = ResizeMode.NoResize,
             WindowStyle = WindowStyle.ToolWindow,
             ShowInTaskbar = false,
-            Background = new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24)),
+            Background = Theme("Dialog.Background", new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24))),
             Content = panel
         };
     }
@@ -702,15 +706,15 @@ public partial class QuadraWindow : Window
         return new Button
         {
             Content = text,
-            Padding = new Thickness(14, 6, 14, 6),
-            Margin = new Thickness(6, 0, 0, 0),
+            Padding = Theme("Dialog.Button.Padding", new Thickness(14, 6, 14, 6)),
+            Margin = Theme("Dialog.Button.Margin", new Thickness(6, 0, 0, 0)),
             Cursor = Cursors.Hand,
-            FontSize = 12,
+            FontSize = Theme("Dialog.Button.FontSize", 12.0),
             Background = isPrimary
-                ? new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4))
-                : new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)),
-            Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
-            BorderThickness = new Thickness(0)
+                ? Theme("Dialog.Primary.Background", new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)))
+                : Theme("Dialog.Secondary.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF))),
+            Foreground = Theme("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
+            BorderThickness = Theme("Dialog.Button.BorderThickness", new Thickness(0))
         };
     }
 
