@@ -136,6 +136,16 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
         }
     }
 
+    public void SetAllLocked(bool locked)
+    {
+        // Seta IsLocked em todas as ativas e persiste cada uma (o debounce coalesce as gravações)
+        foreach (var quadra in _activeQuadras.Values)
+        {
+            quadra.IsLocked = locked;
+            NotifyQuadraChanged(quadra);
+        }
+    }
+
     public void RescanDesktopItems()
     {
         var scanned = _scannerService.ScanDesktopItems();

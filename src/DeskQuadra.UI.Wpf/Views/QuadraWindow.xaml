@@ -175,7 +175,8 @@
                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                         MouseMove="TitleBar_MouseMove"
                         MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
-                        LostMouseCapture="TitleBar_LostMouseCapture">
+                        LostMouseCapture="TitleBar_LostMouseCapture"
+                        ContextMenuOpening="TitleBar_ContextMenuOpening">
                     <Border.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="↻ Atualizar Atalhos do Desktop" Click="RescanMenu_Click"/>
@@ -189,12 +190,15 @@
                             <Separator/>
                             <MenuItem Header="+ Nova Quadra (Teste de Snap)" Click="NewQuadraMenu_Click"/>
                             <Separator/>
+                            <MenuItem x:Name="LockQuadraMenuItem" Header="🔒 Travar esta Quadra" IsCheckable="True" Click="LockQuadraMenu_Click"/>
+                            <Separator/>
                             <MenuItem Header="Fechar Quadra" Click="CloseButton_Click"/>
                         </ContextMenu>
                     </Border.ContextMenu>
                     <Grid Margin="8,0,4,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
@@ -215,8 +219,18 @@
                             </TextBlock.Effect>
                         </TextBlock>
 
+                        <!-- Cadeado discreto de Quadra travada -->
+                        <TextBlock x:Name="LockIndicator"
+                                   Grid.Column="1"
+                                   Text="🔒"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="6,0,0,0"
+                                   Visibility="Collapsed"
+                                   ToolTip="Quadra travada"/>
+
                         <!-- Botão Adicionar Atalho / Arquivo -->
-                        <Button Grid.Column="1"
+                        <Button Grid.Column="2"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="Adicionar Atalhos ou Arquivos"
                                 Click="AddFileButton_Click"
@@ -225,7 +239,7 @@
                         </Button>
 
                         <!-- Botão Fechar / Ocultar -->
-                        <Button Grid.Column="2"
+                        <Button Grid.Column="3"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="Fechar Quadra"
                                 Click="CloseButton_Click">

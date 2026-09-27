@@ -222,18 +222,25 @@ public partial class App : System.Windows.Application
         var menu = new WinForms.ContextMenuStrip();
         var hiddenRoot = new WinForms.ToolStripMenuItem("Mostrar Quadras Escondidas");
         var showAll = new WinForms.ToolStripMenuItem("Mostrar todas");
+        // Trava global: item checkable antes do separador do Sair
+        var lockAll = new WinForms.ToolStripMenuItem("🔒 Travar todas as Quadras")
+        {
+            CheckOnClick = false
+        };
         var exit = new WinForms.ToolStripMenuItem("Sair");
 
         showAll.Click += (s, e) => RestoreAllHiddenQuadras();
+        lockAll.Click += (s, e) => ToggleLockAll(lockAll);
         exit.Click += (s, e) => Shutdown();
 
         menu.Items.Add(hiddenRoot);
         menu.Items.Add(showAll);
+        menu.Items.Add(lockAll);
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add(exit);
 
         // Reconstrói o submenu a cada abertura (lista de escondidas é dinâmica)
-        menu.Opening += (s, e) => RebuildTrayMenu(hiddenRoot, showAll);
+        menu.Opening += (s, e) => RebuildTrayMenu(hiddenRoot, showAll, lockAll);
         _trayIcon.ContextMenuStrip = menu;
 
         // Duplo-clique restaura todas as escondidas (nada a fazer se não houver)
@@ -241,7 +248,7 @@ public partial class App : System.Windows.Application
     }
 
     // Preenche o submenu com uma entrada por Quadra escondida + "Mostrar todas" quando houver >1
-    private void RebuildTrayMenu(WinForms.ToolStripMenuItem hiddenRoot, WinForms.ToolStripMenuItem showAll)
+    private void RebuildTrayMenu(WinForms.ToolStripMenuItem hiddenRoot, WinForms.ToolStripMenuItem showAll, WinForms.ToolStripMenuItem lockAll)
     {
         hiddenRoot.DropDownItems.Clear();
 
@@ -264,6 +271,30 @@ public partial class App : System.Windows.Application
         }
 
         showAll.Visible = hidden.Count > 1;
+
+        // Marcado somente se houver ≥1 Quadra e todas travadas (a UI lê o estado ao abrir o menu)
+        var active = coordinator?.ActiveQuadras ?? (IReadOnlyList<Quadra>)Array.Empty<Quadra>();
+        lockAll.Checked = active.Count > 0 && active.All(q => q.IsLocked);
+    }
+
+    // Alterna a trava global e reflete nas janelas abertas (cadeado/trava via RefreshLockState)
+    private void ToggleLockAll(WinForms.ToolStripMenuItem lockAll)
+    {
+        var coordinator = _serviceProvider?.GetService<ILayoutCoordinator>();
+        if (coordinator == null)
+        {
+            return;
+        }
+
+        var active = coordinator.ActiveQuadras;
+        bool allLocked = active.Count > 0 && active.All(q => q.IsLocked);
+        coordinator.SetAllLocked(!allLocked);
+        lockAll.Checked = !allLocked;
+
+        foreach (var window in _quadraWindows.Values)
+        {
+            window.RefreshLockState();
+        }
     }
 
     // Restaura todas as Quadras escondidas (sem efeito quando não há nenhuma)

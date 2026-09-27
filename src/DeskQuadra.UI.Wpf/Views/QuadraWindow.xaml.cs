@@ -63,7 +63,11 @@ public partial class QuadraWindow : Window
 
         InitializeComponent();
 
-        Loaded += (s, e) => _isInitializing = false;
+        Loaded += (s, e) =>
+        {
+            _isInitializing = false;
+            RefreshLockState();
+        };
         LocationChanged += OnPositionOrSizeChanged;
         SizeChanged += OnPositionOrSizeChanged;
 
@@ -112,6 +116,16 @@ public partial class QuadraWindow : Window
     }
 
     public Guid QuadraId => _viewModel.Id;
+
+    // Atualiza o cadeado e a trava a partir do modelo (usado pelo tray global após SetAllLocked)
+    public void RefreshLockState()
+    {
+        // Cadeado discreto na barra de título quando travada
+        if (LockIndicator != null)
+        {
+            LockIndicator.Visibility = _viewModel.IsLocked ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
 
     // Sincroniza a grade de itens com o modelo (usado quando outra Quadra move itens para cá)
     public void RefreshItemsFromModel()
@@ -214,6 +228,12 @@ public partial class QuadraWindow : Window
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // Quadra travada: sem arraste pela barra de título (scroll, cliques e menu seguem normais)
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         if (e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
         {
             if (NativeMethods.GetCursorPos(out var pt))
@@ -1138,6 +1158,20 @@ public partial class QuadraWindow : Window
             height: Height);
     }
 
+    // Sincroniza o checked do menu individual ao abrir (a UI lê o estado do modelo)
+    private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
+    }
+
+    // Alterna a trava individual e persiste
+    private void LockQuadraMenu_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.IsLocked = !_viewModel.IsLocked;
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        RefreshLockState();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _touchInertiaTimer?.Stop();
@@ -1154,6 +1188,12 @@ public partial class QuadraWindow : Window
 
     private void ResizeRight_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         double newWidth = Width + e.HorizontalChange;
         if (newWidth >= MinWidth)
         {
@@ -1163,6 +1203,12 @@ public partial class QuadraWindow : Window
 
     private void ResizeBottom_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         double newHeight = Height + e.VerticalChange;
         if (newHeight >= MinHeight)
         {
@@ -1172,6 +1218,12 @@ public partial class QuadraWindow : Window
 
     private void ResizeLeft_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         double newWidth = Width - e.HorizontalChange;
         if (newWidth >= MinWidth)
         {
@@ -1182,6 +1234,12 @@ public partial class QuadraWindow : Window
 
     private void ResizeTop_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         double newHeight = Height - e.VerticalChange;
         if (newHeight >= MinHeight)
         {
@@ -1192,24 +1250,48 @@ public partial class QuadraWindow : Window
 
     private void ResizeBottomRight_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         ResizeRight_DragDelta(sender, e);
         ResizeBottom_DragDelta(sender, e);
     }
 
     private void ResizeBottomLeft_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         ResizeLeft_DragDelta(sender, e);
         ResizeBottom_DragDelta(sender, e);
     }
 
     private void ResizeTopRight_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         ResizeRight_DragDelta(sender, e);
         ResizeTop_DragDelta(sender, e);
     }
 
     private void ResizeTopLeft_DragDelta(object sender, DragDeltaEventArgs e)
     {
+        // Quadra travada: sem redimensionamento
+        if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
         ResizeLeft_DragDelta(sender, e);
         ResizeTop_DragDelta(sender, e);
     }

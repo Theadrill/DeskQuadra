@@ -32,6 +32,9 @@ public interface ILayoutCoordinator : IDisposable
 
     void NotifyQuadraChanged(Quadra quadra);
 
+    // Trava/destrava todas as Quadras ativas (persiste via NotifyQuadraChanged de cada uma).
+    void SetAllLocked(bool locked);
+
     void RescanDesktopItems();
 
     Task SaveNowAsync(CancellationToken cancellationToken = default);

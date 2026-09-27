@@ -166,4 +166,45 @@ public class LayoutCoordinatorTests
         Assert.DoesNotContain(coordinator.ActiveQuadras, q => q.Id == quadra.Id);
         Assert.Equal(quadra.Id, notifiedId);
     }
+
+    [Fact]
+    public void SetAllLocked_True_LocksAllQuadras()
+    {
+        // Arrange
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        var q1 = coordinator.CreateNewQuadra("Q1", 0, 0);
+        var q2 = coordinator.CreateNewQuadra("Q2", 400, 0);
+
+        // Act
+        coordinator.SetAllLocked(true);
+
+        // Assert
+        Assert.True(q1.IsLocked);
+        Assert.True(q2.IsLocked);
+        Assert.All(coordinator.ActiveQuadras, q => Assert.True(q.IsLocked));
+    }
+
+    [Fact]
+    public void SetAllLocked_False_UnlocksAllQuadras()
+    {
+        // Arrange
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        var q1 = coordinator.CreateNewQuadra("Q1", 0, 0);
+        var q2 = coordinator.CreateNewQuadra("Q2", 400, 0);
+        coordinator.SetAllLocked(true);
+
+        // Act
+        coordinator.SetAllLocked(false);
+
+        // Assert
+        Assert.False(q1.IsLocked);
+        Assert.False(q2.IsLocked);
+        Assert.All(coordinator.ActiveQuadras, q => Assert.False(q.IsLocked));
+    }
 }
