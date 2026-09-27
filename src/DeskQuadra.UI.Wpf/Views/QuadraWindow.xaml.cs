@@ -14,6 +14,7 @@ using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.UI.Wpf.Models;
+using DeskQuadra.UI.Wpf.Properties;
 using DeskQuadra.UI.Wpf.ViewModels;
 using Microsoft.Win32;
 
@@ -165,7 +166,7 @@ public partial class QuadraWindow : Window
         }
         if (CollapseButton != null)
         {
-            CollapseButton.ToolTip = _viewModel.IsCollapsed ? "Expandir" : "Recolher";
+            CollapseButton.ToolTip = _viewModel.IsCollapsed ? Strings.Quadra_ExpandTooltip : Strings.Quadra_CollapseTooltip;
         }
     }
 
@@ -598,8 +599,8 @@ public partial class QuadraWindow : Window
 
         // Quadra padrão: exige confirmação extra antes de remover
         bool confirmed = ShowConfirmDialog(
-            "Excluir Quadra padrão?",
-            "Esta é a Quadra padrão; os itens saem da visualização mas ficam no disco. Deseja continuar?");
+            Strings.Dialog_DeleteDefaultTitle,
+            Strings.Dialog_DeleteDefaultMessage);
         if (confirmed)
         {
             _coordinator.RemoveQuadra(model.Id);
@@ -624,15 +625,15 @@ public partial class QuadraWindow : Window
     private CloseChoice ShowCloseChoiceDialog()
     {
         var result = CloseChoice.Cancel;
-        var dialog = CreateDarkDialog("Fechar Quadra", $"\"{_viewModel.Title}\": esconder ou excluir?", out var buttons);
+        var dialog = CreateDarkDialog(Strings.Dialog_CloseTitle, string.Format(Strings.Dialog_CloseMessageFormat, _viewModel.Title), out var buttons);
 
-        var hideButton = CreateDialogButton("Esconder", isPrimary: true);
+        var hideButton = CreateDialogButton(Strings.Dialog_Hide, isPrimary: true);
         hideButton.Click += (s, e) => { result = CloseChoice.Hide; dialog.Close(); };
 
-        var deleteButton = CreateDialogButton("Excluir", isPrimary: false);
+        var deleteButton = CreateDialogButton(Strings.Dialog_Delete, isPrimary: false);
         deleteButton.Click += (s, e) => { result = CloseChoice.Delete; dialog.Close(); };
 
-        var cancelButton = CreateDialogButton("Cancelar", isPrimary: false);
+        var cancelButton = CreateDialogButton(Strings.Dialog_Cancel, isPrimary: false);
         cancelButton.Click += (s, e) => dialog.Close();
 
         buttons.Children.Add(hideButton);
@@ -648,10 +649,10 @@ public partial class QuadraWindow : Window
         bool confirmed = false;
         var dialog = CreateDarkDialog(title, message, out var buttons);
 
-        var confirmButton = CreateDialogButton("Excluir", isPrimary: true);
+        var confirmButton = CreateDialogButton(Strings.Dialog_Delete, isPrimary: true);
         confirmButton.Click += (s, e) => { confirmed = true; dialog.Close(); };
 
-        var cancelButton = CreateDialogButton("Cancelar", isPrimary: false);
+        var cancelButton = CreateDialogButton(Strings.Dialog_Cancel, isPrimary: false);
         cancelButton.Click += (s, e) => dialog.Close();
 
         buttons.Children.Add(confirmButton);
@@ -760,7 +761,7 @@ public partial class QuadraWindow : Window
         var openFileDialog = new OpenFileDialog
         {
             Multiselect = true,
-            Title = "Adicionar Atalhos ou Arquivos à Quadra"
+            Title = Strings.Dialog_AddFilesTitle
         };
 
         if (openFileDialog.ShowDialog() == true)
@@ -1445,13 +1446,13 @@ public partial class QuadraWindow : Window
                 string ext = Path.GetExtension(path);
 
                 int copyIndex = 1;
-                string targetName = $"{nameWithoutExt} - Cópia{ext}";
+                string targetName = $"{nameWithoutExt}{Strings.FileCopySuffix}{ext}";
                 string targetPath = Path.Combine(dir, targetName);
 
                 while (File.Exists(targetPath))
                 {
                     copyIndex++;
-                    targetName = $"{nameWithoutExt} - Cópia ({copyIndex}){ext}";
+                    targetName = $"{nameWithoutExt}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}{ext}";
                     targetPath = Path.Combine(dir, targetName);
                 }
 
@@ -1468,7 +1469,7 @@ public partial class QuadraWindow : Window
                     while (File.Exists(fallbackTarget))
                     {
                         copyIndex++;
-                        targetName = $"{nameWithoutExt} - Cópia ({copyIndex}){ext}";
+                        targetName = $"{nameWithoutExt}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}{ext}";
                         fallbackTarget = Path.Combine(userDesktop, targetName);
                     }
 
@@ -1483,13 +1484,13 @@ public partial class QuadraWindow : Window
                 string dirName = Path.GetFileName(path);
 
                 int copyIndex = 1;
-                string targetName = $"{dirName} - Cópia";
+                string targetName = $"{dirName}{Strings.FileCopySuffix}";
                 string targetPath = Path.Combine(parent, targetName);
 
                 while (Directory.Exists(targetPath))
                 {
                     copyIndex++;
-                    targetName = $"{dirName} - Cópia ({copyIndex})";
+                    targetName = $"{dirName}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}";
                     targetPath = Path.Combine(parent, targetName);
                 }
 
@@ -1505,7 +1506,7 @@ public partial class QuadraWindow : Window
                     while (Directory.Exists(fallbackTarget))
                     {
                         copyIndex++;
-                        targetName = $"{dirName} - Cópia ({copyIndex})";
+                        targetName = $"{dirName}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}";
                         fallbackTarget = Path.Combine(userDesktop, targetName);
                     }
 
@@ -1547,7 +1548,7 @@ public partial class QuadraWindow : Window
     {
         int count = _coordinator.ActiveQuadras.Count + 1;
         _coordinator.CreateNewQuadra(
-            title: $"Quadra {count}",
+            title: string.Format(Strings.QuadraDefaultTitleFormat, count),
             left: Left + 40,
             top: Top + 40,
             width: Width,

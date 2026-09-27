@@ -45,4 +45,20 @@
     <Using Remove="System.Windows.Forms" />
   </ItemGroup>
 
+  <!-- Strings visíveis pt-BR centralizadas (REFATOR PURO: mesmo texto, só troca literal por Strings.Chave).
+       pt-BR default, único idioma. CustomTool PublicResXFileCodeGenerator (public static,
+       exigido por {x:Static} no XAML — ResXFileCodeGenerator geraria internal e quebraria
+       o InitializeComponent com XamlParseException). -->
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Strings.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <Compile Update="Properties\Strings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Strings.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+  </ItemGroup>
+
 </Project>

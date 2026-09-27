@@ -1,5 +1,7 @@
 namespace DeskQuadra.UI.Wpf.Services;
 
+using DeskQuadra.UI.Wpf.Properties;
+
 /// <summary>
 /// TESTE DE FOGO (Fase 5, temporário): interruptor de travamento determinístico da thread
 /// da UI para validar o Botão de Pânico do Guardian em condição real de hang.
@@ -21,7 +23,7 @@ internal static class HangTestSwitch
     public const bool Enabled = true;
 
     /// <summary>Rótulo do item temporário no menu do tray (prefixo TESTE de propósito).</summary>
-    public const string MenuLabel = "Simular travamento (TESTE)";
+    public static string MenuLabel => Strings.HangTestMenuLabel;
 
     /// <summary>
     /// Congela a thread chamadora para sempre. DEVE ser chamado na thread da UI

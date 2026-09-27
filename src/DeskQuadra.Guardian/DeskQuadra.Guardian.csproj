@@ -15,4 +15,18 @@
     <ProjectReference Include="..\DeskQuadra.Infrastructure.WindowsShell\DeskQuadra.Infrastructure.WindowsShell.csproj" />
   </ItemGroup>
 
+  <!-- Strings visíveis pt-BR locais ao Guardian (sem referenciar UI.Wpf).
+       pt-BR default, único idioma. CustomTool ResXFileCodeGenerator. -->
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <Compile Update="Properties\Strings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Strings.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+  </ItemGroup>
+
 </Project>

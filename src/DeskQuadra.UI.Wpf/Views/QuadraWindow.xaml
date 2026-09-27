@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
         xmlns:viewmodels="clr-namespace:DeskQuadra.UI.Wpf.ViewModels"
+        xmlns:properties="clr-namespace:DeskQuadra.UI.Wpf.Properties"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=viewmodels:QuadraViewModel}"
         Title="{Binding Title}"
@@ -180,20 +181,20 @@
                         ContextMenuOpening="TitleBar_ContextMenuOpening">
                     <Border.ContextMenu>
                         <ContextMenu>
-                            <MenuItem Header="↻ Atualizar Atalhos do Desktop" Click="RescanMenu_Click"/>
+                            <MenuItem Header="{x:Static properties:Strings.QuadraMenu_Rescan}" Click="RescanMenu_Click"/>
                             <Separator/>
-                            <MenuItem Header="Ordenar por">
-                                <MenuItem Header="Nome (A-Z)" Click="SortByName_Click"/>
-                                <MenuItem Header="Tipo de Arquivo" Click="SortByType_Click"/>
-                                <MenuItem Header="Data de Modificação" Click="SortByDate_Click"/>
-                                <MenuItem Header="Manual" Click="SortByManual_Click"/>
+                            <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortBy}">
+                                <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortName}" Click="SortByName_Click"/>
+                                <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortType}" Click="SortByType_Click"/>
+                                <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortDate}" Click="SortByDate_Click"/>
+                                <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortManual}" Click="SortByManual_Click"/>
                             </MenuItem>
                             <Separator/>
-                            <MenuItem Header="+ Nova Quadra (Teste de Snap)" Click="NewQuadraMenu_Click"/>
+                            <MenuItem Header="{x:Static properties:Strings.QuadraMenu_NewQuadra}" Click="NewQuadraMenu_Click"/>
                             <Separator/>
-                            <MenuItem x:Name="LockQuadraMenuItem" Header="🔒 Travar esta Quadra" IsCheckable="True" Click="LockQuadraMenu_Click"/>
+                            <MenuItem x:Name="LockQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_LockQuadra}" IsCheckable="True" Click="LockQuadraMenu_Click"/>
                             <Separator/>
-                            <MenuItem Header="Fechar Quadra" Click="CloseButton_Click"/>
+                            <MenuItem Header="{x:Static properties:Strings.QuadraMenu_CloseQuadra}" Click="CloseButton_Click"/>
                         </ContextMenu>
                     </Border.ContextMenu>
                     <Grid Margin="8,0,4,0">
@@ -229,13 +230,13 @@
                                    VerticalAlignment="Center"
                                    Margin="6,0,0,0"
                                    Visibility="Collapsed"
-                                   ToolTip="Quadra travada"/>
+                                   ToolTip="{x:Static properties:Strings.Quadra_LockedTooltip}"/>
 
                         <!-- Botão Recolher/Expandir (roll-up; 24x24 no Modo Normal, sem vazar para o arraste) -->
                         <Button x:Name="CollapseButton"
                                 Grid.Column="2"
                                 Style="{StaticResource TitleBarButtonStyle}"
-                                ToolTip="Recolher"
+                                ToolTip="{x:Static properties:Strings.Quadra_CollapseTooltip}"
                                 Click="CollapseButton_Click"
                                 Margin="0,0,2,0">
                             <TextBlock x:Name="CollapseGlyph" Text="˄" FontSize="12" FontWeight="Bold"/>
@@ -244,16 +245,16 @@
                         <!-- Botão Adicionar Atalho / Arquivo -->
                         <Button Grid.Column="3"
                                  Style="{StaticResource TitleBarButtonStyle}"
-                                 ToolTip="Adicionar Atalhos ou Arquivos"
+                                 ToolTip="{x:Static properties:Strings.Quadra_AddTooltip}"
                                  Click="AddFileButton_Click"
                                  Margin="0,0,2,0">
                              <TextBlock Text="+" FontSize="14" FontWeight="Bold"/>
                          </Button>
 
-                         <!-- Botão Fechar / Ocultar -->
+                          <!-- Botão Fechar / Ocultar -->
                         <Button Grid.Column="4"
                                 Style="{StaticResource TitleBarButtonStyle}"
-                                ToolTip="Fechar Quadra"
+                                ToolTip="{x:Static properties:Strings.Quadra_CloseTooltip}"
                                 Click="CloseButton_Click">
                             <TextBlock Text="✕" FontSize="10" FontWeight="Bold"/>
                         </Button>
@@ -270,7 +271,7 @@
                             HorizontalAlignment="Center"
                             Padding="12,8"
                             Visibility="{Binding EmptyMessageVisibility}">
-                        <TextBlock Text="Nenhum atalho nesta Quadra"
+                        <TextBlock Text="{x:Static properties:Strings.Quadra_EmptyMessage}"
                                    Foreground="#77FFFFFF"
                                    FontSize="11"
                                    FontStyle="Italic"
@@ -308,10 +309,10 @@
                                             PreviewMouseLeftButtonUp="DesktopItem_PreviewMouseLeftButtonUp">
                                         <Border.ContextMenu>
                                             <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
-                                                <MenuItem Header="Abrir" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
-                                                <MenuItem Header="Abrir local do arquivo" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>
+                                                <MenuItem Header="{x:Static properties:Strings.ItemMenu_Open}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
+                                                <MenuItem Header="{x:Static properties:Strings.ItemMenu_OpenLocation}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>
                                                 <Separator Background="#26FFFFFF" Margin="4,2"/>
-                                                <MenuItem Header="Remover desta Quadra" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
+                                                <MenuItem Header="{x:Static properties:Strings.ItemMenu_Remove}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <Border.Style>

@@ -19,6 +19,7 @@ using DeskQuadra.UI.Wpf.ViewModels;
 using DeskQuadra.UI.Wpf.Views;
 using Microsoft.Extensions.DependencyInjection;
 using WinForms = System.Windows.Forms;
+using UiStrings = DeskQuadra.UI.Wpf.Properties.Strings;
 
 namespace DeskQuadra.UI.Wpf;
 
@@ -233,7 +234,7 @@ public partial class App : System.Windows.Application
         // TODO Fase 5: ícone próprio (.ico do DeskQuadra); provisório usa o ícone padrão do sistema.
         _trayIcon = new WinForms.NotifyIcon
         {
-            Text = "DeskQuadra",
+            Text = UiStrings.TrayTooltip,
             Icon = System.Drawing.SystemIcons.Application,
             Visible = true
         };
@@ -249,14 +250,14 @@ public partial class App : System.Windows.Application
             ImageScalingSize = new System.Drawing.Size(24, 24),
             ShowImageMargin = false,
         };
-        var hiddenRoot = new WinForms.ToolStripMenuItem("Mostrar Quadras Escondidas");
-        var showAll = new WinForms.ToolStripMenuItem("Mostrar todas");
+        var hiddenRoot = new WinForms.ToolStripMenuItem(UiStrings.TrayShowHiddenQuadras);
+        var showAll = new WinForms.ToolStripMenuItem(UiStrings.TrayShowAll);
         // Trava global: item checkable antes do separador do Sair
-        var lockAll = new WinForms.ToolStripMenuItem("🔒 Travar todas as Quadras")
+        var lockAll = new WinForms.ToolStripMenuItem(UiStrings.TrayLockAllQuadras)
         {
             CheckOnClick = false
         };
-        var exit = new WinForms.ToolStripMenuItem("Sair");
+        var exit = new WinForms.ToolStripMenuItem(UiStrings.TrayExit);
 
         ApplyTouchDensity(hiddenRoot);
         ApplyTouchDensity(showAll);
@@ -280,8 +281,8 @@ public partial class App : System.Windows.Application
             hangTest.Click += (s, e) =>
             {
                 var owner = System.Windows.Application.Current?.MainWindow;
-                const string mensagem = "Deseja realmente executar o teste de travamento do aplicativo?\n\nA interface vai congelar de propósito e será preciso usar a tecla de emergência (Ctrl+Shift+Alt+Q) para encerrar o aplicativo.";
-                const string titulo = "Confirmar teste de travamento";
+                string mensagem = UiStrings.HangTestConfirmMessage;
+                string titulo = UiStrings.HangTestConfirmTitle;
                 System.Windows.MessageBoxResult resposta = owner != null
                     ? System.Windows.MessageBox.Show(owner, mensagem, titulo, System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning)
                     : System.Windows.MessageBox.Show(mensagem, titulo, System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
@@ -335,7 +336,7 @@ public partial class App : System.Windows.Application
 
         if (hidden.Count == 0)
         {
-            var empty = new WinForms.ToolStripMenuItem("Nenhuma Quadra escondida") { Enabled = false };
+            var empty = new WinForms.ToolStripMenuItem(UiStrings.TrayNoHiddenQuadras) { Enabled = false };
             ApplyTouchDensity(empty);
             hiddenRoot.DropDownItems.Add(empty);
         }
@@ -423,7 +424,7 @@ public partial class App : System.Windows.Application
 
         var btnCreate = new Button
         {
-            Content = "➕ Criar Quadra Aqui",
+            Content = UiStrings.CreationMenuCreateQuadraHere,
             Background = Brushes.Transparent,
             Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
             BorderThickness = new Thickness(0),
@@ -436,7 +437,7 @@ public partial class App : System.Windows.Application
 
         var btnCancel = new Button
         {
-            Content = "✕ Cancelar e Exibir Menu do Windows",
+            Content = UiStrings.CreationMenuCancelAndShowWindowsMenu,
             Background = Brushes.Transparent,
             Foreground = new SolidColorBrush(Color.FromRgb(0xBB, 0xBB, 0xBB)),
             BorderThickness = new Thickness(0),
@@ -455,7 +456,7 @@ public partial class App : System.Windows.Application
         {
             popup.IsOpen = false;
             int count = coordinator.ActiveQuadras.Count + 1;
-            coordinator.CreateNewQuadra($"Quadra {count}", left, top, width, height);
+            coordinator.CreateNewQuadra(string.Format(UiStrings.QuadraDefaultTitleFormat, count), left, top, width, height);
         };
 
         btnCancel.Click += (s, e) =>

@@ -224,7 +224,7 @@ internal static class Program
 
         try
         {
-            MessageBoxW(IntPtr.Zero, "DeskQuadra encerrado em modo de emergência. Sua área de trabalho foi restaurada.", "DeskQuadra", MB_OK | MB_ICONINFORMATION);
+            MessageBoxW(IntPtr.Zero, DeskQuadra.Guardian.Properties.Strings.EmergencyMessage, DeskQuadra.Guardian.Properties.Strings.EmergencyTitle, MB_OK | MB_ICONINFORMATION);
         }
         catch
         {

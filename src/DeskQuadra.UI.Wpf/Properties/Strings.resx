@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="TrayTooltip" xml:space="preserve">
+    <value>DeskQuadra</value>
+  </data>
+  <data name="TrayShowHiddenQuadras" xml:space="preserve">
+    <value>Mostrar Quadras Escondidas</value>
+  </data>
+  <data name="TrayShowAll" xml:space="preserve">
+    <value>Mostrar todas</value>
+  </data>
+  <data name="TrayLockAllQuadras" xml:space="preserve">
+    <value>🔒 Travar todas as Quadras</value>
+  </data>
+  <data name="TrayExit" xml:space="preserve">
+    <value>Sair</value>
+  </data>
+  <data name="TrayNoHiddenQuadras" xml:space="preserve">
+    <value>Nenhuma Quadra escondida</value>
+  </data>
+  <data name="HangTestMenuLabel" xml:space="preserve">
+    <value>Simular travamento (TESTE)</value>
+  </data>
+  <data name="HangTestConfirmMessage" xml:space="preserve">
+    <value>Deseja realmente executar o teste de travamento do aplicativo?
+
+A interface vai congelar de propósito e será preciso usar a tecla de emergência (Ctrl+Shift+Alt+Q) para encerrar o aplicativo.</value>
+  </data>
+  <data name="HangTestConfirmTitle" xml:space="preserve">
+    <value>Confirmar teste de travamento</value>
+  </data>
+  <data name="CreationMenuCreateQuadraHere" xml:space="preserve">
+    <value>➕ Criar Quadra Aqui</value>
+  </data>
+  <data name="CreationMenuCancelAndShowWindowsMenu" xml:space="preserve">
+    <value>✕ Cancelar e Exibir Menu do Windows</value>
+  </data>
+  <data name="QuadraDefaultTitleFormat" xml:space="preserve">
+    <value>Quadra {0}</value>
+  </data>
+  <data name="QuadraMenu_Rescan" xml:space="preserve">
+    <value>↻ Atualizar Atalhos do Desktop</value>
+  </data>
+  <data name="QuadraMenu_SortBy" xml:space="preserve">
+    <value>Ordenar por</value>
+  </data>
+  <data name="QuadraMenu_SortName" xml:space="preserve">
+    <value>Nome (A-Z)</value>
+  </data>
+  <data name="QuadraMenu_SortType" xml:space="preserve">
+    <value>Tipo de Arquivo</value>
+  </data>
+  <data name="QuadraMenu_SortDate" xml:space="preserve">
+    <value>Data de Modificação</value>
+  </data>
+  <data name="QuadraMenu_SortManual" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="QuadraMenu_NewQuadra" xml:space="preserve">
+    <value>+ Nova Quadra (Teste de Snap)</value>
+  </data>
+  <data name="QuadraMenu_LockQuadra" xml:space="preserve">
+    <value>🔒 Travar esta Quadra</value>
+  </data>
+  <data name="QuadraMenu_CloseQuadra" xml:space="preserve">
+    <value>Fechar Quadra</value>
+  </data>
+  <data name="Quadra_LockedTooltip" xml:space="preserve">
+    <value>Quadra travada</value>
+  </data>
+  <data name="Quadra_CollapseTooltip" xml:space="preserve">
+    <value>Recolher</value>
+  </data>
+  <data name="Quadra_ExpandTooltip" xml:space="preserve">
+    <value>Expandir</value>
+  </data>
+  <data name="Quadra_AddTooltip" xml:space="preserve">
+    <value>Adicionar Atalhos ou Arquivos</value>
+  </data>
+  <data name="Quadra_CloseTooltip" xml:space="preserve">
+    <value>Fechar Quadra</value>
+  </data>
+  <data name="Quadra_EmptyMessage" xml:space="preserve">
+    <value>Nenhum atalho nesta Quadra</value>
+  </data>
+  <data name="ItemMenu_Open" xml:space="preserve">
+    <value>Abrir</value>
+  </data>
+  <data name="ItemMenu_OpenLocation" xml:space="preserve">
+    <value>Abrir local do arquivo</value>
+  </data>
+  <data name="ItemMenu_Remove" xml:space="preserve">
+    <value>Remover desta Quadra</value>
+  </data>
+  <data name="Dialog_CloseTitle" xml:space="preserve">
+    <value>Fechar Quadra</value>
+  </data>
+  <data name="Dialog_CloseMessageFormat" xml:space="preserve">
+    <value>"{0}": esconder ou excluir?</value>
+  </data>
+  <data name="Dialog_Hide" xml:space="preserve">
+    <value>Esconder</value>
+  </data>
+  <data name="Dialog_Delete" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="Dialog_DeleteDefaultTitle" xml:space="preserve">
+    <value>Excluir Quadra padrão?</value>
+  </data>
+  <data name="Dialog_DeleteDefaultMessage" xml:space="preserve">
+    <value>Esta é a Quadra padrão; os itens saem da visualização mas ficam no disco. Deseja continuar?</value>
+  </data>
+  <data name="Dialog_AddFilesTitle" xml:space="preserve">
+    <value>Adicionar Atalhos ou Arquivos à Quadra</value>
+  </data>
+  <data name="FileCopySuffix" xml:space="preserve">
+    <value> - Cópia</value>
+  </data>
+  <data name="FileCopySuffixIndexedFormat" xml:space="preserve">
+    <value> - Cópia ({0})</value>
+  </data>
+  <data name="Selection_NewQuadra" xml:space="preserve">
+    <value>Nova Quadra</value>
+  </data>
+</root>
