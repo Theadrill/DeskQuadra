@@ -43,6 +43,12 @@
     <sys:Double x:Key="Quadra.AddGlyph.FontSize">14</sys:Double>
     <sys:Double x:Key="Quadra.CloseGlyph.FontSize">10</sys:Double>
 
+    <!-- ===== Quadra: densidade Normal (28/24) vs Touch (42/44) — Fatia 2 ===== -->
+    <!-- Normal = valores abaixo; Touch aplicado via código (42, padding maior). -->
+    <GridLength x:Key="Quadra.Density.TitleBar.Height">28</GridLength>
+    <Thickness x:Key="Quadra.Density.Title.Padding">8,0,4,0</Thickness>
+    <Thickness x:Key="Quadra.Density.TitleButton.Margin">0,0,2,0</Thickness>
+
     <!-- ===== Quadra: mensagem de vazio ===== -->
     <SolidColorBrush x:Key="Quadra.Empty.BorderBrush" Color="#14FFFFFF"/>
     <Thickness x:Key="Quadra.Empty.BorderThickness">1</Thickness>

@@ -192,4 +192,16 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="SettingsStartup" xml:space="preserve">
     <value>Iniciar DeskQuadra com o Windows</value>
   </data>
+  <data name="SettingsAppearanceTitle" xml:space="preserve">
+    <value>Aparência</value>
+  </data>
+  <data name="SettingsDensityAuto" xml:space="preserve">
+    <value>Automático</value>
+  </data>
+  <data name="SettingsDensityNormal" xml:space="preserve">
+    <value>Normal (Mouse)</value>
+  </data>
+  <data name="SettingsDensityTouch" xml:space="preserve">
+    <value>Touch</value>
+  </data>
 </root>

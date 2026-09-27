@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using DeskQuadra.Application.Services;
 using DeskQuadra.Application.Snap;
+using DeskQuadra.Core;
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
@@ -39,6 +40,12 @@ public partial class QuadraWindow : Window
     private DesktopItemViewModel? _draggedItemCandidate;
     private bool _isItemDragging;
     private bool _isTouchActive;
+
+    // Densidade Aparência (Fatia 2): último modo aplicado + preferência global para WM_DISPLAYCHANGE.
+    // Sem hook/timer novo: leitura sob demanda (App) + reavaliação trivial no WndProc existente.
+    private bool _isTouchDensity;
+    internal static DensityPreference CurrentDensityPreference = DensityPreference.Auto;
+    internal static Func<bool>? HasTouchHardwareProvider;
 
     // Modo roll-up (recolhimento no local, seção 10 do BRAINSTORMING)
     private double? _expandedHeight; // altura guardada antes de recolher
@@ -167,6 +174,41 @@ public partial class QuadraWindow : Window
         if (CollapseButton != null)
         {
             CollapseButton.ToolTip = _viewModel.IsCollapsed ? Strings.Quadra_ExpandTooltip : Strings.Quadra_CollapseTooltip;
+        }
+    }
+
+    // Densidade (Fatia 2): Normal = barra 28 + botão 24; Touch = barra 42 + hitbox 44 + padding maior.
+    // Via recursos existentes (Quadra.TitleButton.Size + chaves Quadra.Density.*); não toca em
+    // roll-up/spring/peek/lock/drag/scroll (só dimensões da barra). Seguro com janela recolhida.
+    public void ApplyDensity(bool isTouch)
+    {
+        _isTouchDensity = isTouch;
+        var app = System.Windows.Application.Current;
+        if (app is null)
+        {
+            return;
+        }
+
+        app.Resources["Quadra.Density.TitleBar.Height"] = new GridLength(DensityResolver.TitleBarHeight(isTouch));
+        app.Resources["Quadra.TitleButton.Size"] = DensityResolver.TitleButtonSize(isTouch);
+        app.Resources["Quadra.Density.Title.Padding"] = isTouch ? new Thickness(12, 0, 8, 0) : new Thickness(8, 0, 4, 0);
+        app.Resources["Quadra.Density.TitleButton.Margin"] = isTouch ? new Thickness(0, 0, 6, 0) : new Thickness(0, 0, 2, 0);
+
+        // Recolhida: mantém a altura recolhida coerente com a nova barra (expandida segue no modelo).
+        if (_viewModel.IsCollapsed && !_isApplyingCollapse)
+        {
+            double bar = TitleBarBorder?.ActualHeight > 0
+                ? TitleBarBorder.ActualHeight
+                : DensityResolver.TitleBarHeight(isTouch);
+            _isApplyingCollapse = true;
+            try
+            {
+                Height = bar + 22; // 20 das margens + 2 das bordas (mesma fórmula do ApplyCollapsed)
+            }
+            finally
+            {
+                _isApplyingCollapse = false;
+            }
         }
     }
 
@@ -305,7 +347,7 @@ public partial class QuadraWindow : Window
                 ContentArea.Visibility = Visibility.Collapsed;
                 SetResizeThumbsVisibility(Visibility.Collapsed);
 
-                double collapsedHeight = (TitleBarBorder.ActualHeight > 0 ? TitleBarBorder.ActualHeight : 28) + 22; // 20 das margens + 2 das bordas
+                double collapsedHeight = (TitleBarBorder.ActualHeight > 0 ? TitleBarBorder.ActualHeight : DensityResolver.TitleBarHeight(_isTouchDensity)) + 22; // 20 das margens + 2 das bordas
                 MinHeight = 0;
                 Height = collapsedHeight;
 
@@ -417,6 +459,21 @@ public partial class QuadraWindow : Window
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        // Reavaliação trivial de Auto ao trocar display (sem hook/timer novo; só se preferência for Auto).
+        const int WM_DISPLAYCHANGE = 0x007E;
+        if (msg == WM_DISPLAYCHANGE && CurrentDensityPreference == DensityPreference.Auto && HasTouchHardwareProvider != null)
+        {
+            try
+            {
+                ApplyDensity(HasTouchHardwareProvider());
+            }
+            catch
+            {
+                // Best-effort: nunca derruba o hook da janela.
+            }
+            return IntPtr.Zero;
+        }
+
         // Intercepta e neutraliza ordens do sistema para esconder a janela no atalho Win + D
         if (msg == NativeMethods.WM_WINDOWPOSCHANGING)
         {

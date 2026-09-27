@@ -10,6 +10,44 @@
         WindowStyle="SingleBorderWindow"
         ShowInTaskbar="True"
         Background="{DynamicResource Dialog.Background}">
+    <Window.Resources>
+        <!-- Aparência: 3 RadioButtons com cara de Button. Reusa o binding IsDensity* -->
+        <!-- existente (persistência via SettingsViewModel inalterada). Ativo = -->
+        <!-- Dialog.Primary.Background; inativo = Dialog.Secondary.Background. -->
+        <Style x:Key="DensityButtonStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource Dialog.Foreground}"/>
+            <Setter Property="FontSize" Value="{DynamicResource Dialog.Button.FontSize}"/>
+            <Setter Property="Padding" Value="{DynamicResource Dialog.Button.Padding}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource Dialog.Button.BorderThickness}"/>
+            <Setter Property="Background" Value="{DynamicResource Dialog.Secondary.Background}"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Dialog.Primary.Background}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
     <StackPanel Margin="{DynamicResource Dialog.Panel.Margin}">
         <CheckBox IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
                   Content="{x:Static properties:Strings.SettingsStartup}"
@@ -17,5 +55,27 @@
                   FontSize="{DynamicResource Dialog.Message.FontSize}"
                   Margin="{DynamicResource Dialog.Message.Margin}"
                   VerticalContentAlignment="Center"/>
+        <TextBlock Text="{x:Static properties:Strings.SettingsAppearanceTitle}"
+                   Foreground="{DynamicResource Dialog.Foreground}"
+                   FontSize="{DynamicResource Dialog.Message.FontSize}"
+                   FontWeight="SemiBold"
+                   Margin="0,4,0,6"/>
+        <UniformGrid Rows="1" Columns="3" Margin="0,2,0,2">
+            <RadioButton GroupName="Density"
+                         Style="{StaticResource DensityButtonStyle}"
+                         IsChecked="{Binding IsDensityAuto, Mode=TwoWay}"
+                         Content="{x:Static properties:Strings.SettingsDensityAuto}"
+                         Margin="0"/>
+            <RadioButton GroupName="Density"
+                         Style="{StaticResource DensityButtonStyle}"
+                         IsChecked="{Binding IsDensityNormal, Mode=TwoWay}"
+                         Content="{x:Static properties:Strings.SettingsDensityNormal}"
+                         Margin="{DynamicResource Dialog.Button.Margin}"/>
+            <RadioButton GroupName="Density"
+                         Style="{StaticResource DensityButtonStyle}"
+                         IsChecked="{Binding IsDensityTouch, Mode=TwoWay}"
+                         Content="{x:Static properties:Strings.SettingsDensityTouch}"
+                         Margin="{DynamicResource Dialog.Button.Margin}"/>
+        </UniformGrid>
     </StackPanel>
 </Window>

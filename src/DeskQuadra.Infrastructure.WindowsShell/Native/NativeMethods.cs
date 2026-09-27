@@ -306,4 +306,30 @@ internal static class NativeMethods
         ref SHFILEINFO psfi,
         uint cbFileInfo,
         uint uFlags);
+
+    // Detecção Auto de densidade (Fatia 2, mínimo): só GetSystemMetrics, sem hook/timer.
+    // SM_DIGITIZER=94 (NID_INTEGRATED/EXTERNAL_TOUCH), SM_MAXIMUMTOUCHES=95.
+    public const int SM_DIGITIZER = 94;
+    public const int SM_MAXIMUMTOUCHES = 95;
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
+    /// <summary>
+    /// Leitura sob demanda do hardware touch. Best-effort: falha =&gt; false (Normal).
+    /// Decisão pura vive em <c>DeskQuadra.Core.DensityResolver</c> (testável).
+    /// </summary>
+    public static bool IsTouchHardwarePresent()
+    {
+        try
+        {
+            int digitizer = GetSystemMetrics(SM_DIGITIZER);
+            int maxTouches = GetSystemMetrics(SM_MAXIMUMTOUCHES);
+            return DeskQuadra.Core.DensityResolver.HasTouchHardware(digitizer, maxTouches);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

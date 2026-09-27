@@ -162,8 +162,8 @@
 
             <Grid>
                 <Grid.RowDefinitions>
-                    <!-- Barra de título compacta (~28px conforme Sessão 24 - Modo Normal) -->
-                    <RowDefinition Height="28"/>
+                    <!-- Barra de título por densidade (Normal 28 / Touch 42 via Quadra.Density.TitleBar.Height) -->
+                    <RowDefinition x:Name="TitleBarRow" Height="{DynamicResource Quadra.Density.TitleBar.Height}"/>
                     <!-- Área do conteúdo / atalhos -->
                     <RowDefinition x:Name="ContentRow" Height="*"/>
                 </Grid.RowDefinitions>
@@ -197,7 +197,7 @@
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_CloseQuadra}" Click="CloseButton_Click"/>
                         </ContextMenu>
                     </Border.ContextMenu>
-                    <Grid Margin="8,0,4,0">
+                    <Grid Margin="{DynamicResource Quadra.Density.Title.Padding}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -232,22 +232,22 @@
                                    Visibility="Collapsed"
                                    ToolTip="{x:Static properties:Strings.Quadra_LockedTooltip}"/>
 
-                        <!-- Botão Recolher/Expandir (roll-up; 24x24 no Modo Normal, sem vazar para o arraste) -->
+                        <!-- Botão Recolher/Expandir (roll-up; Normal 24x24, Touch 44 hitbox) -->
                         <Button x:Name="CollapseButton"
                                 Grid.Column="2"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="{x:Static properties:Strings.Quadra_CollapseTooltip}"
                                 Click="CollapseButton_Click"
-                                Margin="0,0,2,0">
+                                Margin="{DynamicResource Quadra.Density.TitleButton.Margin}">
                             <TextBlock x:Name="CollapseGlyph" Text="˄" FontSize="{DynamicResource Quadra.CollapseGlyph.FontSize}" FontWeight="Bold"/>
                         </Button>
 
                         <!-- Botão Adicionar Atalho / Arquivo -->
                         <Button Grid.Column="3"
-                                 Style="{StaticResource TitleBarButtonStyle}"
-                                 ToolTip="{x:Static properties:Strings.Quadra_AddTooltip}"
-                                 Click="AddFileButton_Click"
-                                 Margin="0,0,2,0">
+                                  Style="{StaticResource TitleBarButtonStyle}"
+                                  ToolTip="{x:Static properties:Strings.Quadra_AddTooltip}"
+                                  Click="AddFileButton_Click"
+                                  Margin="{DynamicResource Quadra.Density.TitleButton.Margin}">
                              <TextBlock Text="+" FontSize="{DynamicResource Quadra.AddGlyph.FontSize}" FontWeight="Bold"/>
                          </Button>
 

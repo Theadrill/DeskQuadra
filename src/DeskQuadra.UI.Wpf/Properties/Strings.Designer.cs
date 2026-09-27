@@ -151,5 +151,13 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string SettingsTitle => ResourceManager.GetString("SettingsTitle", resourceCulture);
 
         public static string SettingsStartup => ResourceManager.GetString("SettingsStartup", resourceCulture);
+
+        public static string SettingsAppearanceTitle => ResourceManager.GetString("SettingsAppearanceTitle", resourceCulture);
+
+        public static string SettingsDensityAuto => ResourceManager.GetString("SettingsDensityAuto", resourceCulture);
+
+        public static string SettingsDensityNormal => ResourceManager.GetString("SettingsDensityNormal", resourceCulture);
+
+        public static string SettingsDensityTouch => ResourceManager.GetString("SettingsDensityTouch", resourceCulture);
     }
 }

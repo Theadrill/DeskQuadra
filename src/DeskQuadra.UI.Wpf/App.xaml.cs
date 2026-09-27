@@ -72,6 +72,13 @@ public partial class App : System.Windows.Application
 
         _serviceProvider = services.BuildServiceProvider();
 
+        // Densidade inicial (Fatia 2): preferência global + probe para WM_DISPLAYCHANGE.
+        var densityService = _serviceProvider.GetService<IDensitySettingsService>();
+        if (densityService != null)
+        {
+            EnsureDensityWiring(densityService);
+        }
+
         _nativeIconService = _serviceProvider.GetRequiredService<INativeDesktopIconService>();
 
         if (e.Args.Contains("--restore-icons", StringComparer.OrdinalIgnoreCase))
@@ -225,6 +232,31 @@ public partial class App : System.Windows.Application
         window.Closed += (s, e) => _quadraWindows.Remove(quadra.Id);
         _quadraWindows[quadra.Id] = window;
         window.Show();
+        window.ApplyDensity(ResolveEffectiveIsTouch());
+    }
+
+    // Densidade (Fatia 2): leitura sob demanda via GetSystemMetrics; sem hook/timer novo.
+    private bool ResolveEffectiveIsTouch()
+    {
+        var density = _serviceProvider?.GetService<IDensitySettingsService>();
+        bool hasHardware = NativeMethods.IsTouchHardwarePresent();
+        return DensityResolver.ResolveIsTouch(density?.Current ?? DensityPreference.Auto, hasHardware);
+    }
+
+    private void ApplyDensityToAllOpen()
+    {
+        bool isTouch = ResolveEffectiveIsTouch();
+        foreach (var window in _quadraWindows.Values)
+        {
+            try
+            {
+                window.ApplyDensity(isTouch);
+            }
+            catch
+            {
+                // Best-effort: uma janela não bloqueia as demais.
+            }
+        }
     }
 
     // Fecha a janela da Quadra sem remover o modelo (usado por Esconder/Excluir via eventos)
@@ -416,14 +448,41 @@ public partial class App : System.Windows.Application
         }
 
         var startupService = _serviceProvider?.GetService<IStartupService>();
-        if (startupService == null)
+        var densityService = _serviceProvider?.GetService<IDensitySettingsService>();
+        if (startupService == null || densityService == null)
         {
             return;
         }
 
-        _settingsWindow = new SettingsWindow(new SettingsViewModel(startupService));
+        EnsureDensityWiring(densityService);
+        // Leitura sob demanda + na abertura da janela (sem timer/hook novo).
+        bool hasHardware = NativeMethods.IsTouchHardwarePresent();
+        _settingsWindow = new SettingsWindow(new SettingsViewModel(startupService, densityService, hasHardware));
         _settingsWindow.Closed += (s, e) => _settingsWindow = null;
         _settingsWindow.Show();
+    }
+
+    private bool _densityWired;
+
+    // Liga preferência global + probe para WM_DISPLAYCHANGE + aplica em todas ao trocar.
+    private void EnsureDensityWiring(IDensitySettingsService densityService)
+    {
+        QuadraWindow.CurrentDensityPreference = densityService.Current;
+        QuadraWindow.HasTouchHardwareProvider = NativeMethods.IsTouchHardwarePresent;
+        if (_densityWired)
+        {
+            return;
+        }
+
+        _densityWired = true;
+        densityService.PreferenceChanged += (s, pref) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                QuadraWindow.CurrentDensityPreference = pref;
+                ApplyDensityToAllOpen();
+            });
+        };
     }
 
     private static void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator)

@@ -9,6 +9,7 @@ public static class DependencyInjection
     public static IServiceCollection AddPersistenceInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<ILayoutRepository, JsonLayoutRepository>();
+        services.AddSingleton<IDensitySettingsService, JsonDensitySettingsService>();
         return services;
     }
 }
