@@ -159,5 +159,13 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string SettingsDensityNormal => ResourceManager.GetString("SettingsDensityNormal", resourceCulture);
 
         public static string SettingsDensityTouch => ResourceManager.GetString("SettingsDensityTouch", resourceCulture);
+
+        public static string Dialog_RecoveryTitle => ResourceManager.GetString("Dialog_RecoveryTitle", resourceCulture);
+
+        public static string Dialog_RecoveryMessage => ResourceManager.GetString("Dialog_RecoveryMessage", resourceCulture);
+
+        public static string Dialog_RestoreRecent => ResourceManager.GetString("Dialog_RestoreRecent", resourceCulture);
+
+        public static string Dialog_KeepPrevious => ResourceManager.GetString("Dialog_KeepPrevious", resourceCulture);
     }
 }

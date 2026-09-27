@@ -122,7 +122,7 @@
     <sys:Double x:Key="Selection.Text.Shadow.Depth">1</sys:Double>
     <sys:Double x:Key="Selection.Text.Shadow.Opacity">0.8</sys:Double>
 
-    <!-- ===== Diálogos escuros (code-behind: CreateDarkDialog/CreateDialogButton) ===== -->
+    <!-- ===== Diálogos escuros (code-behind: Services/DarkDialog) ===== -->
     <SolidColorBrush x:Key="Dialog.Background" Color="#FF1F1F24"/>
     <SolidColorBrush x:Key="Dialog.Foreground" Color="#FFF5F5F5"/>
     <sys:Double x:Key="Dialog.Message.FontSize">13</sys:Double>

@@ -21,6 +21,16 @@ public class LayoutCoordinatorTests
             StoredQuadras = quadras.ToList();
             return Task.CompletedTask;
         }
+
+        public Task<PendingLayoutRecovery?> CheckCrashRecoveryAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<PendingLayoutRecovery?>(null);
+        }
+
+        public Task ResolveCrashRecoveryAsync(bool restoreRecent, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     private class FakeScanner : IDesktopScannerService

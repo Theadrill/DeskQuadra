@@ -16,6 +16,7 @@ using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.UI.Wpf.Models;
 using DeskQuadra.UI.Wpf.Properties;
+using DeskQuadra.UI.Wpf.Services;
 using DeskQuadra.UI.Wpf.ViewModels;
 using Microsoft.Win32;
 
@@ -681,98 +682,30 @@ public partial class QuadraWindow : Window
 
     private CloseChoice ShowCloseChoiceDialog()
     {
-        var result = CloseChoice.Cancel;
-        var dialog = CreateDarkDialog(Strings.Dialog_CloseTitle, string.Format(Strings.Dialog_CloseMessageFormat, _viewModel.Title), out var buttons);
-
-        var hideButton = CreateDialogButton(Strings.Dialog_Hide, isPrimary: true);
-        hideButton.Click += (s, e) => { result = CloseChoice.Hide; dialog.Close(); };
-
-        var deleteButton = CreateDialogButton(Strings.Dialog_Delete, isPrimary: false);
-        deleteButton.Click += (s, e) => { result = CloseChoice.Delete; dialog.Close(); };
-
-        var cancelButton = CreateDialogButton(Strings.Dialog_Cancel, isPrimary: false);
-        cancelButton.Click += (s, e) => dialog.Close();
-
-        buttons.Children.Add(hideButton);
-        buttons.Children.Add(deleteButton);
-        buttons.Children.Add(cancelButton);
-
-        dialog.ShowDialog();
-        return result;
+        int index = DarkDialog.ShowOptions(
+            Strings.Dialog_CloseTitle,
+            string.Format(Strings.Dialog_CloseMessageFormat, _viewModel.Title),
+            this,
+            330,
+            (Strings.Dialog_Hide, true),
+            (Strings.Dialog_Delete, false),
+            (Strings.Dialog_Cancel, false));
+        return index switch
+        {
+            0 => CloseChoice.Hide,
+            1 => CloseChoice.Delete,
+            _ => CloseChoice.Cancel,
+        };
     }
 
     private bool ShowConfirmDialog(string title, string message)
     {
-        bool confirmed = false;
-        var dialog = CreateDarkDialog(title, message, out var buttons);
-
-        var confirmButton = CreateDialogButton(Strings.Dialog_Delete, isPrimary: true);
-        confirmButton.Click += (s, e) => { confirmed = true; dialog.Close(); };
-
-        var cancelButton = CreateDialogButton(Strings.Dialog_Cancel, isPrimary: false);
-        cancelButton.Click += (s, e) => dialog.Close();
-
-        buttons.Children.Add(confirmButton);
-        buttons.Children.Add(cancelButton);
-
-        dialog.ShowDialog();
-        return confirmed;
-    }
-
-    // Seam de temas (Default): valores idênticos aos literais anteriores via TryFindResource.
-    private static T Theme<T>(string key, T fallback) =>
-        System.Windows.Application.Current?.TryFindResource(key) is T hit ? hit : fallback;
-
-    // Janela modal escura no padrão visual do app para as escolhas de fechamento
-    private Window CreateDarkDialog(string title, string message, out StackPanel buttonPanel)
-    {
-        var panel = new StackPanel { Orientation = Orientation.Vertical, Margin = Theme("Dialog.Panel.Margin", new Thickness(16)) };
-        panel.Children.Add(new TextBlock
-        {
-            Text = message,
-            Foreground = Theme("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
-            FontSize = Theme("Dialog.Message.FontSize", 13.0),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = Theme("Dialog.Message.Margin", new Thickness(0, 0, 0, 14))
-        });
-
-        buttonPanel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        panel.Children.Add(buttonPanel);
-
-        return new Window
-        {
-            Title = title,
-            Owner = this,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Width = 330,
-            SizeToContent = SizeToContent.Height,
-            ResizeMode = ResizeMode.NoResize,
-            WindowStyle = WindowStyle.ToolWindow,
-            ShowInTaskbar = false,
-            Background = Theme("Dialog.Background", new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24))),
-            Content = panel
-        };
-    }
-
-    private static Button CreateDialogButton(string text, bool isPrimary)
-    {
-        return new Button
-        {
-            Content = text,
-            Padding = Theme("Dialog.Button.Padding", new Thickness(14, 6, 14, 6)),
-            Margin = Theme("Dialog.Button.Margin", new Thickness(6, 0, 0, 0)),
-            Cursor = Cursors.Hand,
-            FontSize = Theme("Dialog.Button.FontSize", 12.0),
-            Background = isPrimary
-                ? Theme("Dialog.Primary.Background", new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)))
-                : Theme("Dialog.Secondary.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF))),
-            Foreground = Theme("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
-            BorderThickness = Theme("Dialog.Button.BorderThickness", new Thickness(0))
-        };
+        return DarkDialog.Show(
+            title,
+            message,
+            Strings.Dialog_Delete,
+            Strings.Dialog_Cancel,
+            owner: this);
     }
 
     private void OnPositionOrSizeChanged(object? sender, EventArgs e)

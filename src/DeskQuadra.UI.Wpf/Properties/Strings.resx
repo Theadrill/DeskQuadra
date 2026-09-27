@@ -204,4 +204,16 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="SettingsDensityTouch" xml:space="preserve">
     <value>Touch</value>
   </data>
+  <data name="Dialog_RecoveryTitle" xml:space="preserve">
+    <value>Restaurar layout mais recente?</value>
+  </data>
+  <data name="Dialog_RecoveryMessage" xml:space="preserve">
+    <value>O Windows foi encerrado inesperadamente durante sua última organização. Deseja restaurar o layout mais recente ou manter o anterior?</value>
+  </data>
+  <data name="Dialog_RestoreRecent" xml:space="preserve">
+    <value>Restaurar Recente</value>
+  </data>
+  <data name="Dialog_KeepPrevious" xml:space="preserve">
+    <value>Manter Anterior</value>
+  </data>
 </root>

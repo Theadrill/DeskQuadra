@@ -198,6 +198,30 @@ public partial class App : System.Windows.Application
 
         _drawingService.Start();
 
+        // 3c. Recuperação de queda de energia (BRAINSTORMING 21/219-224): .tmp íntegro
+        // avaliado ANTES do .bak dentro do repositório; aqui só o caso com diálogo
+        // (.tmp íntegro E mais recente que .json). Best-effort: nunca derruba o boot.
+        try
+        {
+            var layoutRepository = _serviceProvider.GetRequiredService<ILayoutRepository>();
+            var pendingRecovery = await layoutRepository.CheckCrashRecoveryAsync();
+            if (pendingRecovery is not null)
+            {
+                bool restoreRecent = Services.DarkDialog.Show(
+                    UiStrings.Dialog_RecoveryTitle,
+                    UiStrings.Dialog_RecoveryMessage,
+                    UiStrings.Dialog_RestoreRecent,
+                    UiStrings.Dialog_KeepPrevious,
+                    owner: null,
+                    width: 360);
+                await layoutRepository.ResolveCrashRecoveryAsync(restoreRecent);
+            }
+        }
+        catch
+        {
+            // Sem .tmp ou falha transitória: segue com o fluxo idêntico ao atual.
+        }
+
         // 4. Carrega o layout transacional persistido em disco (%APPDATA%\DeskQuadra\quadras.json)
         await coordinator.InitializeAsync();
 
