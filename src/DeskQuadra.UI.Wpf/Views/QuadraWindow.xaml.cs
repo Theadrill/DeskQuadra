@@ -51,6 +51,10 @@ public partial class QuadraWindow : Window
     private DispatcherTimer? _peekEnterTimer; // one-shot de entrada (~350ms) antes de expandir
     private DispatcherTimer? _peekExitTimer; // debounce de saída (~350ms) antes de recolher
 
+    // Recolhimento pós-drop do spring-loaded: Quadra recolhida que expandiu temporariamente e recebeu drop recolhe sozinha após ~3s de ociosidade
+    private DispatcherTimer? _postDropCollapseTimer; // one-shot (~3000ms) armado após o drop
+    private bool _awaitingPostDropCollapse; // Quadra expandida aguardando recolher sozinha após o drop
+
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -172,6 +176,7 @@ public partial class QuadraWindow : Window
         _springExpanded = false;
         CancelPeekTimers();
         _peekExpanded = false;
+        CancelPostDropCollapseTimer();
         ApplyCollapsed(!_viewModel.IsCollapsed, persist: true);
     }
 
@@ -1247,6 +1252,12 @@ public partial class QuadraWindow : Window
             e.Effects = DragDropEffects.None;
         }
 
+        // Pós-drop aguardando recolher: novo arrasto pairando reinicia a contagem de ~3s
+        if (_awaitingPostDropCollapse)
+        {
+            ArmPostDropCollapseTimer();
+        }
+
         // Spring-loaded (seção 18): sobre Quadra recolhida, arma timer único de ~400ms (one-shot)
         // Com peek já expandido não há o que o spring fazer (nunca brigam); só segura o debounce de saída
         if (_peekExpanded)
@@ -1297,6 +1308,51 @@ public partial class QuadraWindow : Window
         }
     }
 
+    // Rearma a contagem pós-drop (~3s): para o timer anterior e começa nova contagem
+    private void ArmPostDropCollapseTimer()
+    {
+        if (_postDropCollapseTimer != null)
+        {
+            _postDropCollapseTimer.Stop();
+            _postDropCollapseTimer.Tick -= PostDropCollapseTimer_Tick;
+            _postDropCollapseTimer = null;
+        }
+        _awaitingPostDropCollapse = true;
+        _postDropCollapseTimer = new DispatcherTimer(DispatcherPriority.Normal)
+        {
+            Interval = TimeSpan.FromMilliseconds(3000)
+        };
+        _postDropCollapseTimer.Tick += PostDropCollapseTimer_Tick;
+        _postDropCollapseTimer.Start();
+    }
+
+    private void CancelPostDropCollapseTimer()
+    {
+        if (_postDropCollapseTimer != null)
+        {
+            _postDropCollapseTimer.Stop();
+            _postDropCollapseTimer.Tick -= PostDropCollapseTimer_Tick;
+            _postDropCollapseTimer = null;
+        }
+        _awaitingPostDropCollapse = false;
+    }
+
+    private void PostDropCollapseTimer_Tick(object? sender, EventArgs e)
+    {
+        CancelPostDropCollapseTimer();
+        // Só recolhe se ocioso: sem drag em curso, sem mouse sobre a janela e sem menu aberto
+        if (_isItemDragging || _isDragging || IsMouseOver || IsItemMenuOpen() || (TitleBarBorder?.ContextMenu?.IsOpen == true))
+        {
+            return;
+        }
+        if (_viewModel.IsCollapsed)
+        {
+            return;
+        }
+        _springExpanded = false;
+        ApplyCollapsed(true, persist: true);
+    }
+
     private void Quadra_Drop(object sender, DragEventArgs e)
     {
         CancelSpringTimer();
@@ -1306,6 +1362,8 @@ public partial class QuadraWindow : Window
         bool wasPeekExpanded = _peekExpanded;
         _peekExpanded = false;
         CancelPeekTimers();
+        // Estava recolhida no persistido e expandiu temporariamente (spring ou peek): volta a recolher sozinha após ~3s
+        bool armPostDrop = wasSpringExpanded || wasPeekExpanded || _awaitingPostDropCollapse;
 
         bool isCopy = IsCopyRequested(e);
 
@@ -1322,6 +1380,10 @@ public partial class QuadraWindow : Window
                         _coordinator.NotifyQuadraChanged(_viewModel.Model);
                     }
                     e.Handled = true;
+                    if (armPostDrop)
+                    {
+                        ArmPostDropCollapseTimer();
+                    }
                     return;
                 }
 
@@ -1342,6 +1404,10 @@ public partial class QuadraWindow : Window
 
                 _coordinator.NotifyQuadraChanged(_viewModel.Model);
                 e.Handled = true;
+                if (armPostDrop)
+                {
+                    ArmPostDropCollapseTimer();
+                }
                 return;
             }
         }
@@ -1360,6 +1426,11 @@ public partial class QuadraWindow : Window
                 _coordinator.NotifyQuadraChanged(_viewModel.Model);
                 e.Handled = true;
             }
+        }
+
+        if (armPostDrop)
+        {
+            ArmPostDropCollapseTimer();
         }
     }
 
@@ -1502,6 +1573,7 @@ public partial class QuadraWindow : Window
         _touchInertiaTimer?.Stop();
         CancelSpringTimer();
         CancelPeekTimers();
+        CancelPostDropCollapseTimer();
         MouseEnter -= Quadra_PeekMouseEnter;
         MouseLeave -= Quadra_PeekMouseLeave;
         GlobalItemSelected -= OnGlobalItemSelected;

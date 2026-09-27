@@ -182,6 +182,7 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 ### 2026-09-27 (cont.) — Fase 5, Fatia 3: Roll-up validada
 * **Entregue (seções 10 e 18):** duplo-clique na barra + botão chevron ˄/˅ alternam recolhido (só a barra, ~50px); thumbs ocultos e resize ignorado enquanto recolhido; estado persiste; spring-loaded 400ms ao arrastar sobre recolhida (expande, drop mantém, sair recolhe). **Validado pelo PO no Windows.**
 * **Entregue:** Hover-Peek — parou o mouse ~350ms sobre recolhida expande temporário; saiu recolhe após ~350ms (debounce anti-flicker); touch excluído do peek (só chevron/duplo-toque); coexiste com spring sem briga. **Validado pelo PO no Windows.**
+* **Refino do PO (regra mantida):** drop em Quadra expandida via spring/peek → recolhe sozinha após ~3s de ociosidade (mouse fora, sem drag/menu); drops em sequência rearmam; expansão manual não é afetada. **Validado pelo PO no Windows.**
 * **Entregue (seção 12):** "🔒 Travar esta Quadra" no menu da barra de título + cadeado discreto; trava move e resize (scroll/cliques/menu/X intactos); "🔒 Travar todas as Quadras" no tray; estado persiste em `quadras.json`. **Validado pelo PO no Windows.**
 * **Pendente:** "Configurações", ícone próprio, Roll-up.
 
