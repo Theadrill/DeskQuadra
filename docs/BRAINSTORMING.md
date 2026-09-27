@@ -17,6 +17,7 @@
   - Configuração de Projetos e Builds .NET ➔ `msbuild-modernization`
   - Testes Automatizados Unitários (xUnit) ➔ `run-tests`, `assertion-quality`, `test-anti-patterns` e `test-smell-detection`
   - Atualização e Rigor de Documentação Técnica ➔ `docs-writer`
+- **Reuso (regra permanente):** se dá pra reusar, REUSE — ver subseção em `docs/PLANO_DE_IMPLEMENTACAO.md` e auditoria viva em `docs/AUDITORIA_REUSO.md`.
 
 ---
 

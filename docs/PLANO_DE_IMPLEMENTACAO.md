@@ -55,6 +55,13 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 - Tema = um dicionário; troca runtime = swap de dicionário. Sem parser YAML, sem engine própria.
 - Gosto do usuário (`backgroundColor`, `opacity`, `titleColor`, `alignment`, `iconSize` — seção 6) vai em `quadras.json` como override por Quadra, aplicado por cima do tema ativo.
 
+### Reuso (regra permanente)
+- Se dá pra reusar, REUSE: tornar reutilizável sempre que possível e fizer sentido — diálogos, helpers de tema, PInvoke, timers, IO, decisão de input, formatação, fakes de teste.
+- Extrair helper/serviço na 2ª repetição, não antes (sem abstração prematura).
+- Unificar somente com comportamento idêntico + testes passando.
+- Exceções legítimas com motivo registrado: padrões propositalmente diferentes (ex.: Tray WinForms vs menu WPF), defaults de domínio por Clean Architecture, logs/diagnóstico.
+- Auditoria viva em `docs/AUDITORIA_REUSO.md`.
+
 ### Regra para tudo novo
 1. Texto novo -> resx; 2. cor/medida visual nova -> token `DynamicResource` (ou `TODO Token` se `Default` ainda não existir); 3. preferência persistível -> `quadras.json`, nunca hardcoded.
 
