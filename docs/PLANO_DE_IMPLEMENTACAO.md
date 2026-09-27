@@ -166,3 +166,20 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
   2. Nunca usar press-and-hold automático do framework em itens dentro de área scrollável — ele rouba o gesto antes do pan.
   3. Não adicionar handlers `PreviewTouch*` que competem com o `ScrollViewer` sem necessidade comprovada por log.
   4. Todo gesto touch deve ser testado começando **sobre um ícone**, nunca só no padding vazio.
+
+---
+
+## Próxima Fase Planejada: Interações Touch Completas (Tap / Hold / Drag)
+
+* **Objetivo:** Completar o modelo celular nas Quadras: tocou, seleciona; segurou e soltou, menu de contexto; segurou e moveu, arrasta; gesto, scrolla (scroll já entregue em 2026-09-27).
+* **Skills Mandatórias:** `wpf-windows-desktop`, `ui-ux-pro-max`, `coding-guidelines`, `dotnet-pinvoke`.
+* **Escopo Técnico:**
+  - Menu de contexto por "segurou e soltou" (~380ms parado + `TouchUp` sem deslocamento), aberto programaticamente com estilo touch ergonômico (`TouchMenuItemStyle`, 46px) — remover o bloqueio atual de `ContextMenuOpening` para toque só nesse caminho.
+  - Drag and drop por "segurou e moveu": após o hold, deslocamento além do limiar converte o gesto em arrasto do item (dentro da Quadra e entre Quadras, com `Ctrl` para duplicar).
+  - Inércia no scroll manual (desaceleração após soltar o dedo em movimento), hoje o scroll para seco onde o dedo solta.
+  - Manter intactos: tap seleciona e duplo-toque abre (já funcionam via mouse promovido); mouse real inalterado.
+* **Riscos conhecidos:**
+  - Desambiguação scroll vs. drag no mesmo gesto (critério tempo + distância, sem `DispatcherTimer` na thread de UI se possível).
+  - `DragDrop.DoDragDrop` é modal e trava a thread — desacoplar do pipeline de input como tentado em `1584f94`.
+* **Critério de Teste do PO (O que você vai testar):**
+  - Arrastar com o dedo sobre ícones scrolla com inércia; tocar seleciona; segurar e soltar abre o menu grande de toque; segurar e mover arrasta o item para outra Quadra.
