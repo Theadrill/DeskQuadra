@@ -255,22 +255,33 @@ public partial class App : System.Windows.Application
         menu.Items.Add(hiddenRoot);
         menu.Items.Add(showAll);
         menu.Items.Add(lockAll);
-        menu.Items.Add(new WinForms.ToolStripSeparator());
-        menu.Items.Add(exit);
 
         // HangTestSwitch (TESTE DE FOGO, temporário): item que congela a UI de verdade.
         // Remover junto com Services/HangTestSwitch.cs quando a Fase 5 for validada.
+        // (Antes do separador/Sair de propósito: Sair é sempre o último item do menu.)
         if (Services.HangTestSwitch.Enabled)
         {
             var hangTest = new WinForms.ToolStripMenuItem(Services.HangTestSwitch.MenuLabel);
             hangTest.Click += (s, e) => Services.HangTestSwitch.FreezeUi();
-            menu.Items.Add(new WinForms.ToolStripSeparator());
             menu.Items.Add(hangTest);
         }
+
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add(exit);
 
         // Reconstrói o submenu a cada abertura (lista de escondidas é dinâmica)
         menu.Opening += (s, e) => RebuildTrayMenu(hiddenRoot, showAll, lockAll);
         _trayIcon.ContextMenuStrip = menu;
+
+        // Toque simples (e clique esquerdo) também abre o menu: o toque vira clique esquerdo,
+        // que por padrão não abre ContextMenuStrip. Botão direito segue com o comportamento nativo.
+        _trayIcon.MouseClick += (s, e) =>
+        {
+            if (e.Button == WinForms.MouseButtons.Left)
+            {
+                menu.Show(WinForms.Cursor.Position);
+            }
+        };
 
         // Duplo-clique restaura todas as escondidas (nada a fazer se não houver)
         _trayIcon.DoubleClick += (s, e) => RestoreAllHiddenQuadras();
