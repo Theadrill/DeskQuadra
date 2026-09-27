@@ -238,7 +238,17 @@ public partial class App : System.Windows.Application
             Visible = true
         };
 
-        var menu = new WinForms.ContextMenuStrip();
+        var menu = new WinForms.ContextMenuStrip
+        {
+            // Densidade touch SEMPRE ativa (decisão PO): sem detecção por-tap, sem toggle.
+            // Só propriedades WinForms, sem owner-draw. Padding+AutoSize garante o alvo
+            // touch e escala com DPI.
+            Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point),
+            Padding = new WinForms.Padding(4, 4, 4, 4),
+            AutoSize = true,
+            ImageScalingSize = new System.Drawing.Size(24, 24),
+            ShowImageMargin = false,
+        };
         var hiddenRoot = new WinForms.ToolStripMenuItem("Mostrar Quadras Escondidas");
         var showAll = new WinForms.ToolStripMenuItem("Mostrar todas");
         // Trava global: item checkable antes do separador do Sair
@@ -247,6 +257,11 @@ public partial class App : System.Windows.Application
             CheckOnClick = false
         };
         var exit = new WinForms.ToolStripMenuItem("Sair");
+
+        ApplyTouchDensity(hiddenRoot);
+        ApplyTouchDensity(showAll);
+        ApplyTouchDensity(lockAll);
+        ApplyTouchDensity(exit);
 
         showAll.Click += (s, e) => RestoreAllHiddenQuadras();
         lockAll.Click += (s, e) => ToggleLockAll(lockAll);
@@ -275,6 +290,7 @@ public partial class App : System.Windows.Application
                     Services.HangTestSwitch.FreezeUi();
                 }
             };
+            ApplyTouchDensity(hangTest);
             menu.Items.Add(hangTest);
         }
 
@@ -299,6 +315,16 @@ public partial class App : System.Windows.Application
         _trayIcon.DoubleClick += (s, e) => RestoreAllHiddenQuadras();
     }
 
+    // Densidade touch única do menu da bandeja: sempre ativa, sem owner-draw.
+    // Padding amplo + fonte Segoe UI 12pt + AutoSize dão o alvo touch >=44px e escalam com DPI (DPI-safe).
+    private static void ApplyTouchDensity(WinForms.ToolStripMenuItem item)
+    {
+        item.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+        item.Padding = new WinForms.Padding(12, 10, 16, 10);
+        item.Margin = new WinForms.Padding(0);
+        item.AutoSize = true;
+    }
+
     // Preenche o submenu com uma entrada por Quadra escondida + "Mostrar todas" quando houver >1
     private void RebuildTrayMenu(WinForms.ToolStripMenuItem hiddenRoot, WinForms.ToolStripMenuItem showAll, WinForms.ToolStripMenuItem lockAll)
     {
@@ -309,7 +335,9 @@ public partial class App : System.Windows.Application
 
         if (hidden.Count == 0)
         {
-            hiddenRoot.DropDownItems.Add(new WinForms.ToolStripMenuItem("Nenhuma Quadra escondida") { Enabled = false });
+            var empty = new WinForms.ToolStripMenuItem("Nenhuma Quadra escondida") { Enabled = false };
+            ApplyTouchDensity(empty);
+            hiddenRoot.DropDownItems.Add(empty);
         }
         else
         {
@@ -318,6 +346,7 @@ public partial class App : System.Windows.Application
                 var id = quadra.Id;
                 var item = new WinForms.ToolStripMenuItem(quadra.Title);
                 item.Click += (s, e) => coordinator?.RestoreQuadra(id);
+                ApplyTouchDensity(item);
                 hiddenRoot.DropDownItems.Add(item);
             }
         }
