@@ -183,4 +183,13 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="Selection_NewQuadra" xml:space="preserve">
     <value>Nova Quadra</value>
   </data>
+  <data name="TraySettings" xml:space="preserve">
+    <value>Configurações</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Configurações</value>
+  </data>
+  <data name="SettingsStartup" xml:space="preserve">
+    <value>Iniciar DeskQuadra com o Windows</value>
+  </data>
 </root>

@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddSingleton<IIconExtractorService, IconExtractorService>();
         services.AddSingleton<IFileLauncherService, FileLauncherService>();
         services.AddSingleton<IDesktopDrawingService, DesktopDrawingService>();
+        services.AddSingleton<IStartupService, RegistryStartupService>();
         return services;
     }
 }

@@ -9,6 +9,7 @@ using System.Windows.Media.Effects;
 using DeskQuadra.Application;
 using DeskQuadra.Application.Services;
 using DeskQuadra.Application.Snap;
+using DeskQuadra.Core;
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.Persistence;
@@ -33,6 +34,7 @@ public partial class App : System.Windows.Application
     private INativeDesktopIconService? _nativeIconService;
     private IDesktopDrawingService? _drawingService;
     private DesktopSelectionWindow? _selectionWindow;
+    private SettingsWindow? _settingsWindow;
     // Janelas abertas rastreadas por Id da Quadra (ciclo de vida Esconder/Restaurar/Excluir)
     private readonly Dictionary<Guid, QuadraWindow> _quadraWindows = new();
     private WinForms.NotifyIcon? _trayIcon;
@@ -78,6 +80,12 @@ public partial class App : System.Windows.Application
             Shutdown();
             return;
         }
+
+        // --silent/--autostart (boot via Run): sobe silencioso só para o tray,
+        // sem janela intrusiva. O fluxo abaixo já é tray-only (restaura as Quadras
+        // visíveis via coordinator.InitializeAsync + OpenQuadraWindow) e nunca
+        // abre Configurações sozinho — a flag fica documentada aqui para a Fatia 1.
+        _ = StartupCommandBuilder.IsSilentLaunch(e.Args);
         var coordinator = _serviceProvider.GetRequiredService<ILayoutCoordinator>();
         _drawingService = _serviceProvider.GetRequiredService<IDesktopDrawingService>();
 
@@ -257,20 +265,24 @@ public partial class App : System.Windows.Application
         {
             CheckOnClick = false
         };
+        var settings = new WinForms.ToolStripMenuItem(UiStrings.TraySettings);
         var exit = new WinForms.ToolStripMenuItem(UiStrings.TrayExit);
 
         ApplyTouchDensity(hiddenRoot);
         ApplyTouchDensity(showAll);
         ApplyTouchDensity(lockAll);
+        ApplyTouchDensity(settings);
         ApplyTouchDensity(exit);
 
         showAll.Click += (s, e) => RestoreAllHiddenQuadras();
         lockAll.Click += (s, e) => ToggleLockAll(lockAll);
+        settings.Click += (s, e) => OpenSettings();
         exit.Click += (s, e) => Shutdown();
 
         menu.Items.Add(hiddenRoot);
         menu.Items.Add(showAll);
         menu.Items.Add(lockAll);
+        menu.Items.Add(settings);
 
         // HangTestSwitch (TESTE DE FOGO, temporário): item que congela a UI de verdade.
         // Remover junto com Services/HangTestSwitch.cs somente no final do projeto.
@@ -394,6 +406,26 @@ public partial class App : System.Windows.Application
         }
     }
 
+    // Abre a janela Configurações (instância única; reativa se já visível)
+    private void OpenSettings()
+    {
+        if (_settingsWindow != null && _settingsWindow.IsVisible)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        var startupService = _serviceProvider?.GetService<IStartupService>();
+        if (startupService == null)
+        {
+            return;
+        }
+
+        _settingsWindow = new SettingsWindow(new SettingsViewModel(startupService));
+        _settingsWindow.Closed += (s, e) => _settingsWindow = null;
+        _settingsWindow.Show();
+    }
+
     private static void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator)
     {
         var popup = new Popup
@@ -502,6 +534,7 @@ public partial class App : System.Windows.Application
         {
             _drawingService?.Stop();
             _selectionWindow?.Close();
+            _settingsWindow?.Close();
 
             var coordinator = _serviceProvider.GetService<ILayoutCoordinator>();
             coordinator?.SaveNowAsync().GetAwaiter().GetResult();

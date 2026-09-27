@@ -145,5 +145,11 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string FileCopySuffixIndexedFormat => ResourceManager.GetString("FileCopySuffixIndexedFormat", resourceCulture);
 
         public static string Selection_NewQuadra => ResourceManager.GetString("Selection_NewQuadra", resourceCulture);
+
+        public static string TraySettings => ResourceManager.GetString("TraySettings", resourceCulture);
+
+        public static string SettingsTitle => ResourceManager.GetString("SettingsTitle", resourceCulture);
+
+        public static string SettingsStartup => ResourceManager.GetString("SettingsStartup", resourceCulture);
     }
 }

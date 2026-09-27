@@ -1,0 +1,21 @@
+<Window x:Class="DeskQuadra.UI.Wpf.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:properties="clr-namespace:DeskQuadra.UI.Wpf.Properties"
+        Title="{x:Static properties:Strings.SettingsTitle}"
+        WindowStartupLocation="CenterScreen"
+        Width="360"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        ShowInTaskbar="True"
+        Background="{DynamicResource Dialog.Background}">
+    <StackPanel Margin="{DynamicResource Dialog.Panel.Margin}">
+        <CheckBox IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
+                  Content="{x:Static properties:Strings.SettingsStartup}"
+                  Foreground="{DynamicResource Dialog.Foreground}"
+                  FontSize="{DynamicResource Dialog.Message.FontSize}"
+                  Margin="{DynamicResource Dialog.Message.Margin}"
+                  VerticalContentAlignment="Center"/>
+    </StackPanel>
+</Window>
