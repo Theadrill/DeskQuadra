@@ -94,6 +94,20 @@ public sealed class QuadraViewModel : ViewModelBase
         }
     }
 
+    // Modo roll-up: flag pura com notificação (persistência já existe no modelo/DTO)
+    public bool IsCollapsed
+    {
+        get => _quadra.IsCollapsed;
+        set
+        {
+            if (_quadra.IsCollapsed != value)
+            {
+                _quadra.IsCollapsed = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public SortMode SortMode
     {
         get => _quadra.SortMode;

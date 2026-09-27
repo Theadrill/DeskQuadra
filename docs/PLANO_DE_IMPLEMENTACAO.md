@@ -177,9 +177,10 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 
 ### 2026-09-27 (cont.) — Fase 5, Fatia 1: X (Esconder/Excluir) + tray validada
 * **Entregue:** diálogo Esconder/Excluir/Cancelar no X (exclusão move itens p/ TUDO; padrão exige confirmação extra; disco nunca tocado); `HideQuadra`/`RestoreQuadra` no coordinator com eventos; `NotifyIcon` WinForms sem NuGet novo (ícone provisório do sistema, `TODO` marcado); menu tray com escondidas + "Mostrar todas" + Sair; `ShutdownMode=OnExplicitShutdown`; escondidas não reabrem no boot. **Validado pelo PO no Windows.**
-* **Pendente:** "Configurações", ícone próprio, Roll-up.
+* **Pendente:** "Configurações", ícone próprio, Hover-Peek do Roll-up.
 
-### 2026-09-27 (cont.) — Fase 5, Fatia 2: Travar Quadras validada
+### 2026-09-27 (cont.) — Fase 5, Fatia 3: Roll-up validada
+* **Entregue (seções 10 e 18):** duplo-clique na barra + botão chevron ˄/˅ alternam recolhido (só a barra, ~50px); thumbs ocultos e resize ignorado enquanto recolhido; estado persiste; spring-loaded 400ms ao arrastar sobre recolhida (expande, drop mantém, sair recolhe). **Validado pelo PO no Windows.**
 * **Entregue (seção 12):** "🔒 Travar esta Quadra" no menu da barra de título + cadeado discreto; trava move e resize (scroll/cliques/menu/X intactos); "🔒 Travar todas as Quadras" no tray; estado persiste em `quadras.json`. **Validado pelo PO no Windows.**
 * **Pendente:** "Configurações", ícone próprio, Roll-up.
 

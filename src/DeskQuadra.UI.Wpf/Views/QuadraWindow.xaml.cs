@@ -39,6 +39,13 @@ public partial class QuadraWindow : Window
     private bool _isItemDragging;
     private bool _isTouchActive;
 
+    // Modo roll-up (recolhimento no local, seção 10 do BRAINSTORMING)
+    private double? _expandedHeight; // altura guardada antes de recolher
+    private double _savedMinHeight = 140; // MinHeight original para restaurar ao expandir
+    private bool _isApplyingCollapse; // suprime sincronização de altura na troca programática
+    private bool _springExpanded; // expansão temporária do spring-loaded (ainda não persistida)
+    private DispatcherTimer? _springTimer; // timer único one-shot (~400ms) do spring-loaded
+
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -67,6 +74,15 @@ public partial class QuadraWindow : Window
         {
             _isInitializing = false;
             RefreshLockState();
+            // Estado inicial: se o modelo já veio recolhido, abre recolhido (sem persistir)
+            if (_viewModel.IsCollapsed)
+            {
+                ApplyCollapsed(true, persist: false);
+            }
+            else
+            {
+                RefreshCollapsedState();
+            }
         };
         LocationChanged += OnPositionOrSizeChanged;
         SizeChanged += OnPositionOrSizeChanged;
@@ -125,6 +141,101 @@ public partial class QuadraWindow : Window
         {
             LockIndicator.Visibility = _viewModel.IsLocked ? Visibility.Visible : Visibility.Collapsed;
         }
+    }
+
+    // Atualiza o chevron e o tooltip a partir do modelo (padrão refresh como o RefreshLockState)
+    public void RefreshCollapsedState()
+    {
+        if (CollapseGlyph != null)
+        {
+            CollapseGlyph.Text = _viewModel.IsCollapsed ? "˅" : "˄";
+        }
+        if (CollapseButton != null)
+        {
+            CollapseButton.ToolTip = _viewModel.IsCollapsed ? "Expandir" : "Recolher";
+        }
+    }
+
+    // Alterna recolhido/expandido (duplo-clique ou chevron; o lock NÃO bloqueia)
+    private void ToggleCollapsed()
+    {
+        CancelSpringTimer();
+        _springExpanded = false;
+        ApplyCollapsed(!_viewModel.IsCollapsed, persist: true);
+    }
+
+    private void CollapseButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleCollapsed();
+    }
+
+    private void ApplyCollapsed(bool collapsed, bool persist)
+    {
+        _isApplyingCollapse = true;
+        try
+        {
+            if (collapsed)
+            {
+                // Guarda a altura atual para restaurar ao expandir
+                _expandedHeight = Height;
+                _savedMinHeight = MinHeight;
+                _viewModel.IsCollapsed = true;
+
+                // Colapsa a linha de conteúdo e contorna o MinHeight="140" baixando-o temporariamente
+                ContentRow.Height = new GridLength(0);
+                ContentArea.Visibility = Visibility.Collapsed;
+                SetResizeThumbsVisibility(Visibility.Collapsed);
+
+                double collapsedHeight = (TitleBarBorder.ActualHeight > 0 ? TitleBarBorder.ActualHeight : 28) + 22; // 20 das margens + 2 das bordas
+                MinHeight = 0;
+                Height = collapsedHeight;
+
+                // Reforça a altura expandida no modelo (o binding TwoWay empurra a altura recolhida para o VM)
+                double expanded = _expandedHeight ?? _viewModel.Model.Height;
+                _viewModel.Model.Height = expanded;
+                Dispatcher.BeginInvoke(() => { if (_viewModel.IsCollapsed && _expandedHeight.HasValue) _viewModel.Model.Height = _expandedHeight.Value; });
+            }
+            else
+            {
+                // Expande: restaura linha, thumbs, MinHeight e a altura guardada (ou a do modelo)
+                ContentRow.Height = new GridLength(1, GridUnitType.Star);
+                ContentArea.Visibility = Visibility.Visible;
+                SetResizeThumbsVisibility(Visibility.Visible);
+                MinHeight = _savedMinHeight;
+
+                double restored = _expandedHeight ?? _viewModel.Model.Height;
+                if (double.IsNaN(restored) || restored < MinHeight)
+                {
+                    restored = MinHeight;
+                }
+                Height = restored;
+                _expandedHeight = null;
+                _viewModel.IsCollapsed = false;
+            }
+
+            RefreshCollapsedState();
+        }
+        finally
+        {
+            _isApplyingCollapse = false;
+        }
+
+        if (persist)
+        {
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        }
+    }
+
+    private void SetResizeThumbsVisibility(Visibility visibility)
+    {
+        ResizeThumbTop.Visibility = visibility;
+        ResizeThumbBottom.Visibility = visibility;
+        ResizeThumbLeft.Visibility = visibility;
+        ResizeThumbRight.Visibility = visibility;
+        ResizeThumbTopLeft.Visibility = visibility;
+        ResizeThumbTopRight.Visibility = visibility;
+        ResizeThumbBottomLeft.Visibility = visibility;
+        ResizeThumbBottomRight.Visibility = visibility;
     }
 
     // Sincroniza a grade de itens com o modelo (usado quando outra Quadra move itens para cá)
@@ -229,8 +340,21 @@ public partial class QuadraWindow : Window
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         // Quadra travada: sem arraste pela barra de título (scroll, cliques e menu seguem normais)
+        // (o lock NÃO bloqueia recolher/expandir: o chevron e o duplo-clique continuam ativos)
         if (_viewModel.IsLocked)
         {
+            return;
+        }
+
+        // Duplo-clique na barra alterna recolhido/expandido
+        // (Border não expõe evento de double-click, então detecta via ClickCount)
+        if (e.ClickCount == 2)
+        {
+            // Interrompe um possível arraste iniciado no primeiro clique
+            _isDragging = false;
+            (sender as UIElement)?.ReleaseMouseCapture();
+            ToggleCollapsed();
+            e.Handled = true;
             return;
         }
 
@@ -478,12 +602,39 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        _viewModel.Left = Left;
-        _viewModel.Top = Top;
-        _viewModel.Width = Width;
-        _viewModel.Height = Height;
+        // Troca programática de recolher/expandir: não sincroniza nem persiste aqui (ApplyCollapsed cuida disso)
+        if (_isApplyingCollapse)
+        {
+            return;
+        }
 
-        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        bool changed = false;
+        if (Math.Abs(_viewModel.Left - Left) > 0.001)
+        {
+            _viewModel.Left = Left;
+            changed = true;
+        }
+        if (Math.Abs(_viewModel.Top - Top) > 0.001)
+        {
+            _viewModel.Top = Top;
+            changed = true;
+        }
+        if (Math.Abs(_viewModel.Width - Width) > 0.001)
+        {
+            _viewModel.Width = Width;
+            changed = true;
+        }
+        // Recolhido: preserva a altura expandida no modelo (posição continua persistindo normalmente)
+        if (!_viewModel.IsCollapsed && Math.Abs(_viewModel.Height - Height) > 0.001)
+        {
+            _viewModel.Height = Height;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        }
     }
 
     private void AddFileButton_Click(object sender, RoutedEventArgs e)
@@ -982,10 +1133,57 @@ public partial class QuadraWindow : Window
         {
             e.Effects = DragDropEffects.None;
         }
+
+        // Spring-loaded (seção 18): sobre Quadra recolhida, arma timer único de ~400ms (one-shot)
+        if (_viewModel.IsCollapsed && _springTimer == null)
+        {
+            _springTimer = new DispatcherTimer(DispatcherPriority.Normal)
+            {
+                Interval = TimeSpan.FromMilliseconds(400)
+            };
+            _springTimer.Tick += SpringTimer_Tick;
+            _springTimer.Start();
+        }
+    }
+
+    private void SpringTimer_Tick(object? sender, EventArgs e)
+    {
+        CancelSpringTimer();
+        // O arrasto permaneceu sobre a janela até o tick (DragLeave já teria cancelado): expande temporariamente sem persistir
+        if (_viewModel.IsCollapsed)
+        {
+            _springExpanded = true;
+            ApplyCollapsed(false, persist: false);
+        }
+    }
+
+    private void Quadra_DragLeave(object sender, DragEventArgs e)
+    {
+        CancelSpringTimer();
+        // Saiu sem soltar: recolhe de novo sem persistir o estado temporário
+        if (_springExpanded)
+        {
+            _springExpanded = false;
+            ApplyCollapsed(true, persist: false);
+        }
+    }
+
+    private void CancelSpringTimer()
+    {
+        if (_springTimer != null)
+        {
+            _springTimer.Stop();
+            _springTimer.Tick -= SpringTimer_Tick;
+            _springTimer = null;
+        }
     }
 
     private void Quadra_Drop(object sender, DragEventArgs e)
     {
+        CancelSpringTimer();
+        bool wasSpringExpanded = _springExpanded;
+        _springExpanded = false;
+
         bool isCopy = IsCopyRequested(e);
 
         if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
@@ -995,7 +1193,11 @@ public partial class QuadraWindow : Window
             {
                 if (payload.SourceQuadraId == _viewModel.Id && !isCopy)
                 {
-                    // Mesmo container sem Ctrl: nenhuma ação necessária
+                    // Mesmo container sem Ctrl: nenhuma ação necessária (mas persiste se o spring havia expandido)
+                    if (wasSpringExpanded)
+                    {
+                        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+                    }
                     e.Handled = true;
                     return;
                 }
@@ -1175,6 +1377,7 @@ public partial class QuadraWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _touchInertiaTimer?.Stop();
+        CancelSpringTimer();
         GlobalItemSelected -= OnGlobalItemSelected;
         GlobalCloseMenusRequested -= OnGlobalCloseMenusRequested;
         LocationChanged -= OnPositionOrSizeChanged;
@@ -1194,6 +1397,12 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
+        {
+            return;
+        }
+
         double newWidth = Width + e.HorizontalChange;
         if (newWidth >= MinWidth)
         {
@@ -1209,6 +1418,12 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
+        {
+            return;
+        }
+
         double newHeight = Height + e.VerticalChange;
         if (newHeight >= MinHeight)
         {
@@ -1220,6 +1435,12 @@ public partial class QuadraWindow : Window
     {
         // Quadra travada: sem redimensionamento
         if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
         {
             return;
         }
@@ -1240,6 +1461,12 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
+        {
+            return;
+        }
+
         double newHeight = Height - e.VerticalChange;
         if (newHeight >= MinHeight)
         {
@@ -1256,6 +1483,12 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
+        {
+            return;
+        }
+
         ResizeRight_DragDelta(sender, e);
         ResizeBottom_DragDelta(sender, e);
     }
@@ -1264,6 +1497,12 @@ public partial class QuadraWindow : Window
     {
         // Quadra travada: sem redimensionamento
         if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
         {
             return;
         }
@@ -1280,6 +1519,12 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
+        {
+            return;
+        }
+
         ResizeRight_DragDelta(sender, e);
         ResizeTop_DragDelta(sender, e);
     }
@@ -1288,6 +1533,12 @@ public partial class QuadraWindow : Window
     {
         // Quadra travada: sem redimensionamento
         if (_viewModel.IsLocked)
+        {
+            return;
+        }
+
+        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
+        if (_viewModel.IsCollapsed)
         {
             return;
         }

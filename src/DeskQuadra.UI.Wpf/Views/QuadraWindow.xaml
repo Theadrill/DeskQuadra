@@ -150,6 +150,7 @@
                 AllowDrop="True"
                 DragOver="Quadra_DragOver"
                 Drop="Quadra_Drop"
+                DragLeave="Quadra_DragLeave"
                 PreviewMouseDown="QuadraContainer_PreviewMouseDown">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="16"
@@ -163,7 +164,7 @@
                     <!-- Barra de título compacta (~28px conforme Sessão 24 - Modo Normal) -->
                     <RowDefinition Height="28"/>
                     <!-- Área do conteúdo / atalhos -->
-                    <RowDefinition Height="*"/>
+                    <RowDefinition x:Name="ContentRow" Height="*"/>
                 </Grid.RowDefinitions>
 
                 <!-- Barra de título interativa -->
@@ -172,8 +173,8 @@
                         Background="#26FFFFFF"
                         BorderBrush="#1AFFFFFF"
                         BorderThickness="0,0,0,1"
-                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
-                        MouseMove="TitleBar_MouseMove"
+                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+                         MouseMove="TitleBar_MouseMove"
                         MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
                         LostMouseCapture="TitleBar_LostMouseCapture"
                         ContextMenuOpening="TitleBar_ContextMenuOpening">
@@ -198,6 +199,7 @@
                     <Grid Margin="8,0,4,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
@@ -229,17 +231,27 @@
                                    Visibility="Collapsed"
                                    ToolTip="Quadra travada"/>
 
-                        <!-- Botão Adicionar Atalho / Arquivo -->
-                        <Button Grid.Column="2"
+                        <!-- Botão Recolher/Expandir (roll-up; 24x24 no Modo Normal, sem vazar para o arraste) -->
+                        <Button x:Name="CollapseButton"
+                                Grid.Column="2"
                                 Style="{StaticResource TitleBarButtonStyle}"
-                                ToolTip="Adicionar Atalhos ou Arquivos"
-                                Click="AddFileButton_Click"
+                                ToolTip="Recolher"
+                                Click="CollapseButton_Click"
                                 Margin="0,0,2,0">
-                            <TextBlock Text="+" FontSize="14" FontWeight="Bold"/>
+                            <TextBlock x:Name="CollapseGlyph" Text="˄" FontSize="12" FontWeight="Bold"/>
                         </Button>
 
-                        <!-- Botão Fechar / Ocultar -->
+                        <!-- Botão Adicionar Atalho / Arquivo -->
                         <Button Grid.Column="3"
+                                 Style="{StaticResource TitleBarButtonStyle}"
+                                 ToolTip="Adicionar Atalhos ou Arquivos"
+                                 Click="AddFileButton_Click"
+                                 Margin="0,0,2,0">
+                             <TextBlock Text="+" FontSize="14" FontWeight="Bold"/>
+                         </Button>
+
+                         <!-- Botão Fechar / Ocultar -->
+                        <Button Grid.Column="4"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="Fechar Quadra"
                                 Click="CloseButton_Click">
@@ -249,7 +261,7 @@
                 </Border>
 
                 <!-- Área interna / Grid de Atalhos da Quadra -->
-                <Grid Grid.Row="1" Margin="6,4">
+                <Grid x:Name="ContentArea" Grid.Row="1" Margin="6,4">
                     <!-- Mensagem para Quadra vazia -->
                     <Border BorderBrush="#14FFFFFF"
                             BorderThickness="1"
@@ -368,30 +380,30 @@
         <!-- ========================================== -->
 
         <!-- Bordas Simples -->
-        <primitives:Thumb Height="6" VerticalAlignment="Top" Margin="6,0,6,0"
+        <primitives:Thumb x:Name="ResizeThumbTop" Height="6" VerticalAlignment="Top" Margin="6,0,6,0"
                           Cursor="SizeNS" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeTop_DragDelta"/>
-        <primitives:Thumb Height="6" VerticalAlignment="Bottom" Margin="6,0,6,0"
+        <primitives:Thumb x:Name="ResizeThumbBottom" Height="6" VerticalAlignment="Bottom" Margin="6,0,6,0"
                           Cursor="SizeNS" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeBottom_DragDelta"/>
-        <primitives:Thumb Width="6" HorizontalAlignment="Left" Margin="0,6,0,6"
+        <primitives:Thumb x:Name="ResizeThumbLeft" Width="6" HorizontalAlignment="Left" Margin="0,6,0,6"
                           Cursor="SizeWE" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeLeft_DragDelta"/>
-        <primitives:Thumb Width="6" HorizontalAlignment="Right" Margin="0,6,0,6"
+        <primitives:Thumb x:Name="ResizeThumbRight" Width="6" HorizontalAlignment="Right" Margin="0,6,0,6"
                           Cursor="SizeWE" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeRight_DragDelta"/>
 
         <!-- Cantos (Diagonal) -->
-        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
+        <primitives:Thumb x:Name="ResizeThumbTopLeft" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
                           Cursor="SizeNWSE" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeTopLeft_DragDelta"/>
-        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
+        <primitives:Thumb x:Name="ResizeThumbTopRight" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
                           Cursor="SizeNESW" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeTopRight_DragDelta"/>
-        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+        <primitives:Thumb x:Name="ResizeThumbBottomLeft" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                           Cursor="SizeNESW" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeBottomLeft_DragDelta"/>
-        <primitives:Thumb Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+        <primitives:Thumb x:Name="ResizeThumbBottomRight" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                           Cursor="SizeNWSE" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeBottomRight_DragDelta"/>
     </Grid>
