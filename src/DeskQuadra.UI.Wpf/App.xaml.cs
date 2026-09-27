@@ -41,6 +41,7 @@ public partial class App : System.Windows.Application
         DispatcherUnhandledException += (s, args) => _nativeIconService?.ShowDesktopIcons();
 
         var services = new ServiceCollection();
+        services.AddSingleton<IInputDeviceDetector, DeskQuadra.UI.Wpf.Services.InputDeviceDetector>();
         ConfigureServices(services);
 
         _serviceProvider = services.BuildServiceProvider();

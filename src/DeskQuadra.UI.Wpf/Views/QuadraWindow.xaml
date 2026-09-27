@@ -251,16 +251,15 @@
                                    HorizontalAlignment="Center"/>
                     </Border>
 
-                    <!-- Lista com rolagem suave de atalhos e ícones em WrapPanel com suporte nativo a toque -->
+                    <!-- Lista com rolagem suave de atalhos e ícones em WrapPanel com suporte nativo a toque (restaurado de 6a05e6c) -->
                     <ScrollViewer x:Name="ItemsScrollViewer"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   PanningMode="VerticalOnly"
                                   PanningRatio="1.0"
                                   PanningDeceleration="0.001"
+                                  IsManipulationEnabled="True"
                                   ManipulationBoundaryFeedback="ScrollViewer_ManipulationBoundaryFeedback"
-                                  PreviewTouchMove="ItemsScrollViewer_PreviewTouchMove"
-                                  PreviewTouchUp="ItemsScrollViewer_PreviewTouchUp"
                                   Padding="2"
                                   Focusable="False">
                         <ItemsControl ItemsSource="{Binding Items}">
@@ -281,8 +280,7 @@
                                             ContextMenuOpening="DesktopItem_ContextMenuOpening"
                                             PreviewMouseLeftButtonDown="DesktopItem_PreviewMouseLeftButtonDown"
                                             PreviewMouseMove="DesktopItem_PreviewMouseMove"
-                                            PreviewMouseLeftButtonUp="DesktopItem_PreviewMouseLeftButtonUp"
-                                            PreviewTouchDown="DesktopItem_PreviewTouchDown">
+                                            PreviewMouseLeftButtonUp="DesktopItem_PreviewMouseLeftButtonUp">
                                         <Border.ContextMenu>
                                             <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
                                                 <MenuItem Header="Abrir" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>

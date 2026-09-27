@@ -147,3 +147,22 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 * **Critério de Teste do PO (O que você vai testar):**
   - Matar o processo `explorer.exe` no Gerenciador de Tarefas e ver o DeskQuadra se auto-recuperar sozinho em ~150ms.
   - Pressionar `Ctrl + Shift + Alt + Q` a qualquer momento para ver o app encerrar em modo de emergência e o desktop nativo reaparecer imediatamente.
+
+---
+
+## Registro de Decisões de Implementação
+
+> Aprendizados colhidos na prática para não repetir erros. Entradas em ordem cronológica.
+
+### 2026-09-27 — Scroll por gesto de dedo nas Quadras (Steam Deck)
+* **Contexto:** Quadras com mais ícones que o espaço visível precisam de scroll por gesto de dedo estilo celular (Fase 5, telas touch). O gesto começa sobre os ícones, não no vazio.
+* **Tentativa 1 — Pan nativo (`6a05e6c`):** `ScrollViewer` com `PanningMode="VerticalOnly"` e `ManipulationBoundaryFeedback` tratado, sem handlers de toque nos itens. Funcionou no estágio inicial.
+* **Tentativa 2 — Press-and-hold + menu por item (`dc983e1` e seguintes):** adicionou `<Border.ContextMenu>` por item, handlers `PreviewTouchDown/Move/Up`, timer de hold (380ms) e `PanningMode=None` durante arrasto. Quebrou o scroll: o hold automático do framework passou a sequestrar o toque sobre os ícones antes da manipulação iniciar.
+* **Tentativa 3 — Scroll-first parcial:** `Stylus.IsPressAndHoldEnabled="False"` + bloqueio de `ContextMenuOpening` para toque. Continuou sem scrollar.
+* **Diagnóstico com dado real (`input-diag.log` no `%APPDATA%\DeskQuadra`):** o Steam Deck entrega o dedo como `WM_POINTER` + **mouse promovido** (`GetMessageExtraInfo = 0xFF51578x`, `StylusDevice = null`) e **zero** eventos WPF `Touch`/`Manipulation` na janela. Ou seja, o pan nativo do `ScrollViewer` está morto nesse ambiente por construção — nenhum ajuste de `PanningMode` resolveria.
+* **Solução final — Scroll manual 1:1 (`QuadraWindow.xaml.cs`):** arrasto com assinatura de toque (`NativeMethods.IsCurrentMessageFromTouch()`) desloca `ScrollViewer.VerticalOffset` diretamente, com `CaptureMouse` no `ScrollViewer`, desvio da scrollbar e sem `e.Handled` no `Down` (preserva "tocou, seleciona"). Mouse real segue intacto com drag de item. Sem inércia nesta etapa; menu por "segurou e soltou" fica para a próxima fase (máquina de estados tap/hold/drag).
+* **Regras para não repetir:**
+  1. Nunca detectar toque só por `StylusDevice` — no Deck ele é sempre `null`; o discriminador confiável é `GetMessageExtraInfo` (`0xFF51578x`).
+  2. Nunca usar press-and-hold automático do framework em itens dentro de área scrollável — ele rouba o gesto antes do pan.
+  3. Não adicionar handlers `PreviewTouch*` que competem com o `ScrollViewer` sem necessidade comprovada por log.
+  4. Todo gesto touch deve ser testado começando **sobre um ícone**, nunca só no padding vazio.

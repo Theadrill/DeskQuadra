@@ -37,13 +37,8 @@ public partial class QuadraWindow : Window
     private Point _itemDragStartPos;
     private DesktopItemViewModel? _draggedItemCandidate;
     private bool _isItemDragging;
+    private bool _isTouchActive;
 
-    // Estado do gesto de toque prolongado (Touch Press & Hold)
-    private DispatcherTimer? _touchHoldTimer;
-    private DesktopItemViewModel? _touchTargetItem;
-    private FrameworkElement? _touchTargetElement;
-    private Point _touchStartPoint;
-    private bool _isTouchHoldActive;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -72,8 +67,30 @@ public partial class QuadraWindow : Window
         LocationChanged += OnPositionOrSizeChanged;
         SizeChanged += OnPositionOrSizeChanged;
 
+        ItemsScrollViewer.PreviewMouseLeftButtonDown += ItemsScrollViewer_TouchScrollDown;
+        ItemsScrollViewer.PreviewMouseMove += ItemsScrollViewer_TouchScrollMove;
+        ItemsScrollViewer.PreviewMouseLeftButtonUp += ItemsScrollViewer_TouchScrollUp;
+
         GlobalItemSelected += OnGlobalItemSelected;
         GlobalCloseMenusRequested += OnGlobalCloseMenusRequested;
+
+        // Rastreamento robusto e instantâneo de Toque físico na janela
+        PreviewTouchDown += (s, e) => _isTouchActive = true;
+        PreviewTouchUp += (s, e) => _isTouchActive = false;
+        PreviewMouseDown += (s, e) =>
+        {
+            if (e.StylusDevice == null && !NativeMethods.IsCurrentMessageFromTouch())
+            {
+                _isTouchActive = false;
+            }
+        };
+        PreviewMouseMove += (s, e) =>
+        {
+            if (e.LeftButton == MouseButtonState.Released && e.RightButton == MouseButtonState.Released)
+            {
+                _isTouchActive = false;
+            }
+        };
 
         // Garante que o estado minimizado nunca seja mantido se for acionado externamente
         StateChanged += (s, e) =>
@@ -363,9 +380,97 @@ public partial class QuadraWindow : Window
         e.Handled = true;
     }
 
+    // ==========================================
+    // Scroll manual por toque (estilo celular)
+    // O Deck entrega o dedo como mouse promovido (sem eventos WPF Touch e sem
+    // manipulação do ScrollViewer), então o arrasto com assinatura de toque
+    // desloca o VerticalOffset 1:1. Mouse real continua com drag de item.
+    // ==========================================
+    private bool _touchScrollActive;
+    private Point _touchScrollStartPoint;
+    private double _touchScrollStartOffset;
+
+    private static bool IsTouchPromotedMouse(MouseEventArgs e)
+    {
+        return (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
+               || NativeMethods.IsCurrentMessageFromTouch();
+    }
+
+    private static bool IsOnScrollbar(MouseEventArgs e)
+    {
+        DependencyObject? dep = e.OriginalSource as DependencyObject;
+        while (dep != null)
+        {
+            if (dep is System.Windows.Controls.Primitives.ScrollBar)
+            {
+                return true;
+            }
+            dep = VisualTreeHelper.GetParent(dep);
+        }
+        return false;
+    }
+
+    private void ItemsScrollViewer_TouchScrollDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || !IsTouchPromotedMouse(e) || IsOnScrollbar(e))
+        {
+            return;
+        }
+
+        _touchScrollActive = true;
+        _touchScrollStartPoint = e.GetPosition(ItemsScrollViewer);
+        _touchScrollStartOffset = ItemsScrollViewer.VerticalOffset;
+        ItemsScrollViewer.CaptureMouse();
+        // Sem e.Handled aqui de propósito: o evento continua até o item para preservar "tocou, seleciona".
+    }
+
+    private void ItemsScrollViewer_TouchScrollMove(object sender, MouseEventArgs e)
+    {
+        if (!_touchScrollActive)
+        {
+            return;
+        }
+
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            EndTouchScroll();
+            return;
+        }
+
+        if (!IsTouchPromotedMouse(e))
+        {
+            return;
+        }
+
+        Point current = e.GetPosition(ItemsScrollViewer);
+        ItemsScrollViewer.ScrollToVerticalOffset(_touchScrollStartOffset - (current.Y - _touchScrollStartPoint.Y));
+        e.Handled = true;
+    }
+
+    private void ItemsScrollViewer_TouchScrollUp(object sender, MouseButtonEventArgs e)
+    {
+        EndTouchScroll();
+    }
+
+    private void EndTouchScroll()
+    {
+        if (!_touchScrollActive)
+        {
+            return;
+        }
+
+        _touchScrollActive = false;
+        if (ItemsScrollViewer.IsMouseCaptured)
+        {
+            ItemsScrollViewer.ReleaseMouseCapture();
+        }
+    }
+
     private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        bool isTouch = e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch;
+        bool isTouch = _isTouchActive
+                       || (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
+                       || NativeMethods.IsCurrentMessageFromTouch();
 
         if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
         {
@@ -380,7 +485,7 @@ public partial class QuadraWindow : Window
         }
 
         // Evita captura imediata de arraste quando o usuário estiver usando toque na tela (dedo),
-        // permitindo que o gesto de deslize execute o Panning suave no ScrollViewer
+        // permitindo que o gesto de deslize execute o Panning suave no ScrollViewer (restaurado de 6a05e6c)
         if (!isTouch && e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
         {
             _itemDragStartPos = e.GetPosition(this);
@@ -388,114 +493,19 @@ public partial class QuadraWindow : Window
         }
     }
 
-    private void DesktopItem_PreviewTouchDown(object sender, TouchEventArgs e)
+    private void DesktopItem_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
+        // Fase scroll-first: toque nunca abre menu automaticamente para não roubar o gesto de pan.
+        // O menu por toque (segurou e soltou) será reintroduzido na próxima fase com máquina de estados própria.
+        if (_isTouchActive || NativeMethods.IsCurrentMessageFromTouch())
         {
-            _touchTargetElement = fe;
-            _touchTargetItem = item;
-            _touchStartPoint = e.GetTouchPoint(this).Position;
-            _isTouchHoldActive = false;
-
-            CancelTouchHoldTimer();
-            _touchHoldTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(380)
-            };
-            _touchHoldTimer.Tick += OnTouchHoldTimerTick;
-            _touchHoldTimer.Start();
-        }
-    }
-
-    private void OnTouchHoldTimerTick(object? sender, EventArgs e)
-    {
-        CancelTouchHoldTimer();
-
-        if (_touchTargetItem != null && _touchTargetElement != null)
-        {
-            _isTouchHoldActive = true;
-            GlobalItemSelected?.Invoke(_touchTargetItem);
-
-            // Desativa temporariamente o PanningMode para permitir que o movimento posterior arraste o item
-            ItemsScrollViewer.PanningMode = PanningMode.None;
-        }
-    }
-
-    private void ItemsScrollViewer_PreviewTouchMove(object sender, TouchEventArgs e)
-    {
-        Point currentPoint = e.GetTouchPoint(this).Position;
-        Vector delta = currentPoint - _touchStartPoint;
-
-        // Se o usuário mover mais de 12px antes dos 380ms, é uma rolagem (scroll): cancela o timer de Hold
-        if (_touchHoldTimer != null && _touchHoldTimer.IsEnabled)
-        {
-            if (delta.Length > 12)
-            {
-                CancelTouchHoldTimer();
-                _touchTargetItem = null;
-                _touchTargetElement = null;
-                _isTouchHoldActive = false;
-            }
+            e.Handled = true;
             return;
         }
 
-        // Se já está em Hold e o usuário moveu o dedo além do limiar, inicia o Drag & Drop do atalho!
-        if (_isTouchHoldActive && _touchTargetItem != null && _touchTargetElement != null)
-        {
-            if (delta.Length > 10)
-            {
-                _isTouchHoldActive = false;
-                var item = _touchTargetItem;
-                var fe = _touchTargetElement;
-                _touchTargetItem = null;
-                _touchTargetElement = null;
-
-                // Desacopla o início do DoDragDrop da pipeline síncrona de eventos Touch para evitar conflito/deadlock no dispatcher
-                Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
-                {
-                    StartItemDragDrop(item);
-                });
-            }
-        }
-    }
-
-    private void ItemsScrollViewer_PreviewTouchUp(object sender, TouchEventArgs e)
-    {
-        CancelTouchHoldTimer();
-
-        // Se o usuário manteve o dedo pressionado e soltou no mesmo lugar: abre o Menu de Contexto (botão direito)!
-        if (_isTouchHoldActive && _touchTargetElement != null)
-        {
-            _isTouchHoldActive = false;
-            ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
-
-            var menu = _touchTargetElement.ContextMenu;
-            if (menu != null)
-            {
-                // Aplica dinamicamente o estilo ergonômico Touch (46px com hit targets amplos para dedos) apenas nos MenuItems
-                ApplyMenuDensity(menu, isTouch: true);
-                menu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
-                menu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
-                _activeOpenItemContextMenu = menu;
-                menu.PlacementTarget = _touchTargetElement;
-                menu.Placement = PlacementMode.Bottom;
-                menu.IsOpen = true;
-            }
-        }
-        else
-        {
-            ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
-        }
-
-        _touchTargetItem = null;
-        _touchTargetElement = null;
-    }
-
-    private void DesktopItem_ContextMenuOpening(object sender, ContextMenuEventArgs e)
-    {
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
-            // Quando acionado pelo mouse, garante estilo compacto (~26px) apenas nos MenuItems
+            // Scroll-first: neste ponto só chega evento de mouse/touchpad -> estilo compacto (~26px).
             ApplyMenuDensity(fe.ContextMenu, isTouch: false);
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
             fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
@@ -506,27 +516,31 @@ public partial class QuadraWindow : Window
     private void ApplyMenuDensity(ContextMenu menu, bool isTouch)
     {
         var style = (Style)FindResource(isTouch ? "TouchMenuItemStyle" : "MouseMenuItemStyle");
-        foreach (var item in menu.Items)
+        ApplyStyleRecursively(menu.Items, style);
+    }
+
+    private static void ApplyStyleRecursively(ItemCollection items, Style style)
+    {
+        foreach (var item in items)
         {
             if (item is MenuItem mi)
             {
                 mi.Style = style;
+                if (mi.Items.Count > 0)
+                {
+                    ApplyStyleRecursively(mi.Items, style);
+                }
             }
-        }
-    }
-
-    private void CancelTouchHoldTimer()
-    {
-        if (_touchHoldTimer != null)
-        {
-            _touchHoldTimer.Stop();
-            _touchHoldTimer = null;
         }
     }
 
     private void DesktopItem_PreviewMouseMove(object sender, MouseEventArgs e)
     {
-        if (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
+        bool isTouch = _isTouchActive
+                       || (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
+                       || NativeMethods.IsCurrentMessageFromTouch();
+
+        if (isTouch)
         {
             return;
         }
@@ -583,7 +597,6 @@ public partial class QuadraWindow : Window
         {
             _isItemDragging = false;
             _draggedItemCandidate = null;
-            ItemsScrollViewer.PanningMode = PanningMode.VerticalOnly;
         }
     }
 
@@ -831,7 +844,6 @@ public partial class QuadraWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        CancelTouchHoldTimer();
         GlobalItemSelected -= OnGlobalItemSelected;
         GlobalCloseMenusRequested -= OnGlobalCloseMenusRequested;
         LocationChanged -= OnPositionOrSizeChanged;

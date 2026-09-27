@@ -34,6 +34,61 @@ internal static class NativeMethods
     public const int WM_SYSCOMMAND = 0x0112;
     public const int SC_MINIMIZE = 0xF020;
 
+    public enum INPUT_MESSAGE_DEVICE_TYPE
+    {
+        IMDT_UNAVAILABLE = 0x00000000,
+        IMDT_KEYBOARD = 0x00000001,
+        IMDT_MOUSE = 0x00000002,
+        IMDT_TOUCH = 0x00000004,
+        IMDT_PEN = 0x00000008,
+        IMDT_TOUCHPAD = 0x00000010,
+        IMDT_HID = 0x00000020
+    }
+
+    public enum INPUT_MESSAGE_ORIGIN_ID
+    {
+        IMO_UNAVAILABLE = 0x00000000,
+        IMO_HARDWARE = 0x00000001,
+        IMO_INJECTED = 0x00000002,
+        IMO_SYSTEM = 0x00000004
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT_MESSAGE_SOURCE
+    {
+        public INPUT_MESSAGE_DEVICE_TYPE deviceType;
+        public INPUT_MESSAGE_ORIGIN_ID originId;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetCurrentInputMessageSource(out INPUT_MESSAGE_SOURCE inputMessageSource);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetMessageExtraInfo();
+
+    public static bool IsCurrentMessageFromTouch()
+    {
+        // Prioridade máxima: verifica a assinatura Win32 padrão de mensagens sintetizadas a partir de toque
+        // Bit 7 (0x80) diferencia tela de toque física capacitiva (0xFF515780) de caneta/touchpad (0xFF515700)
+        long extra = GetMessageExtraInfo().ToInt64();
+        if ((extra & 0xFFFFFF80L) == 0xFF515780L)
+        {
+            return true;
+        }
+
+        // Se a mensagem for diretamente WM_POINTER/WM_TOUCH pura
+        if (GetCurrentInputMessageSource(out var source))
+        {
+            if (source.deviceType == INPUT_MESSAGE_DEVICE_TYPE.IMDT_TOUCH)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT
     {
