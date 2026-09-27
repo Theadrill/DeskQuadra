@@ -1,7 +1,8 @@
 <Application x:Class="DeskQuadra.UI.Wpf.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:DeskQuadra.UI.Wpf">
+             xmlns:local="clr-namespace:DeskQuadra.UI.Wpf"
+             ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <!-- Estilo moderno do Menu de Contexto (Acrílico Escuro Fluent) -->
         <Style x:Key="ModernContextMenuStyle" TargetType="ContextMenu">

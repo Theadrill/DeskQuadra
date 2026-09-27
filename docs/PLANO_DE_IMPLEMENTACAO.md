@@ -175,6 +175,10 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 * **Tentativa 4 — Morph no nível da janela (`PreviewMouseMove` da Window):** também sem efeito no Deck. Hipótese restante: o SO não entrega `Move` promovido à janela enquanto o popup do menu está aberto com o dedo embaixo.
 * **Estado final:** `QuadraWindow.xaml.cs` contém só scroll manual 1:1 + inércia + congelamento sob menu aberto; drag de mouse 100% intacto. Regra: não reintroduzir conversão de gesto sem antes logar (`input-diag.log`) o que o SO entrega durante o popup aberto.
 
+### 2026-09-27 (cont.) — Fase 5, Fatia 1: X (Esconder/Excluir) + tray validada
+* **Entregue:** diálogo Esconder/Excluir/Cancelar no X (exclusão move itens p/ TUDO; padrão exige confirmação extra; disco nunca tocado); `HideQuadra`/`RestoreQuadra` no coordinator com eventos; `NotifyIcon` WinForms sem NuGet novo (ícone provisório do sistema, `TODO` marcado); menu tray com escondidas + "Mostrar todas" + Sair; `ShutdownMode=OnExplicitShutdown`; escondidas não reabrem no boot. **Validado pelo PO no Windows.**
+* **Pendente:** "Travar todas", "Configurações", ícone próprio, Roll-up.
+
 ---
 
 ## Próxima Fase Planejada: Interações Touch Completas (Tap / Hold / Drag)

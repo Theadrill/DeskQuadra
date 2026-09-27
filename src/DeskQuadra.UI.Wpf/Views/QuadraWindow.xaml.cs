@@ -111,6 +111,14 @@ public partial class QuadraWindow : Window
         GlobalCloseMenusRequested?.Invoke();
     }
 
+    public Guid QuadraId => _viewModel.Id;
+
+    // Sincroniza a grade de itens com o modelo (usado quando outra Quadra move itens para cá)
+    public void RefreshItemsFromModel()
+    {
+        _viewModel.RefreshItems();
+    }
+
     private ContextMenu? _activeOpenItemContextMenu;
 
     private void OnGlobalCloseMenusRequested()
@@ -293,7 +301,154 @@ public partial class QuadraWindow : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        Close();
+        // Diálogo próprio: Esconder mantém o modelo (vai ao tray), Excluir remove, Cancelar aborta
+        var choice = ShowCloseChoiceDialog();
+        if (choice == CloseChoice.Hide)
+        {
+            _coordinator.HideQuadra(_viewModel.Id);
+            Close();
+        }
+        else if (choice == CloseChoice.Delete)
+        {
+            DeleteQuadraWithRules();
+        }
+    }
+
+    private void DeleteQuadraWithRules()
+    {
+        var model = _viewModel.Model;
+        if (!model.IsDefault)
+        {
+            // Quadra comum: move os itens para a TUDO antes de remover
+            // (só vinculação em memória + persistência do layout; arquivos intactos no disco)
+            var tudo = _coordinator.ActiveQuadras.FirstOrDefault(q => q.IsDefault && q.Id != model.Id);
+            if (tudo != null && model.Items.Count > 0)
+            {
+                tudo.Items.AddRange(model.Items);
+                _coordinator.NotifyQuadraChanged(tudo);
+                RefreshQuadraWindow(tudo.Id);
+            }
+
+            _coordinator.RemoveQuadra(model.Id);
+            Close();
+            return;
+        }
+
+        // Quadra padrão: exige confirmação extra antes de remover
+        bool confirmed = ShowConfirmDialog(
+            "Excluir Quadra padrão?",
+            "Esta é a Quadra padrão; os itens saem da visualização mas ficam no disco. Deseja continuar?");
+        if (confirmed)
+        {
+            _coordinator.RemoveQuadra(model.Id);
+            Close();
+        }
+    }
+
+    // Atualiza a grade da janela destino que recebeu os itens (ex: TUDO após Excluir)
+    private void RefreshQuadraWindow(Guid id)
+    {
+        foreach (Window window in System.Windows.Application.Current.Windows)
+        {
+            if (window is QuadraWindow other && other != this && other.QuadraId == id)
+            {
+                other.RefreshItemsFromModel();
+            }
+        }
+    }
+
+    private enum CloseChoice { Cancel, Hide, Delete }
+
+    private CloseChoice ShowCloseChoiceDialog()
+    {
+        var result = CloseChoice.Cancel;
+        var dialog = CreateDarkDialog("Fechar Quadra", $"\"{_viewModel.Title}\": esconder ou excluir?", out var buttons);
+
+        var hideButton = CreateDialogButton("Esconder", isPrimary: true);
+        hideButton.Click += (s, e) => { result = CloseChoice.Hide; dialog.Close(); };
+
+        var deleteButton = CreateDialogButton("Excluir", isPrimary: false);
+        deleteButton.Click += (s, e) => { result = CloseChoice.Delete; dialog.Close(); };
+
+        var cancelButton = CreateDialogButton("Cancelar", isPrimary: false);
+        cancelButton.Click += (s, e) => dialog.Close();
+
+        buttons.Children.Add(hideButton);
+        buttons.Children.Add(deleteButton);
+        buttons.Children.Add(cancelButton);
+
+        dialog.ShowDialog();
+        return result;
+    }
+
+    private bool ShowConfirmDialog(string title, string message)
+    {
+        bool confirmed = false;
+        var dialog = CreateDarkDialog(title, message, out var buttons);
+
+        var confirmButton = CreateDialogButton("Excluir", isPrimary: true);
+        confirmButton.Click += (s, e) => { confirmed = true; dialog.Close(); };
+
+        var cancelButton = CreateDialogButton("Cancelar", isPrimary: false);
+        cancelButton.Click += (s, e) => dialog.Close();
+
+        buttons.Children.Add(confirmButton);
+        buttons.Children.Add(cancelButton);
+
+        dialog.ShowDialog();
+        return confirmed;
+    }
+
+    // Janela modal escura no padrão visual do app para as escolhas de fechamento
+    private Window CreateDarkDialog(string title, string message, out StackPanel buttonPanel)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(16) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = message,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 14)
+        });
+
+        buttonPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        panel.Children.Add(buttonPanel);
+
+        return new Window
+        {
+            Title = title,
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Width = 330,
+            SizeToContent = SizeToContent.Height,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStyle = WindowStyle.ToolWindow,
+            ShowInTaskbar = false,
+            Background = new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24)),
+            Content = panel
+        };
+    }
+
+    private static Button CreateDialogButton(string text, bool isPrimary)
+    {
+        return new Button
+        {
+            Content = text,
+            Padding = new Thickness(14, 6, 14, 6),
+            Margin = new Thickness(6, 0, 0, 0),
+            Cursor = Cursors.Hand,
+            FontSize = 12,
+            Background = isPrimary
+                ? new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4))
+                : new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)),
+            Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
+            BorderThickness = new Thickness(0)
+        };
     }
 
     private void OnPositionOrSizeChanged(object? sender, EventArgs e)

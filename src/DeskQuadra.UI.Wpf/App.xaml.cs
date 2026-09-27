@@ -18,6 +18,7 @@ using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.UI.Wpf.ViewModels;
 using DeskQuadra.UI.Wpf.Views;
 using Microsoft.Extensions.DependencyInjection;
+using WinForms = System.Windows.Forms;
 
 namespace DeskQuadra.UI.Wpf;
 
@@ -31,6 +32,9 @@ public partial class App : System.Windows.Application
     private INativeDesktopIconService? _nativeIconService;
     private IDesktopDrawingService? _drawingService;
     private DesktopSelectionWindow? _selectionWindow;
+    // Janelas abertas rastreadas por Id da Quadra (ciclo de vida Esconder/Restaurar/Excluir)
+    private readonly Dictionary<Guid, QuadraWindow> _quadraWindows = new();
+    private WinForms.NotifyIcon? _trayIcon;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -55,10 +59,6 @@ public partial class App : System.Windows.Application
             return;
         }
         var coordinator = _serviceProvider.GetRequiredService<ILayoutCoordinator>();
-        var anchorService = _serviceProvider.GetRequiredService<IWindowAnchorService>();
-        var snapEngine = _serviceProvider.GetRequiredService<ISnapEngine>();
-        var iconExtractor = _serviceProvider.GetRequiredService<IIconExtractorService>();
-        var launcherService = _serviceProvider.GetRequiredService<IFileLauncherService>();
         _drawingService = _serviceProvider.GetRequiredService<IDesktopDrawingService>();
 
         // 1. Oculta os ícones nativos do desktop do Windows (Zero-Flicker)
@@ -67,16 +67,36 @@ public partial class App : System.Windows.Application
         // 2. Inicia o Processo Guardião (Sidecar Watcher) para restaurar ícones em caso de encerramento abrupto/crash
         SpawnGuardianProcess();
 
-        // 3. Registra ouvinte para abrir janelas de novas Quadras criadas durante a execução
+        // 3. Registra ouvintes do ciclo de vida das Quadras (criar/esconder/restaurar/excluir)
         coordinator.QuadraCreated += (s, quadra) =>
+        {
+            Dispatcher.Invoke(() => OpenQuadraWindow(quadra));
+        };
+
+        coordinator.QuadraHidden += (s, id) =>
+        {
+            Dispatcher.Invoke(() => CloseQuadraWindow(id));
+        };
+
+        coordinator.QuadraRestored += (s, id) =>
         {
             Dispatcher.Invoke(() =>
             {
-                var viewModel = new QuadraViewModel(quadra, iconExtractor);
-                var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService);
-                window.Show();
+                var quadra = coordinator.ActiveQuadras.FirstOrDefault(q => q.Id == id);
+                if (quadra != null)
+                {
+                    OpenQuadraWindow(quadra);
+                }
             });
         };
+
+        coordinator.QuadraRemoved += (s, id) =>
+        {
+            Dispatcher.Invoke(() => CloseQuadraWindow(id));
+        };
+
+        // 3b. Cria o ícone da bandeja do sistema (acesso às Quadras escondidas + Sair)
+        CreateTrayIcon();
 
         // 3. Configura serviço de desenho de Quadra com botão direito na Área de Trabalho
         _selectionWindow = new DesktopSelectionWindow();
@@ -146,12 +166,118 @@ public partial class App : System.Windows.Application
         // 4. Carrega o layout transacional persistido em disco (%APPDATA%\DeskQuadra\quadras.json)
         await coordinator.InitializeAsync();
 
-        // 5. Instancia e exibe as janelas de cada Quadra ativa
+        // 5. Instancia e exibe as janelas de cada Quadra visível (escondidas ficam só no tray)
         foreach (var quadra in coordinator.ActiveQuadras)
         {
-            var viewModel = new QuadraViewModel(quadra, iconExtractor);
-            var quadraWindow = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService);
-            quadraWindow.Show();
+            if (quadra.IsHidden)
+            {
+                continue;
+            }
+
+            OpenQuadraWindow(quadra);
+        }
+    }
+
+    // Abre a janela da Quadra e passa a rastreá-la pelo Id (ignora se já aberta)
+    private void OpenQuadraWindow(Quadra quadra)
+    {
+        if (_serviceProvider == null || _quadraWindows.ContainsKey(quadra.Id))
+        {
+            return;
+        }
+
+        var anchorService = _serviceProvider.GetRequiredService<IWindowAnchorService>();
+        var snapEngine = _serviceProvider.GetRequiredService<ISnapEngine>();
+        var iconExtractor = _serviceProvider.GetRequiredService<IIconExtractorService>();
+        var coordinator = _serviceProvider.GetRequiredService<ILayoutCoordinator>();
+        var launcherService = _serviceProvider.GetRequiredService<IFileLauncherService>();
+
+        var viewModel = new QuadraViewModel(quadra, iconExtractor);
+        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService);
+        window.Closed += (s, e) => _quadraWindows.Remove(quadra.Id);
+        _quadraWindows[quadra.Id] = window;
+        window.Show();
+    }
+
+    // Fecha a janela da Quadra sem remover o modelo (usado por Esconder/Excluir via eventos)
+    private void CloseQuadraWindow(Guid id)
+    {
+        if (_quadraWindows.TryGetValue(id, out var window))
+        {
+            window.Close();
+        }
+    }
+
+    // Cria o ícone da bandeja com menu das Quadras escondidas e opção Sair
+    private void CreateTrayIcon()
+    {
+        // TODO Fase 5: ícone próprio (.ico do DeskQuadra); provisório usa o ícone padrão do sistema.
+        _trayIcon = new WinForms.NotifyIcon
+        {
+            Text = "DeskQuadra",
+            Icon = System.Drawing.SystemIcons.Application,
+            Visible = true
+        };
+
+        var menu = new WinForms.ContextMenuStrip();
+        var hiddenRoot = new WinForms.ToolStripMenuItem("Mostrar Quadras Escondidas");
+        var showAll = new WinForms.ToolStripMenuItem("Mostrar todas");
+        var exit = new WinForms.ToolStripMenuItem("Sair");
+
+        showAll.Click += (s, e) => RestoreAllHiddenQuadras();
+        exit.Click += (s, e) => Shutdown();
+
+        menu.Items.Add(hiddenRoot);
+        menu.Items.Add(showAll);
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add(exit);
+
+        // Reconstrói o submenu a cada abertura (lista de escondidas é dinâmica)
+        menu.Opening += (s, e) => RebuildTrayMenu(hiddenRoot, showAll);
+        _trayIcon.ContextMenuStrip = menu;
+
+        // Duplo-clique restaura todas as escondidas (nada a fazer se não houver)
+        _trayIcon.DoubleClick += (s, e) => RestoreAllHiddenQuadras();
+    }
+
+    // Preenche o submenu com uma entrada por Quadra escondida + "Mostrar todas" quando houver >1
+    private void RebuildTrayMenu(WinForms.ToolStripMenuItem hiddenRoot, WinForms.ToolStripMenuItem showAll)
+    {
+        hiddenRoot.DropDownItems.Clear();
+
+        var coordinator = _serviceProvider?.GetService<ILayoutCoordinator>();
+        var hidden = coordinator?.HiddenQuadras ?? (IReadOnlyList<Quadra>)Array.Empty<Quadra>();
+
+        if (hidden.Count == 0)
+        {
+            hiddenRoot.DropDownItems.Add(new WinForms.ToolStripMenuItem("Nenhuma Quadra escondida") { Enabled = false });
+        }
+        else
+        {
+            foreach (var quadra in hidden)
+            {
+                var id = quadra.Id;
+                var item = new WinForms.ToolStripMenuItem(quadra.Title);
+                item.Click += (s, e) => coordinator?.RestoreQuadra(id);
+                hiddenRoot.DropDownItems.Add(item);
+            }
+        }
+
+        showAll.Visible = hidden.Count > 1;
+    }
+
+    // Restaura todas as Quadras escondidas (sem efeito quando não há nenhuma)
+    private void RestoreAllHiddenQuadras()
+    {
+        var coordinator = _serviceProvider?.GetService<ILayoutCoordinator>();
+        if (coordinator == null)
+        {
+            return;
+        }
+
+        foreach (var quadra in coordinator.HiddenQuadras)
+        {
+            coordinator.RestoreQuadra(quadra.Id);
         }
     }
 
@@ -247,6 +373,13 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        if (_trayIcon != null)
+        {
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
+
         if (_serviceProvider != null)
         {
             _drawingService?.Stop();

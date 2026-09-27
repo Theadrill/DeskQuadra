@@ -103,4 +103,67 @@ public class LayoutCoordinatorTests
         Assert.Single(quadra.Items);
         Assert.Equal("Novo Item", quadra.Items[0].Name);
     }
+
+    [Fact]
+    public void HideQuadra_MarksHiddenAndAppearsInHiddenQuadras()
+    {
+        // Arrange
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        var quadra = coordinator.CreateNewQuadra("Q1", 0, 0);
+        Guid? notifiedId = null;
+        coordinator.QuadraHidden += (s, id) => notifiedId = id;
+
+        // Act
+        coordinator.HideQuadra(quadra.Id);
+
+        // Assert
+        Assert.True(quadra.IsHidden);
+        Assert.Contains(coordinator.HiddenQuadras, q => q.Id == quadra.Id);
+        Assert.Equal(quadra.Id, notifiedId);
+    }
+
+    [Fact]
+    public void RestoreQuadra_UnmarksHiddenAndLeavesHiddenList()
+    {
+        // Arrange
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        var quadra = coordinator.CreateNewQuadra("Q1", 0, 0);
+        coordinator.HideQuadra(quadra.Id);
+        Guid? notifiedId = null;
+        coordinator.QuadraRestored += (s, id) => notifiedId = id;
+
+        // Act
+        coordinator.RestoreQuadra(quadra.Id);
+
+        // Assert
+        Assert.False(quadra.IsHidden);
+        Assert.DoesNotContain(coordinator.HiddenQuadras, q => q.Id == quadra.Id);
+        Assert.Equal(quadra.Id, notifiedId);
+    }
+
+    [Fact]
+    public void RemoveQuadra_StillRemovesQuadraAndFiresEvent()
+    {
+        // Arrange
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        var quadra = coordinator.CreateNewQuadra("Q1", 0, 0);
+        Guid? notifiedId = null;
+        coordinator.QuadraRemoved += (s, id) => notifiedId = id;
+
+        // Act
+        coordinator.RemoveQuadra(quadra.Id);
+
+        // Assert
+        Assert.DoesNotContain(coordinator.ActiveQuadras, q => q.Id == quadra.Id);
+        Assert.Equal(quadra.Id, notifiedId);
+    }
 }

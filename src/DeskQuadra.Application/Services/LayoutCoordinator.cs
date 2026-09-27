@@ -19,9 +19,13 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
 
     public IReadOnlyList<Quadra> ActiveQuadras => _activeQuadras.Values.ToList();
 
+    public IReadOnlyList<Quadra> HiddenQuadras => _activeQuadras.Values.Where(q => q.IsHidden).ToList();
+
     public event EventHandler<IReadOnlyList<Quadra>>? LayoutLoaded;
     public event EventHandler<Quadra>? QuadraCreated;
     public event EventHandler<Guid>? QuadraRemoved;
+    public event EventHandler<Guid>? QuadraHidden;
+    public event EventHandler<Guid>? QuadraRestored;
 
     public LayoutCoordinator(ILayoutRepository repository, IDesktopScannerService scannerService)
     {
@@ -107,6 +111,28 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
             });
 
             QuadraRemoved?.Invoke(this, id);
+        }
+    }
+
+    public void HideQuadra(Guid id)
+    {
+        if (_activeQuadras.TryGetValue(id, out var quadra))
+        {
+            // Esconde a Quadra mantendo o modelo: persiste e avisa a UI para fechar a janela
+            quadra.IsHidden = true;
+            NotifyQuadraChanged(quadra);
+            QuadraHidden?.Invoke(this, id);
+        }
+    }
+
+    public void RestoreQuadra(Guid id)
+    {
+        if (_activeQuadras.TryGetValue(id, out var quadra))
+        {
+            // Restaura a Quadra escondida: persiste e avisa a UI para reabrir a janela
+            quadra.IsHidden = false;
+            NotifyQuadraChanged(quadra);
+            QuadraRestored?.Invoke(this, id);
         }
     }
 
