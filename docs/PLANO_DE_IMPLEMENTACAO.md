@@ -40,6 +40,26 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 
 ---
 
+## Padrão de Idioma e Tema (regra permanente)
+
+> Vale para todo código novo. Não reescreve fases nem marca fase como completa.
+
+### Idioma (.NET padrão bigtech, já implementado em `ed3f508`)
+- Todo texto visível vai em `Strings.resx` (`UI.Wpf/Properties` pt-BR default + `Guardian/Properties` local). Proibido literal pt-BR espalhado em C#/XAML para texto novo.
+- C#: `DeskQuadra.UI.Wpf.Properties.Strings` via alias `UiStrings` em `App.xaml.cs` (App herda `Application`, `Properties` conflita) / `Strings` direto onde seguro; Guardian usa namespace próprio. XAML: `x:Static properties:Strings.Chave` (classe precisa ser `public` via `PublicResXFileCodeGenerator`).
+- Formatos com `{0}` via `string.Format`. Logs/diagnóstico/comentários NÃO vão para resx. `Core`/`Application` não dependem de resx da UI (TUDO/Minha Quadra ficam fora por Clean Architecture).
+- en-US futuro = só adicionar `Strings.en-US.resx`, sem refatorar chamadas.
+
+### Tema (WPF nativo, sem YAML/motor custom)
+- Visual em `ResourceDictionary` (`Theme/Default.xaml` quando existir); janelas usam `DynamicResource` para tokens (fundo, título, raio, opacidade, fonte), nunca cor chapada em XAML/code-behind novo.
+- Tema = um dicionário; troca runtime = swap de dicionário. Sem parser YAML, sem engine própria.
+- Gosto do usuário (`backgroundColor`, `opacity`, `titleColor`, `alignment`, `iconSize` — seção 6) vai em `quadras.json` como override por Quadra, aplicado por cima do tema ativo.
+
+### Regra para tudo novo
+1. Texto novo -> resx; 2. cor/medida visual nova -> token `DynamicResource` (ou `TODO Token` se `Default` ainda não existir); 3. preferência persistível -> `quadras.json`, nunca hardcoded.
+
+---
+
 ## Fases de Execução & Critérios de Aceite
 
 ```
