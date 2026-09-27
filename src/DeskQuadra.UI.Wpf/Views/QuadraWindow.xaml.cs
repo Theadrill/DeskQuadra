@@ -495,18 +495,13 @@ public partial class QuadraWindow : Window
 
     private void DesktopItem_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        // Fase scroll-first: toque nunca abre menu automaticamente para não roubar o gesto de pan.
-        // O menu por toque (segurou e soltou) será reintroduzido na próxima fase com máquina de estados própria.
-        if (_isTouchActive || NativeMethods.IsCurrentMessageFromTouch())
-        {
-            e.Handled = true;
-            return;
-        }
-
+        // Hold nativo do Windows abre o menu do item da Quadra; tap é clique
+        // esquerdo e movimento cancela o hold no próprio SO.
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
-            // Scroll-first: neste ponto só chega evento de mouse/touchpad -> estilo compacto (~26px).
-            ApplyMenuDensity(fe.ContextMenu, isTouch: false);
+            // Toque usa itens de 46px; mouse segue compacto (~26px).
+            bool isTouch = _isTouchActive || NativeMethods.IsCurrentMessageFromTouch();
+            ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
             fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
             _activeOpenItemContextMenu = fe.ContextMenu;

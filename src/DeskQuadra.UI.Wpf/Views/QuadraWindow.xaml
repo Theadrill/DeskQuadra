@@ -276,7 +276,6 @@
                                             Margin="2"
                                             Cursor="Hand"
                                             ToolTip="{Binding FilePath}"
-                                            Stylus.IsPressAndHoldEnabled="False"
                                             ContextMenuOpening="DesktopItem_ContextMenuOpening"
                                             PreviewMouseLeftButtonDown="DesktopItem_PreviewMouseLeftButtonDown"
                                             PreviewMouseMove="DesktopItem_PreviewMouseMove"
