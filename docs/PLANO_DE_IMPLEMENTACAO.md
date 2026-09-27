@@ -167,6 +167,14 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
   3. Não adicionar handlers `PreviewTouch*` que competem com o `ScrollViewer` sem necessidade comprovada por log.
   4. Todo gesto touch deve ser testado começando **sobre um ícone**, nunca só no padding vazio.
 
+### 2026-09-27 (cont.) — Drag por toque: tentativas descartadas
+* **Contexto:** após o scroll manual e o menu por hold nativo funcionarem no Deck, tentou-se o "segurou e moveu = arrasta". Nenhuma tentativa funcionou no hardware real; o drag touch foi **removido do código** e está suspenso aguardando nova proposta do PO.
+* **Tentativa 1 — Timer próprio de hold + conversão (`TouchHoldDelayMs 380 / limiar 12px`):** descartada antes de validar — competia com o hold do SO e virou gambiarra sobre um caminho que o Windows já faz de graça.
+* **Tentativa 2 — Conversão tempo + distância (`350ms` + `>14px` após hold):** nunca converteu no Deck. Causa: corrida contra o hold nativo — segurar mais abre o menu (e `IsItemMenuOpen()` bloqueava o drag no gesto); segurar menos caía no lockout de scroll (`_touchGestureIsScroll`).
+* **Tentativa 3 — Morph "menu-aberto + mover vira drag":** nunca converteu. Causa: ao abrir, o popup do `ContextMenu` captura o mouse — os `Move` seguintes vão para o menu e nunca chegam ao `ScrollViewer`.
+* **Tentativa 4 — Morph no nível da janela (`PreviewMouseMove` da Window):** também sem efeito no Deck. Hipótese restante: o SO não entrega `Move` promovido à janela enquanto o popup do menu está aberto com o dedo embaixo.
+* **Estado final:** `QuadraWindow.xaml.cs` contém só scroll manual 1:1 + inércia + congelamento sob menu aberto; drag de mouse 100% intacto. Regra: não reintroduzir conversão de gesto sem antes logar (`input-diag.log`) o que o SO entrega durante o popup aberto.
+
 ---
 
 ## Próxima Fase Planejada: Interações Touch Completas (Tap / Hold / Drag)
@@ -174,10 +182,10 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 * **Objetivo:** Completar o modelo celular nas Quadras: tocou, seleciona; segurou e soltou, menu de contexto; segurou e moveu, arrasta; gesto, scrolla (scroll já entregue em 2026-09-27).
 * **Skills Mandatórias:** `wpf-windows-desktop`, `ui-ux-pro-max`, `coding-guidelines`, `dotnet-pinvoke`.
 * **Escopo Técnico:**
-  - Menu de contexto por "segurou e soltou" (~380ms parado + `TouchUp` sem deslocamento), aberto programaticamente com estilo touch ergonômico (`TouchMenuItemStyle`, 46px) — remover o bloqueio atual de `ContextMenuOpening` para toque só nesse caminho.
-  - Drag and drop por "segurou e moveu": após o hold, deslocamento além do limiar converte o gesto em arrasto do item (dentro da Quadra e entre Quadras, com `Ctrl` para duplicar).
-  - Inércia no scroll manual (desaceleração após soltar o dedo em movimento), hoje o scroll para seco onde o dedo solta.
-  - Manter intactos: tap seleciona e duplo-toque abre (já funcionam via mouse promovido); mouse real inalterado.
+  - Menu de contexto por "segurou e soltou" via hold NATIVO do Windows (entregue e validado em 2026-09-27, estilo touch 46px).
+  - Inércia no scroll manual (entregue e validada em 2026-09-27).
+  - Drag por toque ("segurou e moveu"): SUSPENSO — 4 tentativas descartadas (ver Registro acima); aguarda nova proposta do PO.
+  - Manter intactos: tap seleciona e duplo-toque abre (via mouse promovido); mouse real inalterado.
 * **Riscos conhecidos:**
   - Desambiguação scroll vs. drag no mesmo gesto (critério tempo + distância, sem `DispatcherTimer` na thread de UI se possível).
   - `DragDrop.DoDragDrop` é modal e trava a thread — desacoplar do pipeline de input como tentado em `1584f94`.

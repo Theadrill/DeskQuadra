@@ -356,6 +356,7 @@ public partial class QuadraWindow : Window
 
     private void QuadraContainer_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        StopTouchInertia(); // qualquer novo Down/interação cancela a inércia
         var dep = e.OriginalSource as DependencyObject;
         bool isOverItem = false;
         while (dep != null && dep != this)
@@ -390,6 +391,18 @@ public partial class QuadraWindow : Window
     private Point _touchScrollStartPoint;
     private double _touchScrollStartOffset;
 
+    // --- Inércia do scroll manual ---
+    // Timer de ~60fps que prolonga o deslocamento após soltar o dedo em
+    // movimento, com decaimento exponencial até parar ou novo Down.
+    private DispatcherTimer? _touchInertiaTimer;
+    private double _touchInertiaVelocityPxPerSec;
+    private DateTime _touchInertiaLastTickUtc;
+    private const double TouchInertiaMinStartVelocity = 150.0; // px/s p/ ativar
+    private const double TouchInertiaStopVelocity = 50.0;      // px/s p/ parar
+    private const double TouchInertiaFrictionPerSec = 3.5;     // decaimento exp.
+    private const double TouchInertiaMaxVelocity = 5000.0;     // trava anti-salto
+    private readonly List<(DateTime Time, double Y)> _touchMoveSamples = new();
+
     private static bool IsTouchPromotedMouse(MouseEventArgs e)
     {
         return (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
@@ -410,6 +423,11 @@ public partial class QuadraWindow : Window
         return false;
     }
 
+    private bool IsItemMenuOpen()
+    {
+        return _activeOpenItemContextMenu != null && _activeOpenItemContextMenu.IsOpen;
+    }
+
     private void ItemsScrollViewer_TouchScrollDown(object sender, MouseButtonEventArgs e)
     {
         if (e.LeftButton != MouseButtonState.Pressed || !IsTouchPromotedMouse(e) || IsOnScrollbar(e))
@@ -417,9 +435,12 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        StopTouchInertia(); // novo Down cancela qualquer inércia em curso
         _touchScrollActive = true;
         _touchScrollStartPoint = e.GetPosition(ItemsScrollViewer);
         _touchScrollStartOffset = ItemsScrollViewer.VerticalOffset;
+        _touchMoveSamples.Clear();
+        _touchMoveSamples.Add((DateTime.UtcNow, _touchScrollStartPoint.Y));
         ItemsScrollViewer.CaptureMouse();
         // Sem e.Handled aqui de propósito: o evento continua até o item para preservar "tocou, seleciona".
     }
@@ -442,14 +463,35 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        // DECISÃO PO pendente: com menu de item aberto o Move touch congela
+        // (só avalia/retorna, sem scrollar e sem converter em drag).
+        if (IsItemMenuOpen())
+        {
+            return;
+        }
+
         Point current = e.GetPosition(ItemsScrollViewer);
+
         ItemsScrollViewer.ScrollToVerticalOffset(_touchScrollStartOffset - (current.Y - _touchScrollStartPoint.Y));
+        var now = DateTime.UtcNow;
+        _touchMoveSamples.Add((now, current.Y));
+        while (_touchMoveSamples.Count > 0 && (now - _touchMoveSamples[0].Time).TotalMilliseconds > 200)
+        {
+            _touchMoveSamples.RemoveAt(0);
+        }
+        if (_touchMoveSamples.Count > 20)
+        {
+            _touchMoveSamples.RemoveRange(0, _touchMoveSamples.Count - 20);
+        }
         e.Handled = true;
     }
 
     private void ItemsScrollViewer_TouchScrollUp(object sender, MouseButtonEventArgs e)
     {
+        double velocity = ComputeTouchReleaseVelocity();
         EndTouchScroll();
+        _touchMoveSamples.Clear();
+        StartTouchInertia(velocity);
     }
 
     private void EndTouchScroll()
@@ -466,8 +508,111 @@ public partial class QuadraWindow : Window
         }
     }
 
+    // Velocidade do dedo (px/s) pelas últimas amostras (~120ms). Sinal
+    // negativo = dedo subiu = conteúdo rola para baixo.
+    private double ComputeTouchReleaseVelocity()
+    {
+        if (_touchMoveSamples.Count < 2)
+        {
+            return 0;
+        }
+
+        var last = _touchMoveSamples[_touchMoveSamples.Count - 1];
+        int firstIndex = 0;
+        while (firstIndex < _touchMoveSamples.Count - 2 &&
+               (last.Time - _touchMoveSamples[firstIndex].Time).TotalMilliseconds > 120)
+        {
+            firstIndex++;
+        }
+
+        var first = _touchMoveSamples[firstIndex];
+        double dt = (last.Time - first.Time).TotalSeconds;
+        if (dt < 0.01)
+        {
+            return 0;
+        }
+
+        double velocity = -((last.Y - first.Y) / dt);
+        if (velocity > TouchInertiaMaxVelocity)
+        {
+            velocity = TouchInertiaMaxVelocity;
+        }
+        else if (velocity < -TouchInertiaMaxVelocity)
+        {
+            velocity = -TouchInertiaMaxVelocity;
+        }
+        return velocity;
+    }
+
+    private void StartTouchInertia(double velocityPxPerSec)
+    {
+        if (Math.Abs(velocityPxPerSec) < TouchInertiaMinStartVelocity)
+        {
+            return;
+        }
+        if (ItemsScrollViewer.ScrollableHeight <= 0)
+        {
+            return;
+        }
+
+        _touchInertiaVelocityPxPerSec = velocityPxPerSec;
+        _touchInertiaLastTickUtc = DateTime.UtcNow;
+        if (_touchInertiaTimer == null)
+        {
+            _touchInertiaTimer = new DispatcherTimer(DispatcherPriority.Normal)
+            {
+                Interval = TimeSpan.FromMilliseconds(16) // ~60fps
+            };
+            _touchInertiaTimer.Tick += TouchInertiaTimer_Tick;
+        }
+        _touchInertiaTimer.Start();
+    }
+
+    private void TouchInertiaTimer_Tick(object? sender, EventArgs e)
+    {
+        var now = DateTime.UtcNow;
+        double dt = Math.Clamp((now - _touchInertiaLastTickUtc).TotalSeconds, 0.001, 0.05);
+        _touchInertiaLastTickUtc = now;
+
+        double max = ItemsScrollViewer.ScrollableHeight;
+        if (max <= 0)
+        {
+            StopTouchInertia();
+            return;
+        }
+
+        double next = ItemsScrollViewer.VerticalOffset + _touchInertiaVelocityPxPerSec * dt;
+        if (next <= 0)
+        {
+            ItemsScrollViewer.ScrollToVerticalOffset(0);
+            StopTouchInertia();
+            return;
+        }
+        if (next >= max)
+        {
+            ItemsScrollViewer.ScrollToVerticalOffset(max);
+            StopTouchInertia();
+            return;
+        }
+
+        ItemsScrollViewer.ScrollToVerticalOffset(next);
+        // Decaimento exponencial até parar.
+        _touchInertiaVelocityPxPerSec *= Math.Exp(-TouchInertiaFrictionPerSec * dt);
+        if (Math.Abs(_touchInertiaVelocityPxPerSec) < TouchInertiaStopVelocity)
+        {
+            StopTouchInertia();
+        }
+    }
+
+    private void StopTouchInertia()
+    {
+        _touchInertiaTimer?.Stop();
+        _touchInertiaVelocityPxPerSec = 0;
+    }
+
     private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        StopTouchInertia(); // qualquer novo Down/interação cancela a inércia
         bool isTouch = _isTouchActive
                        || (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
                        || NativeMethods.IsCurrentMessageFromTouch();
@@ -558,6 +703,7 @@ public partial class QuadraWindow : Window
 
     private void StartItemDragDrop(DesktopItemViewModel item)
     {
+        StopTouchInertia(); // arrasto cancela a inércia do scroll manual
         try
         {
             _isItemDragging = true;
@@ -839,6 +985,7 @@ public partial class QuadraWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _touchInertiaTimer?.Stop();
         GlobalItemSelected -= OnGlobalItemSelected;
         GlobalCloseMenusRequested -= OnGlobalCloseMenusRequested;
         LocationChanged -= OnPositionOrSizeChanged;
