@@ -12,6 +12,7 @@ using DeskQuadra.Application.Services;
 using DeskQuadra.Application.Snap;
 using DeskQuadra.Core;
 using DeskQuadra.Core.Contracts;
+using DeskQuadra.Core.FileDuplication;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.UI.Wpf.Models;
@@ -1343,7 +1344,7 @@ public partial class QuadraWindow : Window
                 if (isCopy)
                 {
                     // Duplicação física no disco (Ctrl + Drag), tanto na mesma Quadra quanto entre Quadras
-                    string duplicatedPath = DuplicateFileOnDisk(payload.Item.FilePath);
+                    string duplicatedPath = FileDuplicator.Duplicate(payload.Item.FilePath, Strings.FileCopySuffix, Strings.FileCopySuffixIndexedFormat);
                     _viewModel.AddItem(duplicatedPath);
                     e.Effects = DragDropEffects.Copy;
                 }
@@ -1372,7 +1373,7 @@ public partial class QuadraWindow : Window
             {
                 foreach (var file in files)
                 {
-                    string targetFile = isCopy ? DuplicateFileOnDisk(file) : file;
+                    string targetFile = isCopy ? FileDuplicator.Duplicate(file, Strings.FileCopySuffix, Strings.FileCopySuffixIndexedFormat) : file;
                     _viewModel.AddItem(targetFile);
                 }
 
@@ -1384,109 +1385,6 @@ public partial class QuadraWindow : Window
         if (armPostDrop)
         {
             ArmPostDropCollapseTimer();
-        }
-    }
-
-    private static string DuplicateFileOnDisk(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                string dir = Path.GetDirectoryName(path) ?? string.Empty;
-                string nameWithoutExt = Path.GetFileNameWithoutExtension(path);
-                string ext = Path.GetExtension(path);
-
-                int copyIndex = 1;
-                string targetName = $"{nameWithoutExt}{Strings.FileCopySuffix}{ext}";
-                string targetPath = Path.Combine(dir, targetName);
-
-                while (File.Exists(targetPath))
-                {
-                    copyIndex++;
-                    targetName = $"{nameWithoutExt}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}{ext}";
-                    targetPath = Path.Combine(dir, targetName);
-                }
-
-                try
-                {
-                    File.Copy(path, targetPath);
-                    return targetPath;
-                }
-                catch
-                {
-                    // Fallback para o Desktop do usuário se o diretório for protegido (ex: Public Desktop)
-                    string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                    string fallbackTarget = Path.Combine(userDesktop, targetName);
-                    while (File.Exists(fallbackTarget))
-                    {
-                        copyIndex++;
-                        targetName = $"{nameWithoutExt}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}{ext}";
-                        fallbackTarget = Path.Combine(userDesktop, targetName);
-                    }
-
-                    File.Copy(path, fallbackTarget);
-                    return fallbackTarget;
-                }
-            }
-
-            if (Directory.Exists(path))
-            {
-                string parent = Directory.GetParent(path)?.FullName ?? string.Empty;
-                string dirName = Path.GetFileName(path);
-
-                int copyIndex = 1;
-                string targetName = $"{dirName}{Strings.FileCopySuffix}";
-                string targetPath = Path.Combine(parent, targetName);
-
-                while (Directory.Exists(targetPath))
-                {
-                    copyIndex++;
-                    targetName = $"{dirName}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}";
-                    targetPath = Path.Combine(parent, targetName);
-                }
-
-                try
-                {
-                    CopyDirectoryRecursively(path, targetPath);
-                    return targetPath;
-                }
-                catch
-                {
-                    string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                    string fallbackTarget = Path.Combine(userDesktop, targetName);
-                    while (Directory.Exists(fallbackTarget))
-                    {
-                        copyIndex++;
-                        targetName = $"{dirName}{string.Format(Strings.FileCopySuffixIndexedFormat, copyIndex)}";
-                        fallbackTarget = Path.Combine(userDesktop, targetName);
-                    }
-
-                    CopyDirectoryRecursively(path, fallbackTarget);
-                    return fallbackTarget;
-                }
-            }
-        }
-        catch
-        {
-            // Em caso de falha de I/O, usa o item original sem interromper a interface
-        }
-
-        return path;
-    }
-
-    private static void CopyDirectoryRecursively(string sourceDir, string targetDir)
-    {
-        Directory.CreateDirectory(targetDir);
-
-        foreach (var file in Directory.GetFiles(sourceDir))
-        {
-            File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
-        }
-
-        foreach (var dir in Directory.GetDirectories(sourceDir))
-        {
-            CopyDirectoryRecursively(dir, Path.Combine(targetDir, Path.GetFileName(dir)));
         }
     }
 
