@@ -30,6 +30,9 @@ internal static class Program
     private static int s_panicInFlight;
     private static int s_parentPid;
     private static PanicForm? s_form;
+    // Trava de instância única (PO): segunda instância sai com código 0 silencioso.
+    // Guardado em campo até o fim do processo (nunca liberado).
+    private static Mutex? s_singleInstanceMutex;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, int dwProcessId);
@@ -84,6 +87,23 @@ internal static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        // Segunda instância: sai quieta com código 0, sem tocar na primeira.
+        try
+        {
+            s_singleInstanceMutex = new Mutex(true, @"Local\DeskQuadra.Guardian", out bool createdNew);
+            if (!createdNew)
+            {
+                s_singleInstanceMutex.Dispose();
+                s_singleInstanceMutex = null;
+                return;
+            }
+        }
+        catch
+        {
+            // Best-effort: falha na trava nunca impede o Guardian de rodar.
+            s_singleInstanceMutex = null;
+        }
+
         int parentPid = 0;
         string fullArgs = string.Join(" ", args);
         foreach (var part in fullArgs.Split([' ', '='], StringSplitOptions.RemoveEmptyEntries))

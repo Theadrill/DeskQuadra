@@ -38,9 +38,31 @@ public partial class App : System.Windows.Application
     // Janelas abertas rastreadas por Id da Quadra (ciclo de vida Esconder/Restaurar/Excluir)
     private readonly Dictionary<Guid, QuadraWindow> _quadraWindows = new();
     private WinForms.NotifyIcon? _trayIcon;
+    // Trava de instância única (PO): segunda instância sai quieta, primeira intocada.
+    // Guardado em campo até o fim do processo (nunca liberado).
+    private Mutex? _singleInstanceMutex;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // Segunda instância: sai imediato sem tocar em nada (sem janela, sem tray,
+        // sem fechar a instância dona — perfil não salvo não pode ser tocado).
+        try
+        {
+            _singleInstanceMutex = new Mutex(true, @"Local\DeskQuadra.UI.Wpf", out bool createdNew);
+            if (!createdNew)
+            {
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+                Shutdown();
+                return;
+            }
+        }
+        catch
+        {
+            // Best-effort: falha na trava nunca impede o app de abrir.
+            _singleInstanceMutex = null;
+        }
+
         base.OnStartup(e);
 
         // Dono do botão de pânico é o Guardian (hotkey global vive lá: com a UI travada o app não recebe WM_HOTKEY).
