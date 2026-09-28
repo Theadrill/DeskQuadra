@@ -599,10 +599,13 @@ public partial class App : System.Windows.Application
         };
 
         var hoverBrush = ThemeResolver.Get("CreationMenu.Hover.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)));
-        btnCreate.MouseEnter += (s, e) => btnCreate.Background = hoverBrush;
-        btnCreate.MouseLeave += (s, e) => btnCreate.Background = Brushes.Transparent;
-        btnCancel.MouseEnter += (s, e) => btnCancel.Background = hoverBrush;
-        btnCancel.MouseLeave += (s, e) => btnCancel.Background = Brushes.Transparent;
+        void AttachHover(Button btn)
+        {
+            btn.MouseEnter += (s, e) => btn.Background = hoverBrush;
+            btn.MouseLeave += (s, e) => btn.Background = Brushes.Transparent;
+        }
+        AttachHover(btnCreate);
+        AttachHover(btnCancel);
 
         btnCreate.Click += (s, e) =>
         {
