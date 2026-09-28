@@ -28,7 +28,10 @@ public static class DarkDialog
             Background = isPrimary
                 ? ThemeResolver.Get("Dialog.Primary.Background", new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)))
                 : ThemeResolver.Get("Dialog.Secondary.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF))),
-            Foreground = ThemeResolver.Get("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
+            // Contraste (F1): texto branco só no botão primário (fundo #0078D4, ~4.6:1); secundário mantém #F5F5F5.
+            Foreground = isPrimary
+                ? ThemeResolver.Get("Dialog.Primary.Foreground", new SolidColorBrush(Colors.White))
+                : ThemeResolver.Get("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
             BorderThickness = ThemeResolver.Get("Dialog.Button.BorderThickness", new Thickness(0))
         };
     }

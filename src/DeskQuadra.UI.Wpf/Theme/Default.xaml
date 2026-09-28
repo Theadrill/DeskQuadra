@@ -54,7 +54,7 @@
     <Thickness x:Key="Quadra.Empty.BorderThickness">1</Thickness>
     <CornerRadius x:Key="Quadra.Empty.CornerRadius">4</CornerRadius>
     <Thickness x:Key="Quadra.Empty.Padding">12,8</Thickness>
-    <SolidColorBrush x:Key="Quadra.Empty.Foreground" Color="#77FFFFFF"/>
+    <SolidColorBrush x:Key="Quadra.Empty.Foreground" Color="#CCCCCC"/>
     <sys:Double x:Key="Quadra.Empty.FontSize">11</sys:Double>
     <FontStyle x:Key="Quadra.Empty.FontStyle">Italic</FontStyle>
 
@@ -68,7 +68,7 @@
     <SolidColorBrush x:Key="Quadra.Item.Hover.Background" Color="#25FFFFFF"/>
     <SolidColorBrush x:Key="Quadra.Item.Hover.BorderBrush" Color="#20FFFFFF"/>
     <SolidColorBrush x:Key="Quadra.Item.Selected.Background" Color="#380078D4"/>
-    <SolidColorBrush x:Key="Quadra.Item.Selected.BorderBrush" Color="#7060CDFF"/>
+    <SolidColorBrush x:Key="Quadra.Item.Selected.BorderBrush" Color="#60CDFF"/>
     <Thickness x:Key="Quadra.Item.BorderThickness">1</Thickness>
     <Color x:Key="Quadra.Item.Shadow.Color">#000000</Color>
     <sys:Double x:Key="Quadra.Item.Shadow.BlurRadius">3</sys:Double>
@@ -106,7 +106,7 @@
     <SolidColorBrush x:Key="Menu.TouchItem.Pressed.Background" Color="#800078D4"/>
 
     <!-- ===== Seleção de área (retângulo de desenho) ===== -->
-    <SolidColorBrush x:Key="Selection.Background" Color="#240078D4"/>
+    <SolidColorBrush x:Key="Selection.Background" Color="#800078D4"/>
     <SolidColorBrush x:Key="Selection.BorderBrush" Color="#60CDFF"/>
     <Thickness x:Key="Selection.BorderThickness">1.5</Thickness>
     <CornerRadius x:Key="Selection.CornerRadius">6</CornerRadius>
@@ -129,6 +129,8 @@
     <Thickness x:Key="Dialog.Panel.Margin">16</Thickness>
     <Thickness x:Key="Dialog.Message.Margin">0,0,0,14</Thickness>
     <SolidColorBrush x:Key="Dialog.Primary.Background" Color="#FF0078D4"/>
+    <!-- F1: texto do botão primário (branco sobre #0078D4, 4.5:1) -->
+    <SolidColorBrush x:Key="Dialog.Primary.Foreground" Color="#FFFFFFFF"/>
     <SolidColorBrush x:Key="Dialog.Secondary.Background" Color="#28FFFFFF"/>
     <Thickness x:Key="Dialog.Button.Padding">14,6,14,6</Thickness>
     <Thickness x:Key="Dialog.Button.Margin">6,0,0,0</Thickness>
@@ -157,6 +159,8 @@
     <SolidColorBrush x:Key="CreationMenu.Separator.Background" Color="#18FFFFFF"/>
     <Thickness x:Key="CreationMenu.Separator.Margin">4,2,4,2</Thickness>
     <Thickness x:Key="CreationMenu.Button.BorderThickness">0</Thickness>
+    <sys:Double x:Key="CreationMenu.Button.MinHeight">32</sys:Double>
+    <sys:Double x:Key="CreationMenu.Button.MinHeight.Touch">44</sys:Double>
 
     <!-- ===== Preview de arrasto (code-behind: DragPreviewWindow) ===== -->
     <SolidColorBrush x:Key="DragPreview.Background" Color="#DC18181E"/>

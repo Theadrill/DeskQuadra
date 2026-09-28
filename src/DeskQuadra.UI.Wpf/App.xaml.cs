@@ -226,7 +226,7 @@ public partial class App : System.Windows.Application
                 double dipWidth = Math.Max(200, Services.DpiHelper.PhysicalToDip(rect.Width, dpiX));
                 double dipHeight = Math.Max(140, Services.DpiHelper.PhysicalToDip(rect.Height, dpiY));
 
-                ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator);
+                ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator, ResolveEffectiveIsTouch());
             });
         };
 
@@ -543,7 +543,7 @@ public partial class App : System.Windows.Application
         };
     }
 
-    private static void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator)
+    private static void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator, bool isTouch)
     {
         var popup = new Popup
         {
@@ -618,7 +618,16 @@ public partial class App : System.Windows.Application
             FontSize = ThemeResolver.Get("CreationMenu.Secondary.FontSize", 11.0)
         };
 
-        var hoverBrush = ThemeResolver.Get("CreationMenu.Hover.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)));
+        // Altura mínima por densidade (Normal ~32px, Touch 44px+): sem MinHeight o
+        // Padding fixo esmagava os botões (secundário ~26px). Só altura, sem shift de layout.
+        double buttonMinHeight = isTouch
+            ? ThemeResolver.Get("CreationMenu.Button.MinHeight.Touch", 44.0)
+            : ThemeResolver.Get("CreationMenu.Button.MinHeight", 32.0);
+        btnCreate.MinHeight = buttonMinHeight;
+        btnCancel.MinHeight = buttonMinHeight;
+
+        // Fallback alinhado ao token CreationMenu.Hover.Background (#33FFFFFF).
+        var hoverBrush = ThemeResolver.Get("CreationMenu.Hover.Background", new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)));
         // Foreground branco do hover via token (contraste 4.5:1 sobre o fundo escuro).
         var hoverFg = ThemeResolver.Get("CreationMenu.Hover.Foreground", (Brush)Brushes.White);
         // Feedback de hover sem shift de layout: troca só Background/Foreground, preservando
