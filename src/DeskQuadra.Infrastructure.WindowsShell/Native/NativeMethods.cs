@@ -355,10 +355,6 @@ internal static class NativeMethods
     public static extern IntPtr WindowFromPoint(POINT Point);
 
     [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool IsWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
     public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
 
     // Par-gesto R (fix clique morto): eventos republicados via SendInput voltam
@@ -444,144 +440,70 @@ internal static class NativeMethods
         }
     }
 
-    // Menu clássico do fundo do desktop (fallback do Cancelar): mínimo IContextMenu (1).
-    // IContextMenu2/3 só seriam necessários para repassar WM_INITMENUPOPUP/draw de
-    // extensões via HandleMenuMsg — sem defeito observado no menu do fundo, adiado.
-    public static readonly Guid IID_IContextMenu = new("000214e4-0000-0000-c000-000000000046");
+    // ESC fecha o menu dual: hotkey com escopo estrito ao popup (registra ao
+    // abrir, desregistra em todos os fechamentos). Dono é o HWND da janela de
+    // seleção; o hook de WM_HOTKEY vive no HwndSource dela (App.xaml.cs).
+    // DllImport no padrão do repo (Guardian usa a mesma assinatura); SetLastError
+    // para diagnóstico, sem exceção (tudo best-effort no chamador).
+    public const int WM_HOTKEY = 0x0312;
+    public const uint VK_ESCAPE = 0x1B;
 
-    public const uint CMF_NORMAL = 0x00000000;
-    public const uint TPM_LEFTALIGN = 0x0000;
-    public const uint TPM_TOPALIGN = 0x0000;
-    public const uint TPM_LEFTBUTTON = 0x0000;
-    public const uint TPM_RETURNCMD = 0x0100;
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-    // Receita MSDN p/ menus com TPM_RETURNCMD (ESC funcionar): SetForegroundWindow
-    // no dono antes do TrackPopupMenuEx + PostMessage(WM_NULL) depois do retorno.
-    public const int WM_NULL = 0x0000;
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-    public const uint ContextMenuIdFirst = 1; // Nunca 0: TrackPopupMenuEx devolve 0 em cancelar/erro.
-    public const uint ContextMenuIdLast = 0x7FFF;
-
-    public const int SW_SHOWNORMAL = 1;
+    // Republicação do ESC (padrão par-gesto): o ESC reservado pelo hotkey seria
+    // engolido; reenviar via SendInput entrega ao destino original do foco.
+    public const uint INPUT_KEYBOARD = 1;
+    public const uint KEYEVENTF_KEYUP = 0x0002;
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct CMINVOKECOMMANDINFO
+    public struct KEYBDINPUT
     {
-        public int cbSize;
-        public uint fMask;
-        public IntPtr hwnd;
-        public IntPtr lpVerb;
-        public IntPtr lpParameters;
-        public IntPtr lpDirectory;
-        public int nShow;
-        public uint dwHotKey;
-        public IntPtr hIcon;
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
     }
 
-    // Vtable na ordem nativa até GetUIObjectOf (8º método); o chamado é o
-    // CreateViewObject (6º) — menu DO FUNDO da pasta. GetUIObjectOf (8º) com
-    // cidl=0 devolve o menu DA PASTA (Abrir, Fixar...), não o do fundo.
-    [ComImport]
-    [Guid("000214E6-0000-0000-C000-000000000046")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IShellFolder
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KEYBOARD_INPUT
     {
-        [PreserveSig]
-        int ParseDisplayName(
-            IntPtr hwnd,
-            IntPtr pbc,
-            [MarshalAs(UnmanagedType.LPWStr)] string pszDisplayName,
-            ref uint pchEaten,
-            out IntPtr ppidl,
-            ref uint pdwAttributes);
-
-        [PreserveSig]
-        int EnumObjects(IntPtr hwnd, int grfFlags, out IntPtr ppenumIDList);
-
-        [PreserveSig]
-        int BindToObject(
-            IntPtr pidl,
-            IntPtr pbc,
-            ref Guid riid,
-            [MarshalAs(UnmanagedType.Interface)] out object ppv);
-
-        [PreserveSig]
-        int BindToStorage(
-            IntPtr pidl,
-            IntPtr pbc,
-            ref Guid riid,
-            [MarshalAs(UnmanagedType.Interface)] out object ppv);
-
-        [PreserveSig]
-        int CompareIDs(IntPtr lParam, IntPtr pidl1, IntPtr pidl2);
-
-        [PreserveSig]
-        int CreateViewObject(
-            IntPtr hwndOwner,
-            ref Guid riid,
-            [MarshalAs(UnmanagedType.Interface)] out IContextMenu ppv);
-
-        [PreserveSig]
-        int GetAttributesOf(
-            uint cidl,
-            [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IntPtr[] apidl,
-            ref uint rgfInOut);
-
-        // Mantido só por completude da vtable (8º slot); NÃO usar com cidl=0
-        // para o menu do fundo — isso devolve o menu DA PASTA, não o do fundo.
-        [PreserveSig]
-        int GetUIObjectOf(
-            IntPtr hwndOwner,
-            uint cidl,
-            [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IntPtr[]? apidl,
-            ref Guid riid,
-            IntPtr rgfReserved,
-            [MarshalAs(UnmanagedType.Interface)] out IContextMenu ppv);
+        public uint type;
+        public KEYBDINPUT ki;
     }
 
-    [ComImport]
-    [Guid("000214e4-0000-0000-c000-000000000046")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IContextMenu
+    // Mesmo export SendInput do mouse, só que com payload de teclado
+    // (EntryPoint explícito, padrão do repo quando o nome gerenciado difere).
+    [DllImport("user32.dll", EntryPoint = "SendInput", SetLastError = true)]
+    public static extern uint SendKeyboardInput(uint nInputs, [In] KEYBOARD_INPUT[] pInputs, int cbSize);
+
+    // Par ESC down+up, best-effort e silencioso (nunca lança no hook do WPF).
+    public static void RepublishEscapeKey()
     {
-        [PreserveSig]
-        int QueryContextMenu(IntPtr hmenu, uint indexMenu, uint idCmdFirst, uint idCmdLast, uint uFlags);
-
-        [PreserveSig]
-        int InvokeCommand(ref CMINVOKECOMMANDINFO pici);
-
-        [PreserveSig]
-        int GetCommandString(IntPtr idCmd, uint uType, IntPtr pReserved, IntPtr pszName, uint cchMax);
+        try
+        {
+            var inputs = new KEYBOARD_INPUT[2];
+            inputs[0] = new KEYBOARD_INPUT
+            {
+                type = INPUT_KEYBOARD,
+                ki = new KEYBDINPUT { wVk = (ushort)VK_ESCAPE },
+            };
+            inputs[1] = new KEYBOARD_INPUT
+            {
+                type = INPUT_KEYBOARD,
+                ki = new KEYBDINPUT { wVk = (ushort)VK_ESCAPE, dwFlags = KEYEVENTF_KEYUP },
+            };
+            SendKeyboardInput((uint)inputs.Length, inputs, Marshal.SizeOf<KEYBOARD_INPUT>());
+        }
+        catch
+        {
+            // Silencioso, padrão do projeto: sem o par, o ESC só fecha o popup.
+        }
     }
-
-    [DllImport("shell32.dll")]
-    public static extern int SHGetDesktopFolder([MarshalAs(UnmanagedType.Interface)] out IShellFolder ppshf);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern IntPtr CreatePopupMenu();
-
-    // Com TPM_RETURNCMD devolve o ID do comando (0 = cancelado/erro); sem ela seria BOOL.
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern int TrackPopupMenuEx(IntPtr hmenu, uint uFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool DestroyMenu(IntPtr hMenu);
-
-    // Receita MSDN p/ menus com TPM_RETURNCMD: dono em foreground antes do
-    // TrackPopupMenuEx (sem isso o ESC é ignorado) e WM_NULL depois do retorno
-    // para destravar o estado modal do menu.
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
-
-    // Comparação pura: só ID != 0 vira InvokeCommand (testável via xUnit, sem HWND).
-    public static bool IsContextMenuCommand(int commandId) => commandId != 0;
-
-    // Parsing puro: offset relativo a idCmdFirst para lpVerb (MAKEINTRESOURCE).
-    public static int ToContextMenuVerbOffset(int commandId, uint idCmdFirst) => commandId - (int)idCmdFirst;
 }

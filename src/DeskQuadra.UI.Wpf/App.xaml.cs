@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -228,22 +229,7 @@ public partial class App : System.Windows.Application
                 double dipWidth = Math.Max(200, Services.DpiHelper.PhysicalToDip(rect.Width, dpiX));
                 double dipHeight = Math.Max(140, Services.DpiHelper.PhysicalToDip(rect.Height, dpiY));
 
-                // Dono do menu clássico: a _selectionWindow é oculta + WS_EX_NOACTIVATE e
-                // por isso nunca pode assumir foreground — SetForegroundWindow falha e o
-                // TrackPopupMenuEx com TPM_RETURNCMD ignora o ESC (flakey). A thread da UI
-                // acabou de receber o input do Click, então GetForegroundWindow() daqui tem
-                // permissão de foreground; usa ele como dono e só cai para a
-                // _selectionWindow (comportamento anterior) se nulo/inválido.
-                nint fgHwnd = NativeMethods.GetForegroundWindow();
-                nint ownerHwnd = (fgHwnd != nint.Zero && NativeMethods.IsWindow(fgHwnd))
-                    ? fgHwnd
-                    : new WindowInteropHelper(_selectionWindow).Handle;
-                // Ponto do menu: centro do rect (físico) — determinístico com o único
-                // dado do evento (sem ponto final do gesto).
-                int menuX = (int)Math.Round(rect.Left + rect.Width / 2);
-                int menuY = (int)Math.Round(rect.Top + rect.Height / 2);
-                var shellMenu = _serviceProvider?.GetService<IShellContextMenuService>();
-                ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator, ResolveEffectiveIsTouch(), shellMenu, ownerHwnd, menuX, menuY);
+                ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator, ResolveEffectiveIsTouch());
             });
         };
 
@@ -560,7 +546,11 @@ public partial class App : System.Windows.Application
         };
     }
 
-    private static void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator, bool isTouch, IShellContextMenuService? shellMenu, nint ownerHwnd, int screenX, int screenY)
+    // Id do hotkey ESC do menu dual (escopo estrito: registra ao abrir o popup,
+    // desregistra em todos os fechamentos; dono é o HWND da _selectionWindow).
+    private const int DualMenuEscHotkeyId = 0xD9AD;
+
+    private void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator, bool isTouch)
     {
         var popup = new Popup
         {
@@ -599,6 +589,7 @@ public partial class App : System.Windows.Application
         var flatTemplate = new ControlTemplate(typeof(Button));
         var borderFactory = new FrameworkElementFactory(typeof(Border));
         borderFactory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetBinding(Border.PaddingProperty, new Binding("Padding") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
         borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(0));
         var presenterFactory = new FrameworkElementFactory(typeof(ContentPresenter));
         presenterFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Left);
@@ -607,6 +598,45 @@ public partial class App : System.Windows.Application
         flatTemplate.VisualTree = borderFactory;
         flatStyle.Setters.Add(new Setter(Button.TemplateProperty, flatTemplate));
         flatStyle.Seal();
+
+        // ESC fecha o dual: RegisterHotKey com escopo estrito ao popup.
+        // Dono é o HWND da _selectionWindow (handle estável: o overlay já foi
+        // exibido durante o gesto); o hook de WM_HOTKEY vive no HwndSource dela.
+        // Tudo best-effort e silencioso: sem o ESC o popup segue fechando por
+        // clique fora (StaysOpen=false).
+        nint escOwnerHwnd = nint.Zero;
+        HwndSource? escSource = null;
+        try
+        {
+            if (_selectionWindow != null)
+            {
+                escOwnerHwnd = new WindowInteropHelper(_selectionWindow).Handle;
+                escSource = HwndSource.FromHwnd(escOwnerHwnd);
+            }
+        }
+        catch { /* silencioso, padrão do projeto */ }
+
+        HwndSourceHook escHook = (IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled) =>
+        {
+            if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == DualMenuEscHotkeyId)
+            {
+                handled = true;
+                try { popup.IsOpen = false; } catch { /* silencioso */ }
+                // O ESC reservado pelo hotkey seria engolido; republicar via
+                // SendInput entrega ao destino original (padrão par-gesto).
+                try { NativeMethods.RepublishEscapeKey(); } catch { /* silencioso */ }
+            }
+            return nint.Zero;
+        };
+
+        // Desliga em TODOS os fechamentos (Criar, Cancelar, Closed).
+        void DesligarEscDual()
+        {
+            try { escSource?.RemoveHook(escHook); } catch { /* silencioso */ }
+            try { if (escOwnerHwnd != nint.Zero) NativeMethods.UnregisterHotKey(escOwnerHwnd, DualMenuEscHotkeyId); } catch { /* silencioso */ }
+        }
+
+        try { escSource?.AddHook(escHook); } catch { /* silencioso */ }
 
         var btnCreate = new Button
         {
@@ -660,6 +690,7 @@ public partial class App : System.Windows.Application
         btnCreate.Click += (s, e) =>
         {
             popup.IsOpen = false;
+            DesligarEscDual();
             ChordDiagLog.Log($"popup-dual close (criar) {ChordDiagLog.Snapshot()}"); // ChordDiag
             int count = coordinator.ActiveQuadras.Count + 1;
             coordinator.CreateNewQuadra(string.Format(UiStrings.QuadraDefaultTitleFormat, count), left, top, width, height);
@@ -668,14 +699,8 @@ public partial class App : System.Windows.Application
         btnCancel.Click += (s, e) =>
         {
             popup.IsOpen = false;
+            DesligarEscDual();
             ChordDiagLog.Log($"popup-dual close (cancelar) {ChordDiagLog.Snapshot()}"); // ChordDiag
-            // Fallback nativo: menu clássico do fundo do desktop no ponto desenhado.
-            // Best-effort: falha só mantém o popup fechado (comportamento anterior).
-            try
-            {
-                shellMenu?.TryShowDesktopMenu(ownerHwnd, screenX, screenY);
-            }
-            catch { /* silencioso, padrão do projeto */ }
         };
 
         stack.Children.Add(btnCreate);
@@ -688,8 +713,22 @@ public partial class App : System.Windows.Application
 
         border.Child = stack;
         popup.Child = border;
-        popup.Closed += (s, e) => ChordDiagLog.Log($"popup-dual Closed {ChordDiagLog.Snapshot()}"); // ChordDiag (dismiss leve: StaysOpen=false fecha sem Click)
+        popup.Closed += (s, e) =>
+        {
+            DesligarEscDual();
+            ChordDiagLog.Log($"popup-dual Closed {ChordDiagLog.Snapshot()}"); // ChordDiag (dismiss leve: StaysOpen=false fecha sem Click)
+        };
         popup.IsOpen = true;
+        // Liga o ESC só com o popup aberto (escopo estrito, modificador zero =
+        // ESC puro); falha aqui só perde o ESC, o popup segue normal.
+        try
+        {
+            if (escOwnerHwnd != nint.Zero)
+            {
+                NativeMethods.RegisterHotKey(escOwnerHwnd, DualMenuEscHotkeyId, 0, NativeMethods.VK_ESCAPE);
+            }
+        }
+        catch { /* silencioso, padrão do projeto */ }
         ChordDiagLog.Log($"popup-dual open {ChordDiagLog.Snapshot()}"); // ChordDiag
     }
 

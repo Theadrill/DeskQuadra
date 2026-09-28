@@ -91,7 +91,7 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
     <value>➕ Criar Quadra Aqui</value>
   </data>
   <data name="CreationMenuCancelAndShowWindowsMenu" xml:space="preserve">
-    <value>✕ Cancelar e Exibir Menu do Windows</value>
+    <value>✕ Cancelar</value>
   </data>
   <data name="QuadraDefaultTitleFormat" xml:space="preserve">
     <value>Quadra {0}</value>
