@@ -244,12 +244,7 @@ public partial class QuadraWindow : Window
         {
             return;
         }
-        _peekEnterTimer = new DispatcherTimer(DispatcherPriority.Normal)
-        {
-            Interval = TimeSpan.FromMilliseconds(350)
-        };
-        _peekEnterTimer.Tick += PeekEnterTimer_Tick;
-        _peekEnterTimer.Start();
+        OneShotTimer.Arm(ref _peekEnterTimer, 350, PeekEnterTimer_Tick);
     }
 
     private void PeekEnterTimer_Tick(object? sender, EventArgs e)
@@ -282,12 +277,7 @@ public partial class QuadraWindow : Window
         {
             return;
         }
-        _peekExitTimer = new DispatcherTimer(DispatcherPriority.Normal)
-        {
-            Interval = TimeSpan.FromMilliseconds(350)
-        };
-        _peekExitTimer.Tick += PeekExitTimer_Tick;
-        _peekExitTimer.Start();
+        OneShotTimer.Arm(ref _peekExitTimer, 350, PeekExitTimer_Tick);
     }
 
     private void PeekExitTimer_Tick(object? sender, EventArgs e)
@@ -303,22 +293,12 @@ public partial class QuadraWindow : Window
 
     private void CancelPeekEnterTimer()
     {
-        if (_peekEnterTimer != null)
-        {
-            _peekEnterTimer.Stop();
-            _peekEnterTimer.Tick -= PeekEnterTimer_Tick;
-            _peekEnterTimer = null;
-        }
+        OneShotTimer.Cancel(ref _peekEnterTimer, PeekEnterTimer_Tick);
     }
 
     private void CancelPeekExitTimer()
     {
-        if (_peekExitTimer != null)
-        {
-            _peekExitTimer.Stop();
-            _peekExitTimer.Tick -= PeekExitTimer_Tick;
-            _peekExitTimer = null;
-        }
+        OneShotTimer.Cancel(ref _peekExitTimer, PeekExitTimer_Tick);
     }
 
     private void CancelPeekTimers()
@@ -1256,12 +1236,7 @@ public partial class QuadraWindow : Window
         }
         if (_viewModel.IsCollapsed && _springTimer == null)
         {
-            _springTimer = new DispatcherTimer(DispatcherPriority.Normal)
-            {
-                Interval = TimeSpan.FromMilliseconds(400)
-            };
-            _springTimer.Tick += SpringTimer_Tick;
-            _springTimer.Start();
+            OneShotTimer.Arm(ref _springTimer, 400, SpringTimer_Tick);
         }
     }
 
@@ -1289,40 +1264,19 @@ public partial class QuadraWindow : Window
 
     private void CancelSpringTimer()
     {
-        if (_springTimer != null)
-        {
-            _springTimer.Stop();
-            _springTimer.Tick -= SpringTimer_Tick;
-            _springTimer = null;
-        }
+        OneShotTimer.Cancel(ref _springTimer, SpringTimer_Tick);
     }
 
     // Rearma a contagem pós-drop (~3s): para o timer anterior e começa nova contagem
     private void ArmPostDropCollapseTimer()
     {
-        if (_postDropCollapseTimer != null)
-        {
-            _postDropCollapseTimer.Stop();
-            _postDropCollapseTimer.Tick -= PostDropCollapseTimer_Tick;
-            _postDropCollapseTimer = null;
-        }
         _awaitingPostDropCollapse = true;
-        _postDropCollapseTimer = new DispatcherTimer(DispatcherPriority.Normal)
-        {
-            Interval = TimeSpan.FromMilliseconds(3000)
-        };
-        _postDropCollapseTimer.Tick += PostDropCollapseTimer_Tick;
-        _postDropCollapseTimer.Start();
+        OneShotTimer.Arm(ref _postDropCollapseTimer, 3000, PostDropCollapseTimer_Tick);
     }
 
     private void CancelPostDropCollapseTimer()
     {
-        if (_postDropCollapseTimer != null)
-        {
-            _postDropCollapseTimer.Stop();
-            _postDropCollapseTimer.Tick -= PostDropCollapseTimer_Tick;
-            _postDropCollapseTimer = null;
-        }
+        OneShotTimer.Cancel(ref _postDropCollapseTimer, PostDropCollapseTimer_Tick);
         _awaitingPostDropCollapse = false;
     }
 

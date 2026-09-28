@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using DeskQuadra.UI.Wpf.Theme;
 
 namespace DeskQuadra.UI.Wpf.Services;
 
@@ -13,37 +14,35 @@ namespace DeskQuadra.UI.Wpf.Services;
 /// </summary>
 public static class DarkDialog
 {
-    // Seam de temas (Default): valores idênticos aos literais anteriores via TryFindResource.
-    private static T Theme<T>(string key, T fallback) =>
-        System.Windows.Application.Current?.TryFindResource(key) is T hit ? hit : fallback;
+    // Seam de temas (Default): valores via ThemeResolver (TryFindResource + fallback).
 
     private static Button CreateButton(string text, bool isPrimary)
     {
         return new Button
         {
             Content = text,
-            Padding = Theme("Dialog.Button.Padding", new Thickness(14, 6, 14, 6)),
-            Margin = Theme("Dialog.Button.Margin", new Thickness(6, 0, 0, 0)),
+            Padding = ThemeResolver.Get("Dialog.Button.Padding", new Thickness(14, 6, 14, 6)),
+            Margin = ThemeResolver.Get("Dialog.Button.Margin", new Thickness(6, 0, 0, 0)),
             Cursor = Cursors.Hand,
-            FontSize = Theme("Dialog.Button.FontSize", 12.0),
+            FontSize = ThemeResolver.Get("Dialog.Button.FontSize", 12.0),
             Background = isPrimary
-                ? Theme("Dialog.Primary.Background", new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)))
-                : Theme("Dialog.Secondary.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF))),
-            Foreground = Theme("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
-            BorderThickness = Theme("Dialog.Button.BorderThickness", new Thickness(0))
+                ? ThemeResolver.Get("Dialog.Primary.Background", new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)))
+                : ThemeResolver.Get("Dialog.Secondary.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF))),
+            Foreground = ThemeResolver.Get("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
+            BorderThickness = ThemeResolver.Get("Dialog.Button.BorderThickness", new Thickness(0))
         };
     }
 
     private static Window CreateWindow(string title, string message, Window? owner, double width, out StackPanel buttonPanel, bool showInTaskbar = true)
     {
-        var panel = new StackPanel { Orientation = Orientation.Vertical, Margin = Theme("Dialog.Panel.Margin", new Thickness(16)) };
+        var panel = new StackPanel { Orientation = Orientation.Vertical, Margin = ThemeResolver.Get("Dialog.Panel.Margin", new Thickness(16)) };
         panel.Children.Add(new TextBlock
         {
             Text = message,
-            Foreground = Theme("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
-            FontSize = Theme("Dialog.Message.FontSize", 13.0),
+            Foreground = ThemeResolver.Get("Dialog.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
+            FontSize = ThemeResolver.Get("Dialog.Message.FontSize", 13.0),
             TextWrapping = TextWrapping.Wrap,
-            Margin = Theme("Dialog.Message.Margin", new Thickness(0, 0, 0, 14))
+            Margin = ThemeResolver.Get("Dialog.Message.Margin", new Thickness(0, 0, 0, 14))
         });
 
         buttonPanel = new StackPanel
@@ -61,7 +60,7 @@ public static class DarkDialog
             ResizeMode = ResizeMode.NoResize,
             WindowStyle = showInTaskbar ? WindowStyle.SingleBorderWindow : WindowStyle.ToolWindow,
             ShowInTaskbar = showInTaskbar,
-            Background = Theme("Dialog.Background", new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24))),
+            Background = ThemeResolver.Get("Dialog.Background", new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24))),
             Content = panel
         };
 

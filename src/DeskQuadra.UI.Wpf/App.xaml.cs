@@ -18,6 +18,7 @@ using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.UI.Wpf.ViewModels;
 using DeskQuadra.UI.Wpf.Views;
+using DeskQuadra.UI.Wpf.Theme;
 using Microsoft.Extensions.DependencyInjection;
 using WinForms = System.Windows.Forms;
 using UiStrings = DeskQuadra.UI.Wpf.Properties.Strings;
@@ -541,23 +542,21 @@ public partial class App : System.Windows.Application
             PopupAnimation = PopupAnimation.Fade
         };
 
-        // Seam de temas (Default): valores idênticos aos literais anteriores via DynamicResource/TryFindResource.
-        static T Theme<T>(string key, T fallback) =>
-            Current?.TryFindResource(key) is T hit ? hit : fallback;
+        // Seam de temas (Default): valores via ThemeResolver (TryFindResource + fallback).
 
         var border = new Border
         {
-            Background = Theme("CreationMenu.Background", new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24))),
-            BorderBrush = Theme("CreationMenu.BorderBrush", new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF))),
-            BorderThickness = Theme("CreationMenu.BorderThickness", new Thickness(1)),
-            CornerRadius = Theme("CreationMenu.CornerRadius", new CornerRadius(8)),
-            Padding = Theme("CreationMenu.Padding", new Thickness(4)),
+            Background = ThemeResolver.Get("CreationMenu.Background", new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x24))),
+            BorderBrush = ThemeResolver.Get("CreationMenu.BorderBrush", new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF))),
+            BorderThickness = ThemeResolver.Get("CreationMenu.BorderThickness", new Thickness(1)),
+            CornerRadius = ThemeResolver.Get("CreationMenu.CornerRadius", new CornerRadius(8)),
+            Padding = ThemeResolver.Get("CreationMenu.Padding", new Thickness(4)),
             Effect = new DropShadowEffect
             {
-                BlurRadius = Theme("CreationMenu.Shadow.BlurRadius", 14.0),
-                ShadowDepth = Theme("CreationMenu.Shadow.Depth", 2.0),
-                Opacity = Theme("CreationMenu.Shadow.Opacity", 0.55),
-                Color = Theme("CreationMenu.Shadow.Color", Colors.Black)
+                BlurRadius = ThemeResolver.Get("CreationMenu.Shadow.BlurRadius", 14.0),
+                ShadowDepth = ThemeResolver.Get("CreationMenu.Shadow.Depth", 2.0),
+                Opacity = ThemeResolver.Get("CreationMenu.Shadow.Opacity", 0.55),
+                Color = ThemeResolver.Get("CreationMenu.Shadow.Color", Colors.Black)
             }
         };
 
@@ -567,28 +566,28 @@ public partial class App : System.Windows.Application
         {
             Content = UiStrings.CreationMenuCreateQuadraHere,
             Background = Brushes.Transparent,
-            Foreground = Theme("CreationMenu.Primary.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
-            BorderThickness = Theme("CreationMenu.Button.BorderThickness", new Thickness(0)),
-            Padding = Theme("CreationMenu.Primary.Padding", new Thickness(12, 8, 12, 8)),
+            Foreground = ThemeResolver.Get("CreationMenu.Primary.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
+            BorderThickness = ThemeResolver.Get("CreationMenu.Button.BorderThickness", new Thickness(0)),
+            Padding = ThemeResolver.Get("CreationMenu.Primary.Padding", new Thickness(12, 8, 12, 8)),
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Cursor = Cursors.Hand,
-            FontWeight = Theme("CreationMenu.Primary.FontWeight", FontWeights.SemiBold),
-            FontSize = Theme("CreationMenu.Primary.FontSize", 12.0)
+            FontWeight = ThemeResolver.Get("CreationMenu.Primary.FontWeight", FontWeights.SemiBold),
+            FontSize = ThemeResolver.Get("CreationMenu.Primary.FontSize", 12.0)
         };
 
         var btnCancel = new Button
         {
             Content = UiStrings.CreationMenuCancelAndShowWindowsMenu,
             Background = Brushes.Transparent,
-            Foreground = Theme("CreationMenu.Secondary.Foreground", new SolidColorBrush(Color.FromRgb(0xBB, 0xBB, 0xBB))),
-            BorderThickness = Theme("CreationMenu.Button.BorderThickness", new Thickness(0)),
-            Padding = Theme("CreationMenu.Secondary.Padding", new Thickness(12, 6, 12, 6)),
+            Foreground = ThemeResolver.Get("CreationMenu.Secondary.Foreground", new SolidColorBrush(Color.FromRgb(0xBB, 0xBB, 0xBB))),
+            BorderThickness = ThemeResolver.Get("CreationMenu.Button.BorderThickness", new Thickness(0)),
+            Padding = ThemeResolver.Get("CreationMenu.Secondary.Padding", new Thickness(12, 6, 12, 6)),
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Cursor = Cursors.Hand,
-            FontSize = Theme("CreationMenu.Secondary.FontSize", 11.0)
+            FontSize = ThemeResolver.Get("CreationMenu.Secondary.FontSize", 11.0)
         };
 
-        var hoverBrush = Theme("CreationMenu.Hover.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)));
+        var hoverBrush = ThemeResolver.Get("CreationMenu.Hover.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)));
         btnCreate.MouseEnter += (s, e) => btnCreate.Background = hoverBrush;
         btnCreate.MouseLeave += (s, e) => btnCreate.Background = Brushes.Transparent;
         btnCancel.MouseEnter += (s, e) => btnCancel.Background = hoverBrush;
@@ -609,8 +608,8 @@ public partial class App : System.Windows.Application
         stack.Children.Add(btnCreate);
         stack.Children.Add(new Separator
         {
-            Margin = Theme("CreationMenu.Separator.Margin", new Thickness(4, 2, 4, 2)),
-            Background = Theme("CreationMenu.Separator.Background", new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF)))
+            Margin = ThemeResolver.Get("CreationMenu.Separator.Margin", new Thickness(4, 2, 4, 2)),
+            Background = ThemeResolver.Get("CreationMenu.Separator.Background", new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF)))
         });
         stack.Children.Add(btnCancel);
 
