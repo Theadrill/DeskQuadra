@@ -14,8 +14,6 @@ namespace DeskQuadra.UI.Wpf.Services;
 public sealed class InputDeviceDetector : IInputDeviceDetector
 {
     private static volatile bool _isTouchActive;
-    private static bool _isInitialized;
-    private static readonly object _lock = new();
 
     public static event EventHandler<bool>? GlobalTouchStateChanged;
 
@@ -47,83 +45,6 @@ public sealed class InputDeviceDetector : IInputDeviceDetector
     void IInputDeviceDetector.SetTouchActive(bool isTouch)
     {
         SetTouchActive(isTouch);
-    }
-
-    /// <summary>
-    /// Inicializa os ganchos globais de eventos na aplicação WPF via Class Handlers no nível de Window.
-    /// Registra na raiz (Window) para capturar túneis de eventos sem onerar centenas de UIElements filhos.
-    /// </summary>
-    public static void Initialize(System.Windows.Application app)
-    {
-        lock (_lock)
-        {
-            if (_isInitialized)
-            {
-                return;
-            }
-
-            _isInitialized = true;
-
-            // 1. Toque capacitivo direto na tela (PreviewTouchDown)
-            EventManager.RegisterClassHandler(
-                typeof(Window),
-                UIElement.PreviewTouchDownEvent,
-                new EventHandler<TouchEventArgs>((s, e) => SetTouchActive(true)),
-                handledEventsToo: true);
-
-            // 2. Caneta/Stylus (PreviewStylusDown)
-            EventManager.RegisterClassHandler(
-                typeof(Window),
-                UIElement.PreviewStylusDownEvent,
-                new StylusDownEventHandler((s, e) =>
-                {
-                    bool isTouch = e.StylusDevice?.TabletDevice?.Type == TabletDeviceType.Touch;
-                    SetTouchActive(isTouch);
-                }),
-                handledEventsToo: true);
-
-            // 3. Eventos de mouse ou cliques sintetizados (PreviewMouseDown)
-            EventManager.RegisterClassHandler(
-                typeof(Window),
-                UIElement.PreviewMouseDownEvent,
-                new MouseButtonEventHandler((s, e) =>
-                {
-                    if (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
-                    {
-                        SetTouchActive(true);
-                    }
-                    else if (NativeMethods.IsCurrentMessageFromTouch())
-                    {
-                        SetTouchActive(true);
-                    }
-                    else
-                    {
-                        SetTouchActive(false);
-                    }
-                }),
-                handledEventsToo: true);
-
-            // 4. Movimento físico do mouse restaura modo mouse se não for sintetizado por touch
-            EventManager.RegisterClassHandler(
-                typeof(Window),
-                UIElement.PreviewMouseMoveEvent,
-                new MouseEventHandler((s, e) =>
-                {
-                    if (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
-                    {
-                        SetTouchActive(true);
-                    }
-                    else if (NativeMethods.IsCurrentMessageFromTouch())
-                    {
-                        SetTouchActive(true);
-                    }
-                    else
-                    {
-                        SetTouchActive(false);
-                    }
-                }),
-                handledEventsToo: true);
-        }
     }
 
     /// <summary>
