@@ -171,11 +171,9 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
                 return;
             }
 
-            _debounceCts?.Cancel();
-            _debounceCts?.Dispose();
-            _debounceCts = new CancellationTokenSource();
+            CancelDebounceLocked(createNew: true);
 
-            var token = _debounceCts.Token;
+            var token = _debounceCts!.Token;
 
             // Debounce de ~400ms para gravação em disco
             _ = Task.Run(async () =>
@@ -204,9 +202,7 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
     {
         lock (_lock)
         {
-            _debounceCts?.Cancel();
-            _debounceCts?.Dispose();
-            _debounceCts = null;
+            CancelDebounceLocked(createNew: false);
         }
 
         await _repository.SaveLayoutAsync(_activeQuadras.Values, cancellationToken).ConfigureAwait(false);
@@ -223,9 +219,16 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
 
         lock (_lock)
         {
-            _debounceCts?.Cancel();
-            _debounceCts?.Dispose();
-            _debounceCts = null;
+            CancelDebounceLocked(createNew: false);
         }
+    }
+
+    // Cancela e descarta o CTS atual; recria somente quando createNew for true.
+    // Chamar sempre sob lock (_lock); o dispose permanece dentro do lock para evitar race.
+    private void CancelDebounceLocked(bool createNew)
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = createNew ? new CancellationTokenSource() : null;
     }
 }

@@ -217,4 +217,38 @@ public class LayoutCoordinatorTests
         Assert.False(q2.IsLocked);
         Assert.All(coordinator.ActiveQuadras, q => Assert.False(q.IsLocked));
     }
+
+    [Fact]
+    public async Task SaveNowAsync_PersisteLayoutECancelaDebounceSemFalhar()
+    {
+        // Arrange: cobertura inexistente para o caminho que só cancela (createNew: false)
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        var quadra = coordinator.CreateNewQuadra("Q1", 0, 0);
+
+        // Act: cancela o debounce pendente e persiste de imediato, sem depender de timing
+        await coordinator.SaveNowAsync();
+
+        // Assert
+        Assert.Contains(repo.StoredQuadras, q => q.Id == quadra.Id);
+    }
+
+    [Fact]
+    public void Dispose_EhIdempotenteENotifyAposDisposeNaoLanca()
+    {
+        // Arrange: Dispose (createNew: false) e Notify com guarda _isDisposed não tinham cobertura
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        var coordinator = new LayoutCoordinator(repo, scanner);
+        var quadra = coordinator.CreateNewQuadra("Q1", 0, 0);
+
+        // Act + Assert: segundo Dispose não lança e Notify após Dispose sai pelo guarda sem lançar
+        coordinator.Dispose();
+        coordinator.Dispose();
+        coordinator.NotifyQuadraChanged(quadra);
+        coordinator.Dispose();
+    }
 }
