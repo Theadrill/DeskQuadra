@@ -328,3 +328,59 @@ Projeto `tests/DeskQuadra.TestDoubles/`.
 ### Limpos (sem duplicação)
 
 - `Decider` puro, pré-checagem `App`, recovery via `.resx`, stubs `FakeRepository`.
+
+---
+
+## 2ª Auditoria (2026-09-28, pós-D1–D14/N1–N6)
+
+**Veredito:** fixes seguraram, nenhuma ALTA. Só MÉDIAS e BAIXAs novas + 3 sem-ação.
+
+### Tabela INFRA (E1–E10-infra)
+
+| ID | Sev | Onde | Unificação |
+|----|-----|------|------------|
+| E1-infra | MÉDIA | `DesktopWindowAnchorService.cs:74-77` ≡ `NativeDesktopIconService.cs:81-84` (fallback FindWindow Progman→GetShellWindow) | `NativeMethods.GetProgmanHandle()` |
+| E2-infra | BAIXA | `FileLauncherService.cs:19` ≡ `IconExtractorService.cs:63` (exists arquivo\|\|diretório) | `Core FileSystem.PathExists` + xUnit |
+| E3-infra | MÉDIA | `FileDuplicator.cs:66-79` ≡ `:94-106` (arquivo/diretório espelhados) | `DuplicateCore` local + testes existentes |
+| E4-infra | MÉDIA | `LayoutCoordinator.cs:174-176,:207-209,:226-228` (Cancel+Dispose 3x) | `CancelDebounceLocked` local |
+| E5-infra | BAIXA | `SizeSnapper.cs:73-96` (4 guards throw) | `ThrowIfNegative/ThrowIfNotPositive` + testes |
+| E6-infra | BAIXA | `LayoutCoordinator.cs:117-126` Hide ≡ `:128-137` Restore | `SetHidden` local (ou adiar) |
+| E7-infra | BAIXA | temp-dir `JsonLayoutRepositoryTests:14,18-30,209` ≡ `FileDuplicatorTests:15,17-30` | fixture `TempDirectory` (não é fake — fora do D11) |
+| E8-infra | sem-ação | `Guardian/Program.cs:59-65` RegisterHotKey ≡ NativeMethods | watchdog standalone, não acoplar pânico |
+| E9-infra | sem-ação | `DensityResolver` consts SM_* ≡ NativeMethods | Clean Architecture |
+| E10-infra | sem-ação | plumbing log guardian/anchor | exceção logs, D7 carimbou |
+
+### Tabela UI (E1–E16-UI)
+
+| ID | Sev | Onde | Unificação |
+|----|-----|------|------------|
+| E1-UI | MÉDIA | `QuadraWindow.xaml:69-139` 3 estilos ≡ `App.xaml:12-82` | fonte única no App |
+| E2-UI | MÉDIA | `InputDeviceDetector.cs:56-127` Initialize morto (zero call sites) | deletar (ou ligar + remover lambdas) |
+| E3-UI | MÉDIA | `QuadraWindow.xaml.cs:1485-1685` 8 Resize espelhados | `SnapEdge/SnapCorner` locais |
+| E4-UI | MÉDIA | título "Quadra N" `App.xaml.cs:695-696` ≡ `QuadraWindow.xaml.cs:1389-1395` | `QuadraNaming.NextTitle` na UI + xUnit |
+| E5-UI | BAIXA | AxisResizeDirection | unificar local |
+| E6-UI | BAIXA | thumbs foreach | unificar local |
+| E7-UI | BAIXA | NotifyItemsChanged | unificar local |
+| E8-UI | BAIXA | SetProperty nos ViewModels (doubles com epsilon próprio) | unificar local |
+| E9-UI | BAIXA | CancelTransientTimers | unificar local |
+| E10-UI | BAIXA | FinishDrop | unificar local |
+| E11-UI | BAIXA | DuplicateWithStandardSuffix | unificar local |
+| E12-UI | BAIXA | OpenInExplorer | unificar local |
+| E13-UI | BAIXA | RebuildItemViewModels | unificar local |
+| E14-UI | BAIXA | DpiHelper.MapPhysicalToDip | unificar local |
+| E15-UI | BAIXA | consts Win32→NativeMethods | unificar local |
+| E16-UI | BAIXA | reuse ResolveEffectiveIsTouch | unificar local |
+
+### Limpos UI (com motivo)
+
+- timers cobertos, zero DllImport na UI, resx 100%, ChordDiag/HangTestSwitch intocados.
+
+### Fila de trabalho ordenada
+
+1. MÉDIAS: E1-infra, E3-infra, E4-infra, E1-UI, E2-UI, E3-UI, E4-UI.
+2. BAIXAs na ordem: E2-infra, E5-infra, E6-infra, E7-infra, E5-UI, E6-UI, E7-UI, E8-UI, E9-UI, E10-UI, E11-UI, E12-UI, E13-UI, E14-UI, E15-UI, E16-UI.
+3. Sem-ação: E8-infra (watchdog standalone), E9-infra (Clean Architecture), E10-infra (exceção logs/D7), D11 (fixture `TempDirectory` não é fake).
+
+### Status inicial
+
+- Tudo pendente: E1/E3/E4-infra, E1–E4-UI, E2/E5/E6/E7-infra, E5–E16-UI.
