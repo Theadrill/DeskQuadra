@@ -94,18 +94,7 @@ public sealed class DragPreviewWindow : Window
         _dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
 
         // Adiciona estilos Win32 para garantir que o preview seja 100% invisível ao mouse/toque e foco
-        int exStyle = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE);
-        NativeMethods.SetWindowLongPtr(
-            hwnd,
-            NativeMethods.GWL_EXSTYLE,
-            new IntPtr(exStyle | NativeMethods.WS_EX_TRANSPARENT | NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_NOACTIVATE));
-
-        // Força a sincronização imediata dos estilos estendidos no kernel do Windows
-        NativeMethods.SetWindowPos(
-            hwnd,
-            IntPtr.Zero,
-            0, 0, 0, 0,
-            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_NOACTIVATE);
+        NativeMethods.ApplyClickThroughNoActivate(hwnd);
 
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(WndProc);

@@ -7,10 +7,6 @@ namespace DeskQuadra.UI.Wpf.Views;
 
 public partial class DesktopSelectionWindow : Window
 {
-    private const int WS_EX_TRANSPARENT = 0x00000020;
-    private const int WS_EX_TOOLWINDOW = 0x00000080;
-    private const int WS_EX_NOACTIVATE = 0x08000000;
-
     public DesktopSelectionWindow()
     {
         InitializeComponent();
@@ -21,11 +17,7 @@ public partial class DesktopSelectionWindow : Window
         base.OnSourceInitialized(e);
 
         var helper = new WindowInteropHelper(this);
-        int exStyle = NativeMethods.GetWindowLong(helper.Handle, NativeMethods.GWL_EXSTYLE);
-        NativeMethods.SetWindowLongPtr(
-            helper.Handle,
-            NativeMethods.GWL_EXSTYLE,
-            (IntPtr)(exStyle | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE));
+        NativeMethods.ApplyClickThroughNoActivate(helper.Handle);
     }
 
     public void UpdateBounds(double physicalLeft, double physicalTop, double physicalWidth, double physicalHeight)

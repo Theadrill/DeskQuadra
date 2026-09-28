@@ -761,27 +761,17 @@ public partial class QuadraWindow : Window
         }
     }
 
-    private void SortByName_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.SortItems(SortMode.Name);
-        _coordinator.NotifyQuadraChanged(_viewModel.Model);
-    }
+    private void SortByName_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortMode.Name);
 
-    private void SortByType_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.SortItems(SortMode.Type);
-        _coordinator.NotifyQuadraChanged(_viewModel.Model);
-    }
+    private void SortByType_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortMode.Type);
 
-    private void SortByDate_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.SortItems(SortMode.Date);
-        _coordinator.NotifyQuadraChanged(_viewModel.Model);
-    }
+    private void SortByDate_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortMode.Date);
 
-    private void SortByManual_Click(object sender, RoutedEventArgs e)
+    private void SortByManual_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortMode.Manual);
+
+    private void ApplySortAndPersist(SortMode m)
     {
-        _viewModel.SortItems(SortMode.Manual);
+        _viewModel.SortItems(m);
         _coordinator.NotifyQuadraChanged(_viewModel.Model);
     }
 

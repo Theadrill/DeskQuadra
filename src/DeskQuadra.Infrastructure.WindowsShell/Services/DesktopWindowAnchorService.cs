@@ -32,11 +32,7 @@ public sealed class DesktopWindowAnchorService : IWindowAnchorService
         Log($"Iniciando ancoragem da janela 0x{windowHandle:X} como janela associada ao Progman 0x{progman:X}...");
 
         // 1. Aplicar estilo estendido WS_EX_TOOLWINDOW para não poluir Taskbar nem Alt+Tab
-        int exStyle = NativeMethods.GetWindowLong(windowHandle, NativeMethods.GWL_EXSTYLE);
-        NativeMethods.SetWindowLongPtr(
-            windowHandle,
-            NativeMethods.GWL_EXSTYLE,
-            new IntPtr(exStyle | NativeMethods.WS_EX_TOOLWINDOW));
+        NativeMethods.ApplyToolWindow(windowHandle);
 
         // 2. Definir o Progman como Owner (proprietário) da janela via GWL_HWNDPARENT (-8)
         // Isso vincula a janela permanentemente à camada do Desktop no gerenciador de janelas do Windows.

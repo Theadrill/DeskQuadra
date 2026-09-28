@@ -192,6 +192,43 @@ internal static class NativeMethods
         return new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
     }
 
+    /// <summary>
+    /// Aplica click-through + sem ativação + toolwindow (invisível a mouse/toque/foco,
+    /// fora da Taskbar/Alt+Tab) e força refresh do frame. Flags idênticas ao bloco
+    /// original de <c>DragPreviewWindow</c>.
+    /// </summary>
+    public static void ApplyClickThroughNoActivate(IntPtr hWnd)
+    {
+        int exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+        SetWindowLongPtr(
+            hWnd,
+            GWL_EXSTYLE,
+            new IntPtr(exStyle | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE));
+        SetWindowPos(
+            hWnd,
+            IntPtr.Zero,
+            0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+    }
+
+    /// <summary>
+    /// Aplica apenas <c>WS_EX_TOOLWINDOW</c> (fora da Taskbar/Alt+Tab) e força refresh
+    /// do frame. Não toca em parent nem Z-order (NOZORDER).
+    /// </summary>
+    public static void ApplyToolWindow(IntPtr hWnd)
+    {
+        int exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+        SetWindowLongPtr(
+            hWnd,
+            GWL_EXSTYLE,
+            new IntPtr(exStyle | WS_EX_TOOLWINDOW));
+        SetWindowPos(
+            hWnd,
+            IntPtr.Zero,
+            0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+    }
+
     [DllImport("user32.dll")]
     public static extern bool ReleaseCapture();
 
