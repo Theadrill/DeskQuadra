@@ -50,8 +50,7 @@ public sealed class JsonLayoutRepository : ILayoutRepository
             {
                 var tmpResult = await TryReadFileAsync(_tmpFilePath, cancellationToken).ConfigureAwait(false);
                 bool tmpValid = tmpResult is not null;
-                DateTime tmpTime = SafeGetWriteTimeUtc(_tmpFilePath);
-                DateTime jsonTime = jsonExists ? SafeGetWriteTimeUtc(_jsonFilePath) : DateTime.MinValue;
+                var (tmpTime, jsonTime) = GetRecoveryTimestamps(jsonExists);
 
                 var action = LayoutRecoveryDecider.Decide(
                     tmpExists: true, tmpValid: tmpValid, tmpWriteUtc: tmpTime,
@@ -185,16 +184,19 @@ public sealed class JsonLayoutRepository : ILayoutRepository
                 ? await TryReadFileAsync(_jsonFilePath, cancellationToken).ConfigureAwait(false)
                 : null;
 
+            var (tmpWriteUtc, jsonWriteUtc) = GetRecoveryTimestamps(jsonExists);
             var action = LayoutRecoveryDecider.Decide(
-                tmpExists: true, tmpValid: true, tmpWriteUtc: SafeGetWriteTimeUtc(_tmpFilePath),
+                tmpExists: true, tmpValid: true, tmpWriteUtc: tmpWriteUtc,
                 jsonExists: jsonExists, jsonValid: jsonResult is not null,
-                jsonWriteUtc: jsonExists ? SafeGetWriteTimeUtc(_jsonFilePath) : DateTime.MinValue);
+                jsonWriteUtc: jsonWriteUtc);
 
             if (action != LayoutRecoveryAction.PromptUser)
             {
                 return null;
             }
 
+            // Ponto 3: plumbing DIFERENTE (json incondicional) — não usa GetRecoveryTimestamps (regra REUSE: só idêntico).
+            // Aqui só se chega com PromptUser, logo .json existe e é válido.
             return new PendingLayoutRecovery(SafeGetWriteTimeUtc(_tmpFilePath), SafeGetWriteTimeUtc(_jsonFilePath));
         }
         finally
@@ -251,6 +253,15 @@ public sealed class JsonLayoutRepository : ILayoutRepository
         {
             return DateTime.MinValue;
         }
+    }
+
+    // Plumbing idêntico dos pontos 1 e 2: .tmp incondicional + .json condicional.
+    // Centraliza o par de timestamps para o Decide sem mudar a semântica.
+    private (DateTime TmpWriteUtc, DateTime JsonWriteUtc) GetRecoveryTimestamps(bool jsonExists)
+    {
+        DateTime tmpWriteUtc = SafeGetWriteTimeUtc(_tmpFilePath);
+        DateTime jsonWriteUtc = jsonExists ? SafeGetWriteTimeUtc(_jsonFilePath) : DateTime.MinValue;
+        return (tmpWriteUtc, jsonWriteUtc);
     }
 
     // Núcleo idêntico dos 3 pontos best-effort: copia com overwrite silencioso.
