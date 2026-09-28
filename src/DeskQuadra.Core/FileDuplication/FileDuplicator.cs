@@ -34,6 +34,49 @@ public static class FileDuplicator
     }
 
     /// <summary>
+    /// Resolve o diretório de fallback (Desktop do usuário): usa o diretório
+    /// injetado pela costura de teste quando presente, senão o Desktop real.
+    /// Extrai o `userDesktopDir ?? GetFolderPath` antes duplicado nos dois ramos.
+    /// </summary>
+    private static string ResolveFallbackDir(string? userDesktopDir) =>
+        userDesktopDir ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+    /// <summary>
+    /// Núcleo comum da duplicação: tenta copiar no diretório primário e, em falha,
+    /// tenta de novo no Desktop (fallback), preservando a continuação do
+    /// <c>copyIndex</c> entre as tentativas. Parametriza só o que difere entre
+    /// arquivo e diretório (construção do nome, existência e cópia); sufixos,
+    /// ordem de tentativas e semântica de erro (falha total propaga para o
+    /// chamador retornar o original) ficam inalterados.
+    /// </summary>
+    private static string DuplicateCore(
+        string sourcePath,
+        string primaryDir,
+        Func<int, string> buildName,
+        Func<string, bool> exists,
+        Action<string, string> copy,
+        string? userDesktopDir)
+    {
+        int copyIndex = 1;
+        string targetPath = GetUniquePath(primaryDir, buildName, exists, ref copyIndex);
+
+        try
+        {
+            copy(sourcePath, targetPath);
+            return targetPath;
+        }
+        catch
+        {
+            // Fallback para o Desktop do usuário se o diretório for protegido (ex: Public Desktop)
+            string fallbackDir = ResolveFallbackDir(userDesktopDir);
+            string fallbackTarget = GetUniquePath(fallbackDir, buildName, exists, ref copyIndex);
+
+            copy(sourcePath, fallbackTarget);
+            return fallbackTarget;
+        }
+    }
+
+    /// <summary>
     /// Duplica <paramref name="path"/> (arquivo ou diretório) com o mesmo comportamento do
     /// código original: nomes " - Cópia"/" - Cópia (N)", fallback para o Desktop em caso de
     /// falha na cópia primária, retorno do caminho original em falha total.
@@ -59,24 +102,8 @@ public static class FileDuplicator
                     ? $"{nameWithoutExt}{copySuffix}{ext}"
                     : $"{nameWithoutExt}{string.Format(copySuffixIndexedFormat, i)}{ext}";
 
-                int copyIndex = 1;
-                string targetPath = GetUniquePath(dir, BuildFileName, File.Exists, ref copyIndex);
-
                 Action<string, string> doCopyFile = copyFile ?? ((s, d) => File.Copy(s, d));
-                try
-                {
-                    doCopyFile(path, targetPath);
-                    return targetPath;
-                }
-                catch
-                {
-                    // Fallback para o Desktop do usuário se o diretório for protegido (ex: Public Desktop)
-                    string userDesktop = userDesktopDir ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                    string fallbackTarget = GetUniquePath(userDesktop, BuildFileName, File.Exists, ref copyIndex);
-
-                    doCopyFile(path, fallbackTarget);
-                    return fallbackTarget;
-                }
+                return DuplicateCore(path, dir, BuildFileName, File.Exists, doCopyFile, userDesktopDir);
             }
 
             if (Directory.Exists(path))
@@ -87,23 +114,8 @@ public static class FileDuplicator
                     ? $"{dirName}{copySuffix}"
                     : $"{dirName}{string.Format(copySuffixIndexedFormat, i)}";
 
-                int copyIndex = 1;
-                string targetPath = GetUniquePath(parent, BuildDirName, Directory.Exists, ref copyIndex);
-
                 Action<string, string> doCopyDir = copyDirectory ?? CopyDirectoryRecursively;
-                try
-                {
-                    doCopyDir(path, targetPath);
-                    return targetPath;
-                }
-                catch
-                {
-                    string userDesktop = userDesktopDir ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                    string fallbackTarget = GetUniquePath(userDesktop, BuildDirName, Directory.Exists, ref copyIndex);
-
-                    doCopyDir(path, fallbackTarget);
-                    return fallbackTarget;
-                }
+                return DuplicateCore(path, parent, BuildDirName, Directory.Exists, doCopyDir, userDesktopDir);
             }
         }
         catch
