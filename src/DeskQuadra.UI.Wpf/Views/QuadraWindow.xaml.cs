@@ -1537,164 +1537,262 @@ public partial class QuadraWindow : Window
     }
 
     // ==========================================
-    // Manipuladores de Redimensionamento Livre
+    // Manipuladores de Redimensionamento Livre + snap de grade (Fatia 2)
     // ==========================================
+
+    // D9: guard único dos 8 arrastes — mesma regra de antes (travada ou recolhida = return).
+    private bool CanTransform() => !_viewModel.IsLocked && !_viewModel.IsCollapsed;
+
+    // Grade: célula 78×96 (WrapPanel ItemWidth/ItemHeight no XAML:295).
+    private const double ResizeCellWidth = 78.0;
+    private const double ResizeCellHeight = 96.0;
+    private const double ResizeSnapThreshold = 12.0;
+    private const double ResizeSnapHysteresis = 3.0;
+
+    // Chrome horizontal 38 = 20 (Grid Margin 10×2, XAML:143) + 2 (Quadra.BorderThickness
+    // 1×2, Default.xaml:14) + 12 (ContentArea Margin 6×2, XAML:265) + 4 (ScrollViewer
+    // Padding 2×2, XAML:291). Não inclui o item (o slot 78 já é a célula cheia).
+    private const double HorizontalResizeChrome = 38.0;
+
+    // Parte fixa do chrome vertical 34 = 20 (margem externa) + 2 (borda do container)
+    // + 8 (ContentArea Margin 4×2) + 4 (ScrollViewer Padding 2×2); soma-se a altura do
+    // título por densidade (28/42 via DensityResolver, Default.xaml:48). A borda
+    // 0,0,0,1 do título vive dentro da altura da linha, sem somar extra.
+    private const double VerticalResizeChromeFixed = 34.0;
+    private double VerticalResizeChrome => DensityResolver.TitleBarHeight(_isTouchDensity) + VerticalResizeChromeFixed;
+
+    // Direção por eixo a partir do sinal da variação (receita do XML-doc do SizeSnapper):
+    // borda direita/inferior: change > 0 = Growing; borda esquerda/superior: invertido
+    // (change < 0 = Growing, a dimensão aumenta). Zero = Unknown (banda base).
+    private static ResizeDirection HorizontalResizeDirection(double change, bool fromLeftEdge)
+    {
+        if (change > 0)
+        {
+            return fromLeftEdge ? ResizeDirection.Shrinking : ResizeDirection.Growing;
+        }
+
+        if (change < 0)
+        {
+            return fromLeftEdge ? ResizeDirection.Growing : ResizeDirection.Shrinking;
+        }
+
+        return ResizeDirection.Unknown;
+    }
+
+    private static ResizeDirection VerticalResizeDirection(double change, bool fromTopEdge)
+    {
+        if (change > 0)
+        {
+            return fromTopEdge ? ResizeDirection.Shrinking : ResizeDirection.Growing;
+        }
+
+        if (change < 0)
+        {
+            return fromTopEdge ? ResizeDirection.Growing : ResizeDirection.Shrinking;
+        }
+
+        return ResizeDirection.Unknown;
+    }
 
     private void ResizeRight_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        double rawWidth = Width + e.HorizontalChange;
+        var snapped = SizeSnapper.SnapDimension(
+            rawWidth, ResizeCellWidth, HorizontalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            direction: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
+            hysteresis: ResizeSnapHysteresis,
+            minSize: MinWidth);
+        if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
         }
 
-        double newWidth = Width + e.HorizontalChange;
-        if (newWidth >= MinWidth)
-        {
-            Width = newWidth;
-        }
+        Width = snapped.SnappedSize;
     }
 
     private void ResizeBottom_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        double rawHeight = Height + e.VerticalChange;
+        var snapped = SizeSnapper.SnapDimension(
+            rawHeight, ResizeCellHeight, VerticalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            direction: VerticalResizeDirection(e.VerticalChange, fromTopEdge: false),
+            hysteresis: ResizeSnapHysteresis,
+            minSize: MinHeight);
+        if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
         }
 
-        double newHeight = Height + e.VerticalChange;
-        if (newHeight >= MinHeight)
-        {
-            Height = newHeight;
-        }
+        Height = snapped.SnappedSize;
     }
 
     private void ResizeLeft_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        double rawWidth = Width - e.HorizontalChange;
+        var snapped = SizeSnapper.SnapDimension(
+            rawWidth, ResizeCellWidth, HorizontalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            direction: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
+            hysteresis: ResizeSnapHysteresis,
+            minSize: MinWidth);
+        if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
         }
 
-        double newWidth = Width - e.HorizontalChange;
-        if (newWidth >= MinWidth)
-        {
-            Width = newWidth;
-            Left += e.HorizontalChange;
-        }
+        // Borda oposta fixa: compensa o Left pela diferença entre a largura
+        // antiga e a quantizada (não pelo delta bruto, que o snap pode alterar).
+        double widthDelta = Width - snapped.SnappedSize;
+        Width = snapped.SnappedSize;
+        Left += widthDelta;
     }
 
     private void ResizeTop_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        double rawHeight = Height - e.VerticalChange;
+        var snapped = SizeSnapper.SnapDimension(
+            rawHeight, ResizeCellHeight, VerticalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            direction: VerticalResizeDirection(e.VerticalChange, fromTopEdge: true),
+            hysteresis: ResizeSnapHysteresis,
+            minSize: MinHeight);
+        if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
         }
 
-        double newHeight = Height - e.VerticalChange;
-        if (newHeight >= MinHeight)
-        {
-            Height = newHeight;
-            Top += e.VerticalChange;
-        }
+        double heightDelta = Height - snapped.SnappedSize;
+        Height = snapped.SnappedSize;
+        Top += heightDelta;
     }
 
     private void ResizeBottomRight_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        var snapped = SizeSnapper.SnapSize(
+            Width + e.HorizontalChange, Height + e.VerticalChange,
+            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
+            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
+            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: false),
+            hysteresis: ResizeSnapHysteresis,
+            minWidth: MinWidth, minHeight: MinHeight);
+        if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
         }
 
-        ResizeRight_DragDelta(sender, e);
-        ResizeBottom_DragDelta(sender, e);
+        Width = snapped.Width;
+        Height = snapped.Height;
     }
 
     private void ResizeBottomLeft_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        var snapped = SizeSnapper.SnapSize(
+            Width - e.HorizontalChange, Height + e.VerticalChange,
+            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
+            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
+            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: false),
+            hysteresis: ResizeSnapHysteresis,
+            minWidth: MinWidth, minHeight: MinHeight);
+        if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
         }
 
-        ResizeLeft_DragDelta(sender, e);
-        ResizeBottom_DragDelta(sender, e);
+        double widthDelta = Width - snapped.Width;
+        Width = snapped.Width;
+        Left += widthDelta;
+        Height = snapped.Height;
     }
 
     private void ResizeTopRight_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        var snapped = SizeSnapper.SnapSize(
+            Width + e.HorizontalChange, Height - e.VerticalChange,
+            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
+            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
+            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: true),
+            hysteresis: ResizeSnapHysteresis,
+            minWidth: MinWidth, minHeight: MinHeight);
+        if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
         }
 
-        ResizeRight_DragDelta(sender, e);
-        ResizeTop_DragDelta(sender, e);
+        Width = snapped.Width;
+        double heightDelta = Height - snapped.Height;
+        Height = snapped.Height;
+        Top += heightDelta;
     }
 
     private void ResizeTopLeft_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        // Quadra travada: sem redimensionamento
-        if (_viewModel.IsLocked)
+        if (!CanTransform())
         {
             return;
         }
 
-        // Quadra recolhida: sem redimensionamento (thumbs ficam ocultos)
-        if (_viewModel.IsCollapsed)
+        var snapped = SizeSnapper.SnapSize(
+            Width - e.HorizontalChange, Height - e.VerticalChange,
+            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
+            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
+            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: true),
+            hysteresis: ResizeSnapHysteresis,
+            minWidth: MinWidth, minHeight: MinHeight);
+        if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
         }
 
-        ResizeLeft_DragDelta(sender, e);
-        ResizeTop_DragDelta(sender, e);
+        double widthDelta = Width - snapped.Width;
+        Width = snapped.Width;
+        Left += widthDelta;
+        double heightDelta = Height - snapped.Height;
+        Height = snapped.Height;
+        Top += heightDelta;
     }
 }
