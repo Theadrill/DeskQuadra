@@ -1,7 +1,7 @@
 # Auditoria de Reuso / Duplicação
 
 - **Data:** 2026-09-27
-- **Status:** pendente — trabalhar após finalizar o .tmp
+- **Status:** parcial — delta pós-D1-D14 (2026-09-27) incorporado; trabalhar pontos após finalizar o .tmp
 
 Relatório detalhado de auditoria de reuso/duplicação.
 
@@ -290,3 +290,41 @@ Projeto `tests/DeskQuadra.TestDoubles/`.
 - logs/comentários,
 - defaults TUDO/Minha Quadra (decisão arquitetural),
 - Tray WinForms vs menu WPF (padrões diferentes de propósito).
+
+---
+
+## Delta pós-D1-D14 (2026-09-27) — código do .tmp/DarkDialog
+
+**Veredito:** código novo limpo, nenhuma duplicação nova relevante (nada MÉDIA ou acima); o commit inclusive reduziu duplicação antiga.
+
+### N1 (BAIXA) — Plumbing de timestamps p/ Decide repetido 3x
+
+- **Onde:** `JsonLayoutRepository.cs:61-62`, `:207-209`, `:216` — leitura de `LastWriteTimeUtc` de tmp/json para passar ao `Decide`.
+- **Futuro:** `GetRecoveryTimestamps()` local retornando o par `(tmpTime, jsonTime)`.
+
+### N2 (BAIXA, observar) — File.Copy tmp→json 2x com comportamento diferente
+
+- **Onde:** `Load:73-74` (sem `.bak`) vs `Resolve:251-252` (com `.bak`).
+- **Decisão:** não unificar — regra: só unificar com comportamento idêntico.
+- **Futuro:** `PromoteTmpToJson(bool keepBak)`, se um terceiro call site surgir.
+
+### N3 (BAIXA) — File.Copy best-effort inline 3x
+
+- **Onde:** `Load:71-78`, `:119-126`, `Resolve:244-257` — `try/catch` best-effort ao redor de `File.Copy`.
+- **Futuro:** `CopyBestEffort(...)` local (fecha o D7 dentro deste arquivo).
+
+### N4 (INFORMATIVO) — DarkDialog unificou com mudança intencional
+
+- `ToolWindow` → `SingleBorderWindow` + taskbar foi decisão explícita, não descuido.
+
+### N5 (INFORMATIVO) — Theme\<T\> segue 3x
+
+- `DarkDialog`, `DragPreview`, `App` — já coberto pelo D4, sem ação nova.
+
+### N6 (INFORMATIVO) — DeciderTests poderiam virar Theory/MemberData
+
+- Estilo, não duplicação produtiva — sem ação.
+
+### Limpos (sem duplicação)
+
+- `Decider` puro, pré-checagem `App`, recovery via `.resx`, stubs `FakeRepository`.
