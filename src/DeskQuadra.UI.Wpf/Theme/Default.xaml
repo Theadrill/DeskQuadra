@@ -152,7 +152,8 @@
     <SolidColorBrush x:Key="CreationMenu.Secondary.Foreground" Color="#FFBBBBBB"/>
     <Thickness x:Key="CreationMenu.Secondary.Padding">12,6,12,6</Thickness>
     <sys:Double x:Key="CreationMenu.Secondary.FontSize">11</sys:Double>
-    <SolidColorBrush x:Key="CreationMenu.Hover.Background" Color="#28FFFFFF"/>
+    <SolidColorBrush x:Key="CreationMenu.Hover.Background" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="CreationMenu.Hover.Foreground" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="CreationMenu.Separator.Background" Color="#18FFFFFF"/>
     <Thickness x:Key="CreationMenu.Separator.Margin">4,2,4,2</Thickness>
     <Thickness x:Key="CreationMenu.Button.BorderThickness">0</Thickness>

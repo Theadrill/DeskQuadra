@@ -573,8 +573,27 @@ public partial class App : System.Windows.Application
 
         var stack = new StackPanel { Orientation = Orientation.Vertical };
 
+        // Chrome claro padrão do Button neutralizado: template flat local só com Border +
+        // ContentPresenter, sem trigger de sistema, para o token de hover aparecer
+        // (precedente QuadraWindow.xaml:48-63). Só troca cor, sem shift de layout.
+        var flatStyle = new Style(typeof(Button));
+        flatStyle.Setters.Add(new Setter(Button.BackgroundProperty, Brushes.Transparent));
+        flatStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(0)));
+        var flatTemplate = new ControlTemplate(typeof(Button));
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(0));
+        var presenterFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenterFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+        presenterFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+        borderFactory.AppendChild(presenterFactory);
+        flatTemplate.VisualTree = borderFactory;
+        flatStyle.Setters.Add(new Setter(Button.TemplateProperty, flatTemplate));
+        flatStyle.Seal();
+
         var btnCreate = new Button
         {
+            Style = flatStyle,
             Content = UiStrings.CreationMenuCreateQuadraHere,
             Background = Brushes.Transparent,
             Foreground = ThemeResolver.Get("CreationMenu.Primary.Foreground", new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5))),
@@ -588,6 +607,7 @@ public partial class App : System.Windows.Application
 
         var btnCancel = new Button
         {
+            Style = flatStyle,
             Content = UiStrings.CreationMenuCancelAndShowWindowsMenu,
             Background = Brushes.Transparent,
             Foreground = ThemeResolver.Get("CreationMenu.Secondary.Foreground", new SolidColorBrush(Color.FromRgb(0xBB, 0xBB, 0xBB))),
@@ -599,13 +619,17 @@ public partial class App : System.Windows.Application
         };
 
         var hoverBrush = ThemeResolver.Get("CreationMenu.Hover.Background", new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF)));
-        void AttachHover(Button btn)
+        // Foreground branco do hover via token (contraste 4.5:1 sobre o fundo escuro).
+        var hoverFg = ThemeResolver.Get("CreationMenu.Hover.Foreground", (Brush)Brushes.White);
+        // Feedback de hover sem shift de layout: troca só Background/Foreground, preservando
+        // o Foreground original de cada botão (primário e secundário têm cores diferentes).
+        void AttachHover(Button btn, Brush normalFg)
         {
-            btn.MouseEnter += (s, e) => btn.Background = hoverBrush;
-            btn.MouseLeave += (s, e) => btn.Background = Brushes.Transparent;
+            btn.MouseEnter += (s, e) => { btn.Background = hoverBrush; btn.Foreground = hoverFg; };
+            btn.MouseLeave += (s, e) => { btn.Background = Brushes.Transparent; btn.Foreground = normalFg; };
         }
-        AttachHover(btnCreate);
-        AttachHover(btnCancel);
+        AttachHover(btnCreate, (Brush)btnCreate.Foreground);
+        AttachHover(btnCancel, (Brush)btnCancel.Foreground);
 
         btnCreate.Click += (s, e) =>
         {
