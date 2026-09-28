@@ -1427,9 +1427,8 @@ public partial class QuadraWindow : Window
 
     private void NewQuadraMenu_Click(object sender, RoutedEventArgs e)
     {
-        int count = _coordinator.ActiveQuadras.Count + 1;
         _coordinator.CreateNewQuadra(
-            title: string.Format(Strings.QuadraDefaultTitleFormat, count),
+            title: QuadraNaming.NextTitle(_coordinator.ActiveQuadras.Count, Strings.QuadraDefaultTitleFormat),
             left: Left + 40,
             top: Top + 40,
             width: Width,

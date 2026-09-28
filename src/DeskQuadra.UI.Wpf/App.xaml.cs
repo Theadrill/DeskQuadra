@@ -19,6 +19,7 @@ using DeskQuadra.Infrastructure.WindowsShell;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.Infrastructure.WindowsShell.Services;
+using DeskQuadra.UI.Wpf.Services;
 using DeskQuadra.UI.Wpf.ViewModels;
 using DeskQuadra.UI.Wpf.Views;
 using DeskQuadra.UI.Wpf.Theme;
@@ -692,8 +693,7 @@ public partial class App : System.Windows.Application
             popup.IsOpen = false;
             DesligarEscDual();
             ChordDiagLog.Log($"popup-dual close (criar) {ChordDiagLog.Snapshot()}"); // ChordDiag
-            int count = coordinator.ActiveQuadras.Count + 1;
-            coordinator.CreateNewQuadra(string.Format(UiStrings.QuadraDefaultTitleFormat, count), left, top, width, height);
+            coordinator.CreateNewQuadra(QuadraNaming.NextTitle(coordinator.ActiveQuadras.Count, UiStrings.QuadraDefaultTitleFormat), left, top, width, height);
         };
 
         btnCancel.Click += (s, e) =>
