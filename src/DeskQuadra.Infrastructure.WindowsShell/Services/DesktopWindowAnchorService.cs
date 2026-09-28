@@ -71,16 +71,8 @@ public sealed class DesktopWindowAnchorService : IWindowAnchorService
             return _shellDesktopHandle;
         }
 
-        IntPtr progman = NativeMethods.FindWindow("Progman", null);
-        if (progman == IntPtr.Zero)
-        {
-            progman = NativeMethods.GetShellWindow();
-            Log($"Progman obtido via GetShellWindow: 0x{progman:X}");
-        }
-        else
-        {
-            Log($"Progman localizado via FindWindow: 0x{progman:X}");
-        }
+        IntPtr progman = NativeMethods.GetProgmanHandle();
+        Log($"Progman resolvido via GetProgmanHandle: 0x{progman:X}");
 
         _shellDesktopHandle = progman;
         return _shellDesktopHandle;

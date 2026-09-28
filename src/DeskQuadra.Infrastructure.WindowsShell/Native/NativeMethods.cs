@@ -160,6 +160,18 @@ internal static class NativeMethods
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string? className, string? windowTitle);
 
+    // E1-infra: fonte canônica do handle Progman/Shell — FindWindow("Progman", null),
+    // se Zero → GetShellWindow. Pode retornar Zero — chamadores já tratam.
+    public static IntPtr GetProgmanHandle() => ResolveProgmanHandle(() => FindWindow("Progman", null), GetShellWindow);
+
+    // E1-infra: decisão pura/testável com short-circuit idêntico ao original —
+    // se o FindWindow resolveu, retorna sem chamar o fallback.
+    public static IntPtr ResolveProgmanHandle(Func<IntPtr> findProgman, Func<IntPtr> getShellWindow)
+    {
+        IntPtr progman = findProgman();
+        return progman != IntPtr.Zero ? progman : getShellWindow();
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr SendMessageTimeout(
         IntPtr hWnd,

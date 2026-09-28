@@ -78,11 +78,7 @@ public sealed class NativeDesktopIconService : INativeDesktopIconService
         IntPtr shellView = IntPtr.Zero;
 
         // 1. Tenta localizar SHELLDLL_DefView no Progman
-        IntPtr progman = NativeMethods.FindWindow("Progman", null);
-        if (progman == IntPtr.Zero)
-        {
-            progman = NativeMethods.GetShellWindow();
-        }
+        IntPtr progman = NativeMethods.GetProgmanHandle();
 
         if (progman != IntPtr.Zero)
         {
