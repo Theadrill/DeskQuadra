@@ -16,6 +16,7 @@ using DeskQuadra.Infrastructure.Persistence;
 using DeskQuadra.Infrastructure.WindowsShell;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
+using DeskQuadra.Infrastructure.WindowsShell.Services;
 using DeskQuadra.UI.Wpf.ViewModels;
 using DeskQuadra.UI.Wpf.Views;
 using DeskQuadra.UI.Wpf.Theme;
@@ -168,7 +169,15 @@ public partial class App : System.Windows.Application
                     _selectionWindow.UpdateBounds(rect.Left, rect.Top, rect.Width, rect.Height);
                     if (!_selectionWindow.IsVisible)
                     {
-                        _selectionWindow.Show();
+                        if (_drawingService?.IsDrawingActive != true)
+                        {
+                            _selectionWindow.Hide();
+                        }
+                        else
+                        {
+                            _selectionWindow.Show();
+                            ChordDiagLog.Log("overlay Show (Progress)"); // ChordDiag
+                        }
                     }
                 }
             }, System.Windows.Threading.DispatcherPriority.Render);
@@ -176,7 +185,11 @@ public partial class App : System.Windows.Application
 
         _drawingService.DrawingCancelled += (s, ev) =>
         {
-            Dispatcher.Invoke(() => _selectionWindow?.Hide());
+            Dispatcher.BeginInvoke(() =>
+            {
+                _selectionWindow?.Hide();
+                ChordDiagLog.Log("overlay Hide (Cancelled)"); // ChordDiag
+            });
         };
 
         _drawingService.GlobalLeftClick += (s, ev) =>
@@ -197,7 +210,7 @@ public partial class App : System.Windows.Application
 
         _drawingService.DrawingCompleted += (s, rect) =>
         {
-            Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(() =>
             {
                 if (_selectionWindow == null)
                 {
@@ -205,6 +218,7 @@ public partial class App : System.Windows.Application
                 }
 
                 _selectionWindow.Hide();
+                ChordDiagLog.Log("overlay Hide (Completed)"); // ChordDiag
 
                 var dpi = VisualTreeHelper.GetDpi(_selectionWindow);
                 double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
@@ -596,6 +610,7 @@ public partial class App : System.Windows.Application
         btnCreate.Click += (s, e) =>
         {
             popup.IsOpen = false;
+            ChordDiagLog.Log("popup-dual close (criar)"); // ChordDiag
             int count = coordinator.ActiveQuadras.Count + 1;
             coordinator.CreateNewQuadra(string.Format(UiStrings.QuadraDefaultTitleFormat, count), left, top, width, height);
         };
@@ -603,6 +618,7 @@ public partial class App : System.Windows.Application
         btnCancel.Click += (s, e) =>
         {
             popup.IsOpen = false;
+            ChordDiagLog.Log("popup-dual close (cancelar)"); // ChordDiag
         };
 
         stack.Children.Add(btnCreate);
@@ -615,7 +631,9 @@ public partial class App : System.Windows.Application
 
         border.Child = stack;
         popup.Child = border;
+        popup.Closed += (s, e) => ChordDiagLog.Log("popup-dual Closed"); // ChordDiag (dismiss leve: StaysOpen=false fecha sem Click)
         popup.IsOpen = true;
+        ChordDiagLog.Log($"popup-dual open {ChordDiagLog.Snapshot()}"); // ChordDiag
     }
 
     private static void ConfigureServices(IServiceCollection services)

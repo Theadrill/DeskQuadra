@@ -25,6 +25,8 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
     public event EventHandler? DrawingCancelled;
     public event EventHandler? GlobalLeftClick;
 
+    public bool IsDrawingActive => _isDownOnDesktop && _isDragging;
+
     public DesktopDrawingService()
     {
         // Mantém a referência do delegado viva no heap para evitar coleta pelo Garbage Collector
@@ -71,11 +73,13 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
                     _isDownOnDesktop = true;
                     _isDragging = false;
                     _startPt = hookStruct.pt;
+                    ChordDiagLog.Log($"RDown onDesktop -> Down repassou hwnd=0x{targetWindow:X} x={hookStruct.pt.X} y={hookStruct.pt.Y}"); // ChordDiag
                 }
                 else
                 {
                     _isDownOnDesktop = false;
                     _isDragging = false;
+                    ChordDiagLog.Log($"RDown offDesktop repassou hwnd=0x{targetWindow:X}"); // ChordDiag
                 }
             }
             else if (msg == NativeMethods.WM_MOUSEMOVE)
@@ -85,6 +89,7 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
                     // Se o botão direito não estiver mais pressionado fisicamente (ex: solto durante Alt+Tab), cancela
                     if ((NativeMethods.GetKeyState(NativeMethods.VK_RBUTTON) & 0x8000) == 0)
                     {
+                        ChordDiagLog.Log($"Move rbtn-solto dragging={_isDragging} -> cancel repassou"); // ChordDiag
                         _isDownOnDesktop = false;
                         if (_isDragging)
                         {
@@ -102,6 +107,7 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
                     if (!_isDragging && distance >= 15)
                     {
                         _isDragging = true;
+                        ChordDiagLog.Log($"Move -> Dragging repassou d={distance:F0}"); // ChordDiag
                     }
 
                     if (_isDragging)
@@ -134,26 +140,40 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
 
                         DrawingCompleted?.Invoke(this, new Rect2D(left, top, width, height));
 
+                        ChordDiagLog.Log($"RUp dragging -> Completed ENGOLIU(1) {ChordDiagLog.Snapshot()}"); // ChordDiag
                         // Neutraliza a mensagem para o Windows não exibir o menu de contexto padrão
                         return (IntPtr)1;
                     }
+
+                    ChordDiagLog.Log($"RUp down-sem-drag -> repassou {ChordDiagLog.Snapshot()}"); // ChordDiag
+                }
+                else
+                {
+                    ChordDiagLog.Log($"RUp sem-chord repassou {ChordDiagLog.Snapshot()}"); // ChordDiag
+                    DrawingCancelled?.Invoke(this, EventArgs.Empty);
                 }
             }
             else if (msg == 0x0201 /* WM_LBUTTONDOWN */)
             {
                 GlobalLeftClick?.Invoke(this, EventArgs.Empty);
 
-                if (_isDragging)
+                if (_isDragging || _isDownOnDesktop)
                 {
+                    ChordDiagLog.Log($"LDown chord dragging={_isDragging} -> Cancelled repassou {ChordDiagLog.Snapshot()}"); // ChordDiag
                     _isDownOnDesktop = false;
                     _isDragging = false;
                     DrawingCancelled?.Invoke(this, EventArgs.Empty);
+                }
+                else
+                {
+                    ChordDiagLog.Log($"LDown sem-chord repassou {ChordDiagLog.Snapshot()}"); // ChordDiag
                 }
             }
             else if (msg == NativeMethods.WM_WINDOWPOSCHANGING)
             {
                 if (_isDragging)
                 {
+                    ChordDiagLog.Log("PosChanging dragging -> Cancelled repassou"); // ChordDiag
                     _isDownOnDesktop = false;
                     _isDragging = false;
                     DrawingCancelled?.Invoke(this, EventArgs.Empty);

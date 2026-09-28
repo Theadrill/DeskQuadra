@@ -232,6 +232,14 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool ReleaseCapture();
 
+    // ChordDiag TEMPORÁRIO (remover se ficar sem uso após deletar Services/ChordDiagLog.cs):
+    // mínimo para o instantâneo foco/captura do diagnóstico do chord. GetClassName já existia.
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetCapture();
+
     [DllImport("user32.dll")]
     public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 

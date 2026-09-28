@@ -36,4 +36,9 @@ public interface IDesktopDrawingService : IDisposable
     /// Disparado em qualquer clique com o botão esquerdo do mouse no sistema.
     /// </summary>
     event EventHandler? GlobalLeftClick;
+
+    /// <summary>
+    /// Indica se há um desenho ativo em andamento (botão direito pressionado no desktop e arrasto além do threshold).
+    /// </summary>
+    bool IsDrawingActive { get; }
 }
