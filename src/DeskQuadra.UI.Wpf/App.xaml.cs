@@ -199,8 +199,7 @@ public partial class App : System.Windows.Application
                 if (NativeMethods.GetCursorPos(out var pt))
                 {
                     IntPtr hwndUnder = NativeMethods.WindowFromPoint(pt);
-                    NativeMethods.GetWindowThreadProcessId(hwndUnder, out uint pid);
-                    if (pid != Environment.ProcessId)
+                    if (!NativeMethods.IsOwnProcessWindow(hwndUnder))
                     {
                         QuadraWindow.DeselectAllGlobally();
                     }

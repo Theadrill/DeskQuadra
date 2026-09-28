@@ -186,13 +186,7 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
 
     private static bool IsDesktopWindow(IntPtr hwnd)
     {
-        if (hwnd == IntPtr.Zero)
-        {
-            return false;
-        }
-
-        NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
-        if (pid == Environment.ProcessId)
+        if (NativeMethods.IsOwnProcessWindow(hwnd))
         {
             return false;
         }

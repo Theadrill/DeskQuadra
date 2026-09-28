@@ -2,6 +2,9 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 [assembly: InternalsVisibleTo("DeskQuadra.UI.Wpf")]
+// D12: libera o helper puro/testável ao projeto de teste sem referência nova
+// (UI.Wpf.Tests já enxerga WindowsShell por transitividade via UI.Wpf).
+[assembly: InternalsVisibleTo("DeskQuadra.UI.Wpf.Tests")]
 
 namespace DeskQuadra.Infrastructure.WindowsShell.Native;
 
@@ -227,6 +230,22 @@ internal static class NativeMethods
             IntPtr.Zero,
             0, 0, 0, 0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+    }
+
+    // D12: comparação pura de PID, sem Win32 — testável via xUnit.
+    public static bool IsOwnProcess(uint pid, uint currentPid) => pid == currentPid;
+
+    // D12: hwnd pertence ao processo atual? Zero → false sem P/Invoke;
+    // senão resolve o PID via GetWindowThreadProcessId e compara com o PID atual.
+    public static bool IsOwnProcessWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        GetWindowThreadProcessId(hwnd, out uint pid);
+        return IsOwnProcess(pid, (uint)Environment.ProcessId);
     }
 
     [DllImport("user32.dll")]
