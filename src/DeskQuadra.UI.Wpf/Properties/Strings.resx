@@ -115,7 +115,7 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
     <value>Manual</value>
   </data>
   <data name="QuadraMenu_NewQuadra" xml:space="preserve">
-    <value>+ Nova Quadra (Teste de Snap)</value>
+    <value>+ Nova Quadra</value>
   </data>
   <data name="QuadraMenu_LockQuadra" xml:space="preserve">
     <value>🔒 Travar esta Quadra</value>

@@ -107,7 +107,7 @@
                         LostMouseCapture="TitleBar_LostMouseCapture"
                         ContextMenuOpening="TitleBar_ContextMenuOpening">
                     <Border.ContextMenu>
-                        <ContextMenu>
+                        <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_Rescan}" Click="RescanMenu_Click"/>
                             <Separator/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortBy}">
