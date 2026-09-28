@@ -511,6 +511,16 @@ public partial class QuadraWindow : Window
             // Interrompe um possível arraste iniciado no primeiro clique
             _isDragging = false;
             (sender as UIElement)?.ReleaseMouseCapture();
+            // Peek-expandido: o 1º clique do duplo-clique não recolhe (IsCollapsed visual já é
+            // false); converte direto em expansão permanente sem passar pelo recolhe.
+            if (_peekExpanded)
+            {
+                CancelPeekTimers();
+                _peekExpanded = false;
+                _coordinator.NotifyQuadraChanged(_viewModel.Model);
+                e.Handled = true;
+                return;
+            }
             ToggleCollapsed();
             e.Handled = true;
             return;
