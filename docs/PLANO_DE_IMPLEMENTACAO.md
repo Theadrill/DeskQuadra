@@ -219,6 +219,10 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 * **Entregue (seção 12):** "🔒 Travar esta Quadra" no menu da barra de título + cadeado discreto; trava move e resize (scroll/cliques/menu/X intactos); "🔒 Travar todas as Quadras" no tray; estado persiste em `quadras.json`. **Validado pelo PO no Windows.**
 * **Pendente:** "Configurações", ícone próprio, Roll-up.
 
+### 2026-09-28 — D11: fakes compartilhados (`tests/DeskQuadra.TestDoubles/`) encerrado sem código
+* **Decisão do PO:** não criar o projeto. Só 3 fakes no repo (`FakeRepository` e `FakeScanner` em `LayoutCoordinatorTests`, `FakeInputDeviceDetector` em `InputDeviceDetectorContractTests`), cada um de interface distinta, zero duplicação; criar o projeto seria abstração sem reuso (viola a regra da 2ª repetição).
+* **Ação futura:** re-auditar no final do projeto, quando houver mais testes.
+
 ---
 
 ## Próxima Fase Planejada: Interações Touch Completas (Tap / Hold / Drag)
