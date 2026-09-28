@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using DeskQuadra.Application;
@@ -159,6 +160,7 @@ public partial class App : System.Windows.Application
 
         // 3. Configura serviço de desenho de Quadra com botão direito na Área de Trabalho
         _selectionWindow = new DesktopSelectionWindow();
+        _selectionWindow.SourceInitialized += (s, e) => ChordDiagLog.OverlayHwnd = new WindowInteropHelper(_selectionWindow).Handle; // ChordDiag (TEMP: expõe HWND do overlay ao SnapshotUnder do hook; handle estável, só log)
 
         _drawingService.DrawingProgress += (s, rect) =>
         {
@@ -217,7 +219,7 @@ public partial class App : System.Windows.Application
                 }
 
                 _selectionWindow.Hide();
-                ChordDiagLog.Log("overlay Hide (Completed)"); // ChordDiag
+                ChordDiagLog.Log($"overlay Hide (Completed) {ChordDiagLog.Snapshot()}"); // ChordDiag
 
                 var (dpiX, dpiY) = Services.DpiHelper.GetScale(_selectionWindow);
 
@@ -226,7 +228,22 @@ public partial class App : System.Windows.Application
                 double dipWidth = Math.Max(200, Services.DpiHelper.PhysicalToDip(rect.Width, dpiX));
                 double dipHeight = Math.Max(140, Services.DpiHelper.PhysicalToDip(rect.Height, dpiY));
 
-                ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator, ResolveEffectiveIsTouch());
+                // Dono do menu clássico: a _selectionWindow é oculta + WS_EX_NOACTIVATE e
+                // por isso nunca pode assumir foreground — SetForegroundWindow falha e o
+                // TrackPopupMenuEx com TPM_RETURNCMD ignora o ESC (flakey). A thread da UI
+                // acabou de receber o input do Click, então GetForegroundWindow() daqui tem
+                // permissão de foreground; usa ele como dono e só cai para a
+                // _selectionWindow (comportamento anterior) se nulo/inválido.
+                nint fgHwnd = NativeMethods.GetForegroundWindow();
+                nint ownerHwnd = (fgHwnd != nint.Zero && NativeMethods.IsWindow(fgHwnd))
+                    ? fgHwnd
+                    : new WindowInteropHelper(_selectionWindow).Handle;
+                // Ponto do menu: centro do rect (físico) — determinístico com o único
+                // dado do evento (sem ponto final do gesto).
+                int menuX = (int)Math.Round(rect.Left + rect.Width / 2);
+                int menuY = (int)Math.Round(rect.Top + rect.Height / 2);
+                var shellMenu = _serviceProvider?.GetService<IShellContextMenuService>();
+                ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator, ResolveEffectiveIsTouch(), shellMenu, ownerHwnd, menuX, menuY);
             });
         };
 
@@ -543,7 +560,7 @@ public partial class App : System.Windows.Application
         };
     }
 
-    private static void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator, bool isTouch)
+    private static void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator, bool isTouch, IShellContextMenuService? shellMenu, nint ownerHwnd, int screenX, int screenY)
     {
         var popup = new Popup
         {
@@ -643,7 +660,7 @@ public partial class App : System.Windows.Application
         btnCreate.Click += (s, e) =>
         {
             popup.IsOpen = false;
-            ChordDiagLog.Log("popup-dual close (criar)"); // ChordDiag
+            ChordDiagLog.Log($"popup-dual close (criar) {ChordDiagLog.Snapshot()}"); // ChordDiag
             int count = coordinator.ActiveQuadras.Count + 1;
             coordinator.CreateNewQuadra(string.Format(UiStrings.QuadraDefaultTitleFormat, count), left, top, width, height);
         };
@@ -651,7 +668,14 @@ public partial class App : System.Windows.Application
         btnCancel.Click += (s, e) =>
         {
             popup.IsOpen = false;
-            ChordDiagLog.Log("popup-dual close (cancelar)"); // ChordDiag
+            ChordDiagLog.Log($"popup-dual close (cancelar) {ChordDiagLog.Snapshot()}"); // ChordDiag
+            // Fallback nativo: menu clássico do fundo do desktop no ponto desenhado.
+            // Best-effort: falha só mantém o popup fechado (comportamento anterior).
+            try
+            {
+                shellMenu?.TryShowDesktopMenu(ownerHwnd, screenX, screenY);
+            }
+            catch { /* silencioso, padrão do projeto */ }
         };
 
         stack.Children.Add(btnCreate);
@@ -664,7 +688,7 @@ public partial class App : System.Windows.Application
 
         border.Child = stack;
         popup.Child = border;
-        popup.Closed += (s, e) => ChordDiagLog.Log("popup-dual Closed"); // ChordDiag (dismiss leve: StaysOpen=false fecha sem Click)
+        popup.Closed += (s, e) => ChordDiagLog.Log($"popup-dual Closed {ChordDiagLog.Snapshot()}"); // ChordDiag (dismiss leve: StaysOpen=false fecha sem Click)
         popup.IsOpen = true;
         ChordDiagLog.Log($"popup-dual open {ChordDiagLog.Snapshot()}"); // ChordDiag
     }

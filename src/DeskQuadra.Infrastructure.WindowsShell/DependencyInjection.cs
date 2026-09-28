@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddSingleton<IFileLauncherService, FileLauncherService>();
         services.AddSingleton<IDesktopDrawingService, DesktopDrawingService>();
         services.AddSingleton<IStartupService, RegistryStartupService>();
+        services.AddSingleton<IShellContextMenuService, ShellContextMenuService>();
         return services;
     }
 }
