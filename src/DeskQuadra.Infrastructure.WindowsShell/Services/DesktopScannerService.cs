@@ -87,37 +87,34 @@ public sealed class DesktopScannerService : IDesktopScannerService
         return items;
     }
 
+    // D14: adiciona o caminho só se for único (ignora nulo/vazio, compara sem caixa alta).
+    internal static void AddIfUnique(List<string> paths, string? candidate)
+    {
+        if (!string.IsNullOrWhiteSpace(candidate) && !paths.Contains(candidate, StringComparer.OrdinalIgnoreCase))
+        {
+            paths.Add(candidate);
+        }
+    }
+
     private static List<string> GetDesktopDirectories()
     {
         var paths = new List<string>();
 
         // 1. Desktop do Usuário via SHGetKnownFolderPath (resolve OneDrive e redirecionamentos)
         string? userDesktop = GetKnownFolderPath(FolderIdDesktop);
-        if (!string.IsNullOrWhiteSpace(userDesktop) && !paths.Contains(userDesktop, StringComparer.OrdinalIgnoreCase))
-        {
-            paths.Add(userDesktop);
-        }
+        AddIfUnique(paths, userDesktop);
 
         // 2. Desktop Público (All Users / Instaladores)
         string? publicDesktop = GetKnownFolderPath(FolderIdPublicDesktop);
-        if (!string.IsNullOrWhiteSpace(publicDesktop) && !paths.Contains(publicDesktop, StringComparer.OrdinalIgnoreCase))
-        {
-            paths.Add(publicDesktop);
-        }
+        AddIfUnique(paths, publicDesktop);
 
         // 3. Fallback: Environment.SpecialFolder.Desktop
         string localDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        if (!string.IsNullOrWhiteSpace(localDesktop) && !paths.Contains(localDesktop, StringComparer.OrdinalIgnoreCase))
-        {
-            paths.Add(localDesktop);
-        }
+        AddIfUnique(paths, localDesktop);
 
         // 4. Fallback: CommonDesktopDirectory
         string commonDesktop = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
-        if (!string.IsNullOrWhiteSpace(commonDesktop) && !paths.Contains(commonDesktop, StringComparer.OrdinalIgnoreCase))
-        {
-            paths.Add(commonDesktop);
-        }
+        AddIfUnique(paths, commonDesktop);
 
         return paths;
     }
