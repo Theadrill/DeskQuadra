@@ -167,4 +167,20 @@ public class JsonLayoutRepositoryTests : IDisposable
         Assert.Single(loaded[0].Items);
         Assert.Equal(testDate, loaded[0].Items[0].LastModified);
     }
+
+    [Fact]
+    public void JsonStorageDefaults_SerializerOptions_IsIndentedAndCaseInsensitive()
+    {
+        Assert.True(JsonStorageDefaults.SerializerOptions.WriteIndented);
+        Assert.True(JsonStorageDefaults.SerializerOptions.PropertyNameCaseInsensitive);
+    }
+
+    [Fact]
+    public void JsonStorageDefaults_GetAppDataDirectory_RespectsCustomDir()
+    {
+        var custom = Path.Combine(Path.GetTempPath(), "DeskQuadraCustom_" + Guid.NewGuid().ToString("N"));
+
+        Assert.Equal(custom, JsonStorageDefaults.GetAppDataDirectory(custom));
+        Assert.EndsWith("DeskQuadra", JsonStorageDefaults.GetAppDataDirectory(null));
+    }
 }

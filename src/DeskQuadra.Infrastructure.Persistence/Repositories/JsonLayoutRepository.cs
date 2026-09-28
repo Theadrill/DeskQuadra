@@ -16,19 +16,11 @@ public sealed class JsonLayoutRepository : ILayoutRepository
     private readonly string _bakFilePath;
     private readonly string _tmpFilePath;
 
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true
-    };
-
     private readonly SemaphoreSlim _fileLock = new(1, 1);
 
     public JsonLayoutRepository(string? customStorageDirectory = null)
     {
-        _storageDirectory = customStorageDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "DeskQuadra");
+        _storageDirectory = JsonStorageDefaults.GetAppDataDirectory(customStorageDirectory);
 
         _jsonFilePath = Path.Combine(_storageDirectory, "quadras.json");
         _bakFilePath = Path.Combine(_storageDirectory, "quadras.json.bak");
@@ -156,7 +148,7 @@ public sealed class JsonLayoutRepository : ILayoutRepository
                 bufferSize: 4096,
                 useAsync: true))
             {
-                await JsonSerializer.SerializeAsync(stream, dtos, SerializerOptions, cancellationToken).ConfigureAwait(false);
+                await JsonSerializer.SerializeAsync(stream, dtos, JsonStorageDefaults.SerializerOptions, cancellationToken).ConfigureAwait(false);
                 await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
 
@@ -297,7 +289,7 @@ public sealed class JsonLayoutRepository : ILayoutRepository
                 bufferSize: 4096,
                 useAsync: true);
 
-            var dtos = await JsonSerializer.DeserializeAsync<List<QuadraDto>>(stream, SerializerOptions, cancellationToken).ConfigureAwait(false);
+            var dtos = await JsonSerializer.DeserializeAsync<List<QuadraDto>>(stream, JsonStorageDefaults.SerializerOptions, cancellationToken).ConfigureAwait(false);
             if (dtos is null)
             {
                 return null;

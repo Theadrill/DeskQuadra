@@ -14,19 +14,11 @@ public sealed class JsonDensitySettingsService : IDensitySettingsService
     private readonly object _gate = new();
     private DensityPreference _current = DensityPreference.Auto;
 
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true
-    };
-
     public event EventHandler<DensityPreference>? PreferenceChanged;
 
     public JsonDensitySettingsService(string? customStorageDirectory = null)
     {
-        string dir = customStorageDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "DeskQuadra");
+        string dir = JsonStorageDefaults.GetAppDataDirectory(customStorageDirectory);
         _settingsFilePath = Path.Combine(dir, "settings.json");
         _current = LoadBestEffort();
     }
@@ -62,7 +54,7 @@ public sealed class JsonDensitySettingsService : IDensitySettingsService
             }
 
             string json = File.ReadAllText(_settingsFilePath);
-            var dto = JsonSerializer.Deserialize<SettingsDto>(json, Options);
+            var dto = JsonSerializer.Deserialize<SettingsDto>(json, JsonStorageDefaults.SerializerOptions);
             return dto is not null && Enum.IsDefined(typeof(DensityPreference), dto.DensityPreference)
                 ? dto.DensityPreference
                 : DensityPreference.Auto;
@@ -83,7 +75,7 @@ public sealed class JsonDensitySettingsService : IDensitySettingsService
                 Directory.CreateDirectory(dir);
             }
 
-            string json = JsonSerializer.Serialize(new SettingsDto { DensityPreference = preference }, Options);
+            string json = JsonSerializer.Serialize(new SettingsDto { DensityPreference = preference }, JsonStorageDefaults.SerializerOptions);
             string tmp = _settingsFilePath + ".tmp";
             File.WriteAllText(tmp, json);
             File.Move(tmp, _settingsFilePath, overwrite: true);
