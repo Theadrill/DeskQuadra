@@ -64,79 +64,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
-        <!-- Estilo moderno do Menu de Contexto (Acrílico Escuro Fluent) -->
-        <Style x:Key="ModernContextMenuStyle" TargetType="ContextMenu">
-            <Setter Property="Background" Value="{DynamicResource Menu.Background}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource Menu.BorderBrush}"/>
-            <Setter Property="BorderThickness" Value="{DynamicResource Menu.BorderThickness}"/>
-            <Setter Property="Foreground" Value="{DynamicResource Menu.Foreground}"/>
-            <Setter Property="Padding" Value="{DynamicResource Menu.Padding}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ContextMenu">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{DynamicResource Menu.CornerRadius}"
-                                Padding="{TemplateBinding Padding}">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="{DynamicResource Menu.Shadow.BlurRadius}" ShadowDepth="{DynamicResource Menu.Shadow.Depth}" Opacity="{DynamicResource Menu.Shadow.Opacity}" Color="{DynamicResource Menu.Shadow.Color}"/>
-                            </Border.Effect>
-                            <StackPanel IsItemsHost="True"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Estilo Compacto para Mouse (~26px) -->
-        <Style x:Key="MouseMenuItemStyle" TargetType="MenuItem">
-            <Setter Property="Foreground" Value="{DynamicResource Menu.MouseItem.Foreground}"/>
-            <Setter Property="FontSize" Value="{DynamicResource Menu.MouseItem.FontSize}"/>
-            <Setter Property="MinHeight" Value="{DynamicResource Menu.MouseItem.MinHeight}"/>
-            <Setter Property="Padding" Value="{DynamicResource Menu.MouseItem.Padding}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.MouseItem.CornerRadius}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.MouseItem.Hover.Background}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Estilo Ergonômico Espaçoso para Toque com o Dedo (Touch - 46px) -->
-        <Style x:Key="TouchMenuItemStyle" TargetType="MenuItem">
-            <Setter Property="Foreground" Value="{DynamicResource Menu.TouchItem.Foreground}"/>
-            <Setter Property="FontSize" Value="{DynamicResource Menu.TouchItem.FontSize}"/>
-            <Setter Property="FontWeight" Value="{DynamicResource Menu.TouchItem.FontWeight}"/>
-            <Setter Property="MinHeight" Value="{DynamicResource Menu.TouchItem.MinHeight}"/>
-            <Setter Property="Padding" Value="{DynamicResource Menu.TouchItem.Padding}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.TouchItem.CornerRadius}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.TouchItem.Hover.Background}"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.TouchItem.Pressed.Background}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <!-- Grid principal contendo margem externa para a sombra projetada -->
@@ -341,8 +268,8 @@
                                             <!-- Ícone do arquivo em alta resolução -->
                                             <Image Grid.Row="0"
                                                    Source="{Binding Icon}"
-                                                   Width="38"
-                                                   Height="38"
+                                                   Width="{DynamicResource Quadra.Density.Icon.Size}"
+                                                   Height="{DynamicResource Quadra.Density.Icon.Size}"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
                                                    RenderOptions.BitmapScalingMode="HighQuality"/>

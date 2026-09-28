@@ -22,6 +22,9 @@ public static class DensityResolver
     public const double NormalTitleButtonSize = 24.0;
     public const double TouchTitleButtonHitbox = 44.0;
 
+    public const double NormalIconSize = 38.0;
+    public const double TouchIconSize = 48.0;
+
     /// <summary>
     /// Verdadeiro quando o hardware tem touch: digitizer indica touch integrado/externo
     /// OU SM_MAXIMUMTOUCHES &gt; 0 (cobre digitizer sem NID mas com toques reportados).
@@ -52,4 +55,7 @@ public static class DensityResolver
     public static double TitleBarHeight(bool isTouch) => isTouch ? TouchTitleBarHeight : NormalTitleBarHeight;
 
     public static double TitleButtonSize(bool isTouch) => isTouch ? TouchTitleButtonHitbox : NormalTitleButtonSize;
+
+    // Ícone cresce dentro da célula fixa 78x96 (não mexe no snap D9).
+    public static double IconSize(bool isTouch) => isTouch ? TouchIconSize : NormalIconSize;
 }

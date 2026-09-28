@@ -48,6 +48,12 @@
     <GridLength x:Key="Quadra.Density.TitleBar.Height">28</GridLength>
     <Thickness x:Key="Quadra.Density.Title.Padding">8,0,4,0</Thickness>
     <Thickness x:Key="Quadra.Density.TitleButton.Margin">0,0,2,0</Thickness>
+    <!-- Fatia vertical: ícone cresce DENTRO da célula fixa 78x96 (snap D9 intacto). -->
+    <!-- Normal 38 via resolver; Touch 48 escrito por ApplyDensity. -->
+    <sys:Double x:Key="Quadra.Density.Icon.Size">38</sys:Double>
+    <!-- Respiro Touch do item (Normal vive em Quadra.Item.Padding/Margin abaixo). -->
+    <Thickness x:Key="Quadra.Item.Padding.Touch">8,8,8,4</Thickness>
+    <Thickness x:Key="Quadra.Item.Margin.Touch">4</Thickness>
 
     <!-- ===== Quadra: mensagem de vazio ===== -->
     <SolidColorBrush x:Key="Quadra.Empty.BorderBrush" Color="#14FFFFFF"/>

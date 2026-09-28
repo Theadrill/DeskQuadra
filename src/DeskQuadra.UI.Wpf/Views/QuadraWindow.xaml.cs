@@ -18,6 +18,7 @@ using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.UI.Wpf.Models;
 using DeskQuadra.UI.Wpf.Properties;
 using DeskQuadra.UI.Wpf.Services;
+using DeskQuadra.UI.Wpf.Theme;
 using DeskQuadra.UI.Wpf.ViewModels;
 using Microsoft.Win32;
 
@@ -180,9 +181,11 @@ public partial class QuadraWindow : Window
         }
     }
 
-    // Densidade (Fatia 2): Normal = barra 28 + botão 24; Touch = barra 42 + hitbox 44 + padding maior.
-    // Via recursos existentes (Quadra.TitleButton.Size + chaves Quadra.Density.*); não toca em
-    // roll-up/spring/peek/lock/drag/scroll (só dimensões da barra). Seguro com janela recolhida.
+    // Densidade (Fatia 2 + fatia vertical): barra 28/42 + botão 24/44 + ícone 38/48
+    // DENTRO da célula fixa 78x96 (snap D9 intacto) + respiro do item.
+    // Via recursos existentes (Quadra.TitleButton.Size + chaves Quadra.Density.* e
+    // Quadra.Item.Padding/Margin); não toca em roll-up/spring/peek/lock/drag/scroll
+    // (só dimensões). Seguro com janela recolhida.
     public void ApplyDensity(bool isTouch)
     {
         _isTouchDensity = isTouch;
@@ -196,6 +199,19 @@ public partial class QuadraWindow : Window
         app.Resources["Quadra.TitleButton.Size"] = DensityResolver.TitleButtonSize(isTouch);
         app.Resources["Quadra.Density.Title.Padding"] = isTouch ? new Thickness(12, 0, 8, 0) : new Thickness(8, 0, 4, 0);
         app.Resources["Quadra.Density.TitleButton.Margin"] = isTouch ? new Thickness(0, 0, 6, 0) : new Thickness(0, 0, 2, 0);
+
+        // Fatia vertical: ícone e respiro seguem a densidade sem mexer na célula do grid.
+        // Fonte da verdade: tokens do tema (Default.xaml); fallback = valores atuais (sem mudança de pixel).
+        // Touch lê a variante .Touch (nunca sobrescrita); Normal lê o base do dicionário mesclado
+        // (o slot app.Resources["Quadra.Item.*"] é sombreado pelo Touch, então TryFindResource
+        // direto retornaria o override no toggle Touch->Normal).
+        app.Resources["Quadra.Density.Icon.Size"] = DensityResolver.IconSize(isTouch);
+        app.Resources["Quadra.Item.Padding"] = isTouch
+            ? ThemeResolver.Get("Quadra.Item.Padding.Touch", new Thickness(8, 8, 8, 4))
+            : GetThemeBase("Quadra.Item.Padding", new Thickness(4, 4, 4, 2));
+        app.Resources["Quadra.Item.Margin"] = isTouch
+            ? ThemeResolver.Get("Quadra.Item.Margin.Touch", new Thickness(4))
+            : GetThemeBase("Quadra.Item.Margin", new Thickness(2));
 
         // Recolhida: mantém a altura recolhida coerente com a nova barra (expandida segue no modelo).
         if (_viewModel.IsCollapsed && !_isApplyingCollapse)
@@ -213,6 +229,24 @@ public partial class QuadraWindow : Window
                 _isApplyingCollapse = false;
             }
         }
+    }
+
+    // Base do tema sem o sombreamento do ApplyDensity: procura o token no dicionário
+    // mesclado (Default.xaml) antes do TryFindResource, com fallback idêntico ao literal anterior.
+    private static T GetThemeBase<T>(string key, T fallback)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Resources?.MergedDictionaries != null)
+        {
+            foreach (var dict in app.Resources.MergedDictionaries)
+            {
+                if (dict.Contains(key) && dict[key] is T hit)
+                {
+                    return hit;
+                }
+            }
+        }
+        return ThemeResolver.Get(key, fallback);
     }
 
     // Alterna recolhido/expandido (duplo-clique ou chevron; o lock NÃO bloqueia)
@@ -1058,10 +1092,9 @@ public partial class QuadraWindow : Window
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
             // Toque usa itens de 46px; mouse segue compacto (~26px).
-            // Decisão centralizada sem ramo Stylus — preserva a forma anterior de propósito:
-            // ContextMenuEventArgs nem expõe StylusDevice, e IsEventFromTouch cai na mesma
-            // tabela-verdade aqui (mensagem touch OU flag global).
-            bool isTouch = InputDeviceDetector.IsEventFromTouch(e);
+            // Híbrido preservado: toque real abre menu grande mesmo em modo Normal
+            // (gesto OU preferência, mesmo padrão do App.ResolveEffectiveIsTouch).
+            bool isTouch = InputDeviceDetector.IsEventFromTouch(e) || ResolvePreferenceIsTouch();
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
             fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
@@ -1073,6 +1106,14 @@ public partial class QuadraWindow : Window
     {
         var style = (Style)FindResource(isTouch ? "TouchMenuItemStyle" : "MouseMenuItemStyle");
         ApplyStyleRecursively(menu.Items, style);
+    }
+
+    // Preferência global (mesmo padrão do App.ResolveEffectiveIsTouch): Touch/Normal
+    // forçam; Auto segue o hardware. Fallback usa o último modo aplicado.
+    private bool ResolvePreferenceIsTouch()
+    {
+        bool hasHardware = HasTouchHardwareProvider?.Invoke() ?? _isTouchDensity;
+        return DensityResolver.ResolveIsTouch(CurrentDensityPreference, hasHardware);
     }
 
     private static void ApplyStyleRecursively(ItemCollection items, Style style)
@@ -1396,9 +1437,15 @@ public partial class QuadraWindow : Window
     }
 
     // Sincroniza o checked do menu individual ao abrir (a UI lê o estado do modelo)
+    // + densidade do menu (H3): gesto real OU preferência, como no menu do item.
     private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
+        if (sender is FrameworkElement fe && fe.ContextMenu != null)
+        {
+            bool isTouch = InputDeviceDetector.IsEventFromTouch(e) || ResolvePreferenceIsTouch();
+            ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
+        }
     }
 
     // Alterna a trava individual e persiste
