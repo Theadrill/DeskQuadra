@@ -40,7 +40,6 @@ public partial class QuadraWindow : Window
     private Point _itemDragStartPos;
     private DesktopItemViewModel? _draggedItemCandidate;
     private bool _isItemDragging;
-    private bool _isTouchActive;
 
     // Densidade Aparência (Fatia 2): último modo aplicado + preferência global para WM_DISPLAYCHANGE.
     // Sem hook/timer novo: leitura sob demanda (App) + reavaliação trivial no WndProc existente.
@@ -116,21 +115,23 @@ public partial class QuadraWindow : Window
         GlobalItemSelected += OnGlobalItemSelected;
         GlobalCloseMenusRequested += OnGlobalCloseMenusRequested;
 
-        // Rastreamento robusto e instantâneo de Toque físico na janela
-        PreviewTouchDown += (s, e) => _isTouchActive = true;
-        PreviewTouchUp += (s, e) => _isTouchActive = false;
+        // Rastreamento robusto e instantâneo de Toque físico na janela.
+        // Alimenta o estado global do InputDeviceDetector (dono único da decisão);
+        // regras de transição idênticas às do campo local anterior.
+        PreviewTouchDown += (s, e) => InputDeviceDetector.SetTouchActive(true);
+        PreviewTouchUp += (s, e) => InputDeviceDetector.SetTouchActive(false);
         PreviewMouseDown += (s, e) =>
         {
             if (e.StylusDevice == null && !NativeMethods.IsCurrentMessageFromTouch())
             {
-                _isTouchActive = false;
+                InputDeviceDetector.SetTouchActive(false);
             }
         };
         PreviewMouseMove += (s, e) =>
         {
             if (e.LeftButton == MouseButtonState.Released && e.RightButton == MouseButtonState.Released)
             {
-                _isTouchActive = false;
+                InputDeviceDetector.SetTouchActive(false);
             }
         };
 
@@ -234,7 +235,7 @@ public partial class QuadraWindow : Window
             return;
         }
         // Caminho touch segue só com chevron/duplo-toque (dedo gera mouse promovido no Deck)
-        if (_isTouchActive || IsTouchPromotedMouse(e))
+        if (InputDeviceDetector.IsTouchInteraction(e))
         {
             return;
         }
@@ -842,12 +843,6 @@ public partial class QuadraWindow : Window
     private const double TouchInertiaMaxVelocity = 5000.0;     // trava anti-salto
     private readonly List<(DateTime Time, double Y)> _touchMoveSamples = new();
 
-    private static bool IsTouchPromotedMouse(MouseEventArgs e)
-    {
-        return (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
-               || NativeMethods.IsCurrentMessageFromTouch();
-    }
-
     private static bool IsOnScrollbar(MouseEventArgs e)
     {
         DependencyObject? dep = e.OriginalSource as DependencyObject;
@@ -869,7 +864,7 @@ public partial class QuadraWindow : Window
 
     private void ItemsScrollViewer_TouchScrollDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || !IsTouchPromotedMouse(e) || IsOnScrollbar(e))
+        if (e.LeftButton != MouseButtonState.Pressed || !InputDeviceDetector.IsPromotedTouch(e) || IsOnScrollbar(e))
         {
             return;
         }
@@ -897,7 +892,7 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        if (!IsTouchPromotedMouse(e))
+        if (!InputDeviceDetector.IsPromotedTouch(e))
         {
             return;
         }
@@ -1052,9 +1047,7 @@ public partial class QuadraWindow : Window
     private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         StopTouchInertia(); // qualquer novo Down/interação cancela a inércia
-        bool isTouch = _isTouchActive
-                       || (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
-                       || NativeMethods.IsCurrentMessageFromTouch();
+        bool isTouch = InputDeviceDetector.IsTouchInteraction(e);
 
         if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
         {
@@ -1084,7 +1077,10 @@ public partial class QuadraWindow : Window
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
             // Toque usa itens de 46px; mouse segue compacto (~26px).
-            bool isTouch = _isTouchActive || NativeMethods.IsCurrentMessageFromTouch();
+            // Decisão centralizada sem ramo Stylus — preserva a forma anterior de propósito:
+            // ContextMenuEventArgs nem expõe StylusDevice, e IsEventFromTouch cai na mesma
+            // tabela-verdade aqui (mensagem touch OU flag global).
+            bool isTouch = InputDeviceDetector.IsEventFromTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
             fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
@@ -1115,9 +1111,7 @@ public partial class QuadraWindow : Window
 
     private void DesktopItem_PreviewMouseMove(object sender, MouseEventArgs e)
     {
-        bool isTouch = _isTouchActive
-                       || (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
-                       || NativeMethods.IsCurrentMessageFromTouch();
+        bool isTouch = InputDeviceDetector.IsTouchInteraction(e);
 
         if (isTouch)
         {

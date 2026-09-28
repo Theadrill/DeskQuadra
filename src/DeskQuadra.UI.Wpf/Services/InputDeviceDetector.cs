@@ -127,6 +127,27 @@ public sealed class InputDeviceDetector : IInputDeviceDetector
     }
 
     /// <summary>
+    /// Predicado por evento: indica se um evento de mouse foi promovido (sintetizado) a partir
+    /// de toque — assinatura Stylus com Tablet touch ou mensagem atual com origem touch no Win32.
+    /// Não consulta a flag global; é a mesma regra antes duplicada como IsTouchPromotedMouse na QuadraWindow.
+    /// </summary>
+    public static bool IsPromotedTouch(MouseEventArgs e)
+    {
+        return (e.StylusDevice != null && e.StylusDevice.TabletDevice?.Type == TabletDeviceType.Touch)
+               || NativeMethods.IsCurrentMessageFromTouch();
+    }
+
+    /// <summary>
+    /// Decisão unificada de interação touch para eventos de mouse: flag global (última interação
+    /// conhecida) OU assinatura de toque do evento atual. Cobre o antigo padrão local
+    /// (_isTouchActive || stylus-touch || mensagem touch) dos handlers de peek, down e move.
+    /// </summary>
+    public static bool IsTouchInteraction(MouseEventArgs e)
+    {
+        return _isTouchActive || IsPromotedTouch(e);
+    }
+
+    /// <summary>
     /// Avalia um evento específico para determinar se sua origem imediata é touch ou stylus.
     /// </summary>
     public static bool IsEventFromTouch(RoutedEventArgs? e)
