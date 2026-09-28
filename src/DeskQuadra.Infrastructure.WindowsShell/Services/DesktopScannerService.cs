@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using DeskQuadra.Core;
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
@@ -63,9 +64,7 @@ public sealed class DesktopScannerService : IDesktopScannerService
                         continue;
                     }
 
-                    string displayName = file.Extension.Equals(".lnk", StringComparison.OrdinalIgnoreCase)
-                        ? Path.GetFileNameWithoutExtension(file.Name)
-                        : file.Name;
+                    string displayName = DesktopItemNames.GetDisplayName(file.FullName);
 
                     if (seenNames.Add(displayName))
                     {

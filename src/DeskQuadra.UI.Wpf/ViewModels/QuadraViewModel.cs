@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using DeskQuadra.Core;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 
@@ -153,9 +154,7 @@ public sealed class QuadraViewModel : ViewModelBase
             return;
         }
 
-        string displayName = Path.GetExtension(filePath).Equals(".lnk", StringComparison.OrdinalIgnoreCase)
-            ? Path.GetFileNameWithoutExtension(filePath)
-            : Path.GetFileName(filePath);
+        string displayName = DesktopItemNames.GetDisplayName(filePath);
 
         bool isDir = Directory.Exists(filePath);
         DateTime lastModified = isDir
