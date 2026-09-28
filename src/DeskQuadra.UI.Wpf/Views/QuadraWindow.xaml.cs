@@ -1529,6 +1529,35 @@ public partial class QuadraWindow : Window
         return ResizeDirection.Unknown;
     }
 
+    // E3-UI: núcleo local das 4 bordas — só o snap (tamanho bruto + passo/chrome/
+    // direção/mínimo variam por chamador; threshold/histerese são os mesmos).
+    // Guard (CanTransform), IsFinite e atribuição/compensação seguem nos handlers.
+    private SizeSnapResult SnapEdge(double rawSize, double step, double chrome, ResizeDirection direction, double minSize)
+    {
+        return SizeSnapper.SnapDimension(
+            rawSize, step, chrome,
+            threshold: ResizeSnapThreshold,
+            direction: direction,
+            hysteresis: ResizeSnapHysteresis,
+            minSize: minSize);
+    }
+
+    // E3-UI: núcleo local dos 4 cantos — passos/chromes/mínimos são fixos da grade;
+    // só o tamanho bruto e as direções variam por chamador. Guard, IsFinite e a
+    // ordem de atribuição (Width/Left/Height/Top) seguem nos handlers.
+    private SizeSnapResult2D SnapCorner(double rawWidth, double rawHeight, ResizeDirection horizontalDirection, ResizeDirection verticalDirection)
+    {
+        return SizeSnapper.SnapSize(
+            rawWidth, rawHeight,
+            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
+            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
+            threshold: ResizeSnapThreshold,
+            horizontalDirection: horizontalDirection,
+            verticalDirection: verticalDirection,
+            hysteresis: ResizeSnapHysteresis,
+            minWidth: MinWidth, minHeight: MinHeight);
+    }
+
     private void ResizeRight_DragDelta(object sender, DragDeltaEventArgs e)
     {
         if (!CanTransform())
@@ -1537,12 +1566,10 @@ public partial class QuadraWindow : Window
         }
 
         double rawWidth = Width + e.HorizontalChange;
-        var snapped = SizeSnapper.SnapDimension(
+        var snapped = SnapEdge(
             rawWidth, ResizeCellWidth, HorizontalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            direction: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
-            hysteresis: ResizeSnapHysteresis,
-            minSize: MinWidth);
+            HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
+            MinWidth);
         if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
@@ -1559,12 +1586,10 @@ public partial class QuadraWindow : Window
         }
 
         double rawHeight = Height + e.VerticalChange;
-        var snapped = SizeSnapper.SnapDimension(
+        var snapped = SnapEdge(
             rawHeight, ResizeCellHeight, VerticalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            direction: VerticalResizeDirection(e.VerticalChange, fromTopEdge: false),
-            hysteresis: ResizeSnapHysteresis,
-            minSize: MinHeight);
+            VerticalResizeDirection(e.VerticalChange, fromTopEdge: false),
+            MinHeight);
         if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
@@ -1581,12 +1606,10 @@ public partial class QuadraWindow : Window
         }
 
         double rawWidth = Width - e.HorizontalChange;
-        var snapped = SizeSnapper.SnapDimension(
+        var snapped = SnapEdge(
             rawWidth, ResizeCellWidth, HorizontalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            direction: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
-            hysteresis: ResizeSnapHysteresis,
-            minSize: MinWidth);
+            HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
+            MinWidth);
         if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
@@ -1607,12 +1630,10 @@ public partial class QuadraWindow : Window
         }
 
         double rawHeight = Height - e.VerticalChange;
-        var snapped = SizeSnapper.SnapDimension(
+        var snapped = SnapEdge(
             rawHeight, ResizeCellHeight, VerticalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            direction: VerticalResizeDirection(e.VerticalChange, fromTopEdge: true),
-            hysteresis: ResizeSnapHysteresis,
-            minSize: MinHeight);
+            VerticalResizeDirection(e.VerticalChange, fromTopEdge: true),
+            MinHeight);
         if (!double.IsFinite(snapped.SnappedSize))
         {
             return;
@@ -1630,15 +1651,10 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        var snapped = SizeSnapper.SnapSize(
+        var snapped = SnapCorner(
             Width + e.HorizontalChange, Height + e.VerticalChange,
-            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
-            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
-            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: false),
-            hysteresis: ResizeSnapHysteresis,
-            minWidth: MinWidth, minHeight: MinHeight);
+            HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
+            VerticalResizeDirection(e.VerticalChange, fromTopEdge: false));
         if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
@@ -1655,15 +1671,10 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        var snapped = SizeSnapper.SnapSize(
+        var snapped = SnapCorner(
             Width - e.HorizontalChange, Height + e.VerticalChange,
-            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
-            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
-            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: false),
-            hysteresis: ResizeSnapHysteresis,
-            minWidth: MinWidth, minHeight: MinHeight);
+            HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
+            VerticalResizeDirection(e.VerticalChange, fromTopEdge: false));
         if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
@@ -1682,15 +1693,10 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        var snapped = SizeSnapper.SnapSize(
+        var snapped = SnapCorner(
             Width + e.HorizontalChange, Height - e.VerticalChange,
-            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
-            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
-            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: true),
-            hysteresis: ResizeSnapHysteresis,
-            minWidth: MinWidth, minHeight: MinHeight);
+            HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: false),
+            VerticalResizeDirection(e.VerticalChange, fromTopEdge: true));
         if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
@@ -1709,15 +1715,10 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        var snapped = SizeSnapper.SnapSize(
+        var snapped = SnapCorner(
             Width - e.HorizontalChange, Height - e.VerticalChange,
-            horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
-            horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
-            threshold: ResizeSnapThreshold,
-            horizontalDirection: HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
-            verticalDirection: VerticalResizeDirection(e.VerticalChange, fromTopEdge: true),
-            hysteresis: ResizeSnapHysteresis,
-            minWidth: MinWidth, minHeight: MinHeight);
+            HorizontalResizeDirection(e.HorizontalChange, fromLeftEdge: true),
+            VerticalResizeDirection(e.VerticalChange, fromTopEdge: true));
         if (!double.IsFinite(snapped.Width) || !double.IsFinite(snapped.Height))
         {
             return;
