@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
+using DeskQuadra.UI.Wpf.Services;
 using DeskQuadra.UI.Wpf.Theme;
 
 namespace DeskQuadra.UI.Wpf.Views;
@@ -89,9 +90,7 @@ public sealed class DragPreviewWindow : Window
         base.OnSourceInitialized(e);
 
         var hwnd = new WindowInteropHelper(this).Handle;
-        var dpi = VisualTreeHelper.GetDpi(this);
-        _dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
-        _dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+        (_dpiScaleX, _dpiScaleY) = DpiHelper.GetScale(this);
 
         // Adiciona estilos Win32 para garantir que o preview seja 100% invisível ao mouse/toque e foco
         NativeMethods.ApplyClickThroughNoActivate(hwnd);

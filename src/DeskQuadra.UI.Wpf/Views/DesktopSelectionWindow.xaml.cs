@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Media;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
+using DeskQuadra.UI.Wpf.Services;
 
 namespace DeskQuadra.UI.Wpf.Views;
 
@@ -22,14 +22,12 @@ public partial class DesktopSelectionWindow : Window
 
     public void UpdateBounds(double physicalLeft, double physicalTop, double physicalWidth, double physicalHeight)
     {
-        var dpi = VisualTreeHelper.GetDpi(this);
-        double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
-        double dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+        var (dpiX, dpiY) = DpiHelper.GetScale(this);
 
-        Left = physicalLeft / dpiX;
-        Top = physicalTop / dpiY;
-        Width = Math.Max(10, physicalWidth / dpiX);
-        Height = Math.Max(10, physicalHeight / dpiY);
+        Left = DpiHelper.PhysicalToDip(physicalLeft, dpiX);
+        Top = DpiHelper.PhysicalToDip(physicalTop, dpiY);
+        Width = Math.Max(10, DpiHelper.PhysicalToDip(physicalWidth, dpiX));
+        Height = Math.Max(10, DpiHelper.PhysicalToDip(physicalHeight, dpiY));
 
         DimensionText.Text = $"{Math.Round(Width)} × {Math.Round(Height)}";
     }

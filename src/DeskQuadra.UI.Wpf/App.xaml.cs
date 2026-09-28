@@ -220,14 +220,12 @@ public partial class App : System.Windows.Application
                 _selectionWindow.Hide();
                 ChordDiagLog.Log("overlay Hide (Completed)"); // ChordDiag
 
-                var dpi = VisualTreeHelper.GetDpi(_selectionWindow);
-                double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
-                double dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                var (dpiX, dpiY) = Services.DpiHelper.GetScale(_selectionWindow);
 
-                double dipLeft = rect.Left / dpiX;
-                double dipTop = rect.Top / dpiY;
-                double dipWidth = Math.Max(200, rect.Width / dpiX);
-                double dipHeight = Math.Max(140, rect.Height / dpiY);
+                double dipLeft = Services.DpiHelper.PhysicalToDip(rect.Left, dpiX);
+                double dipTop = Services.DpiHelper.PhysicalToDip(rect.Top, dpiY);
+                double dipWidth = Math.Max(200, Services.DpiHelper.PhysicalToDip(rect.Width, dpiX));
+                double dipHeight = Math.Max(140, Services.DpiHelper.PhysicalToDip(rect.Height, dpiY));
 
                 ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator);
             });

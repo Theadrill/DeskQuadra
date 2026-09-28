@@ -420,11 +420,11 @@ public partial class QuadraWindow : Window
         IntPtr hwnd = helper.Handle;
 
         // Posiciona a janela fisicamente nas coordenadas salvas antes de ancorar
-        var dpi = VisualTreeHelper.GetDpi(this);
-        int pxX = (int)Math.Round(_viewModel.Left * dpi.DpiScaleX);
-        int pxY = (int)Math.Round(_viewModel.Top * dpi.DpiScaleY);
-        int pxW = (int)Math.Round(_viewModel.Width * dpi.DpiScaleX);
-        int pxH = (int)Math.Round(_viewModel.Height * dpi.DpiScaleY);
+        var (dpiX, dpiY) = DpiHelper.GetScale(this);
+        int pxX = DpiHelper.DipToPhysical(_viewModel.Left, dpiX);
+        int pxY = DpiHelper.DipToPhysical(_viewModel.Top, dpiY);
+        int pxW = DpiHelper.DipToPhysical(_viewModel.Width, dpiX);
+        int pxH = DpiHelper.DipToPhysical(_viewModel.Height, dpiY);
 
         NativeMethods.SetWindowPos(
             hwnd,
@@ -550,9 +550,9 @@ public partial class QuadraWindow : Window
                 return;
             }
 
-            var dpi = VisualTreeHelper.GetDpi(this);
-            double deltaX = (pt.X - _dragStartScreenPoint.X) / dpi.DpiScaleX;
-            double deltaY = (pt.Y - _dragStartScreenPoint.Y) / dpi.DpiScaleY;
+            var (dpiX, dpiY) = DpiHelper.GetScale(this);
+            double deltaX = DpiHelper.PhysicalToDip(pt.X - _dragStartScreenPoint.X, dpiX);
+            double deltaY = DpiHelper.PhysicalToDip(pt.Y - _dragStartScreenPoint.Y, dpiY);
 
             // Posição virtual livre calculada diretamente do ponto de partida, sem acúmulo de snap
             double rawLeft = _initialLeft + deltaX;
@@ -570,10 +570,10 @@ public partial class QuadraWindow : Window
             if (hMonitor != IntPtr.Zero && NativeMethods.GetMonitorInfo(hMonitor, ref monitorInfo))
             {
                 workAreaRect = new Rect2D(
-                    monitorInfo.rcWork.Left / dpi.DpiScaleX,
-                    monitorInfo.rcWork.Top / dpi.DpiScaleY,
-                    (monitorInfo.rcWork.Right - monitorInfo.rcWork.Left) / dpi.DpiScaleX,
-                    (monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top) / dpi.DpiScaleY);
+                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Left, dpiX),
+                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Top, dpiY),
+                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, dpiX),
+                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top, dpiY));
             }
             else
             {
