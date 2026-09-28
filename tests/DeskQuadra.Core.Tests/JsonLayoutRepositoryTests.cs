@@ -117,6 +117,34 @@ public class JsonLayoutRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task LoadLayoutAsync_WhenOrphanTmpWithoutJsonOrBak_PromotesTmp()
+    {
+        // Arrange: gera um .json válido e simula queda (só resta o .tmp órfão).
+        await _repository.SaveLayoutAsync(new[] { new Quadra("Recente Nao Salvo", 77, 88) });
+
+        var jsonPath = Path.Combine(_testDir, "quadras.json");
+        var bakPath = Path.Combine(_testDir, "quadras.json.bak");
+        var tmpPath = Path.Combine(_testDir, "quadras.json.tmp");
+
+        var jsonContent = await File.ReadAllTextAsync(jsonPath);
+        await File.WriteAllTextAsync(tmpPath, jsonContent);
+        File.Delete(jsonPath);
+        if (File.Exists(bakPath))
+        {
+            File.Delete(bakPath);
+        }
+
+        // Act
+        var recovered = await _repository.LoadLayoutAsync();
+
+        // Assert: promoveu o .tmp a .json e removeu o órfão.
+        Assert.Single(recovered);
+        Assert.Equal("Recente Nao Salvo", recovered[0].Title);
+        Assert.True(File.Exists(jsonPath));
+        Assert.False(File.Exists(tmpPath));
+    }
+
+    [Fact]
     public async Task SaveLayoutAsync_WithDesktopItems_PreservesAllItemsCorrectly()
     {
         // Arrange

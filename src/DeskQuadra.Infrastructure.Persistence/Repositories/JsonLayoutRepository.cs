@@ -60,13 +60,10 @@ public sealed class JsonLayoutRepository : ILayoutRepository
                 if (action == LayoutRecoveryAction.PromoteTmpAuto && tmpResult is not null)
                 {
                     // .json ausente/corrompido: auto-cura silenciosa sem diálogo.
-                    try
+                    // Delete só se a cópia teve sucesso (preserva o abort do try original).
+                    if (CopyBestEffort(_tmpFilePath, _jsonFilePath))
                     {
-                        File.Copy(_tmpFilePath, _jsonFilePath, overwrite: true);
-                        File.Delete(_tmpFilePath);
-                    }
-                    catch
-                    {
+                        DeleteBestEffort(_tmpFilePath);
                     }
                     return tmpResult;
                 }
@@ -107,15 +104,8 @@ public sealed class JsonLayoutRepository : ILayoutRepository
                 var bakResult = await TryReadFileAsync(_bakFilePath, cancellationToken).ConfigureAwait(false);
                 if (bakResult is not null)
                 {
-                    // Auto-healing: restaura o .bak como .json principal
-                    try
-                    {
-                        File.Copy(_bakFilePath, _jsonFilePath, overwrite: true);
-                    }
-                    catch
-                    {
-                        // Continua mesmo se a cópia falhar
-                    }
+                    // Auto-healing: restaura o .bak como .json principal (best-effort).
+                    CopyBestEffort(_bakFilePath, _jsonFilePath);
                     return bakResult;
                 }
             }
@@ -233,19 +223,16 @@ public sealed class JsonLayoutRepository : ILayoutRepository
                 return;
             }
 
-            try
+            // .bak de segurança: preserva o anterior antes de promover o recente.
+            // Cadeia best-effort que aborta na primeira falha (mesma semântica do try original).
+            bool bakOk = true;
+            if (File.Exists(_jsonFilePath))
             {
-                // .bak de segurança: preserva o anterior antes de promover o recente.
-                if (File.Exists(_jsonFilePath))
-                {
-                    File.Copy(_jsonFilePath, _bakFilePath, overwrite: true);
-                }
-                File.Copy(_tmpFilePath, _jsonFilePath, overwrite: true);
-                File.Delete(_tmpFilePath);
+                bakOk = CopyBestEffort(_jsonFilePath, _bakFilePath);
             }
-            catch
+            if (bakOk && CopyBestEffort(_tmpFilePath, _jsonFilePath))
             {
-                // Best-effort: o Load seguinte resolve (json -> bak -> vazio).
+                DeleteBestEffort(_tmpFilePath);
             }
         }
         finally
@@ -263,6 +250,21 @@ public sealed class JsonLayoutRepository : ILayoutRepository
         catch
         {
             return DateTime.MinValue;
+        }
+    }
+
+    // Núcleo idêntico dos 3 pontos best-effort: copia com overwrite silencioso.
+    // Retorna true se copiou; cada chamador preserva sua variação (delete .tmp, .bak etc.).
+    private static bool CopyBestEffort(string sourcePath, string destinationPath)
+    {
+        try
+        {
+            File.Copy(sourcePath, destinationPath, overwrite: true);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
