@@ -340,7 +340,7 @@ Projeto `tests/DeskQuadra.TestDoubles/`.
 | ID | Sev | Onde | Unificação |
 |----|-----|------|------------|
 | E1-infra | MÉDIA | `DesktopWindowAnchorService.cs:74-77` ≡ `NativeDesktopIconService.cs:81-84` (fallback FindWindow Progman→GetShellWindow) | `NativeMethods.GetProgmanHandle()` |
-| E2-infra | BAIXA | `FileLauncherService.cs:19` ≡ `IconExtractorService.cs:63` (exists arquivo\|\|diretório) | `Core FileSystem.PathExists` + xUnit |
+| E2-infra | BAIXA | `FileLauncherService.cs:19` ≡ `IconExtractorService.cs:63` (exists arquivo\|\|diretório) | `Core FileSystemUtils.PathExists` + xUnit |
 | E3-infra | MÉDIA | `FileDuplicator.cs:66-79` ≡ `:94-106` (arquivo/diretório espelhados) | `DuplicateCore` local + testes existentes |
 | E4-infra | MÉDIA | `LayoutCoordinator.cs:174-176,:207-209,:226-228` (Cancel+Dispose 3x) | `CancelDebounceLocked` local |
 | E5-infra | BAIXA | `SizeSnapper.cs:73-96` (4 guards throw) | `ThrowIfNegative/ThrowIfNotPositive` + testes |

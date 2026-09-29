@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using DeskQuadra.Core.FileSystem;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 
@@ -60,7 +61,7 @@ public sealed class IconExtractorService : IIconExtractorService
         uint flags = NativeMethods.SHGFI_ICON | (large ? NativeMethods.SHGFI_LARGEICON : NativeMethods.SHGFI_SMALLICON);
 
         // Se o arquivo não existir fisicamente, tenta obter o ícone genérico baseado na extensão
-        if (!File.Exists(filePath) && !Directory.Exists(filePath))
+        if (!FileSystemUtils.PathExists(filePath))
         {
             flags |= NativeMethods.SHGFI_USEFILEATTRIBUTES;
         }

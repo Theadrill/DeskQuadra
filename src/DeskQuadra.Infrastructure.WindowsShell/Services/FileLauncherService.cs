@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using DeskQuadra.Core.Contracts;
+using DeskQuadra.Core.FileSystem;
 
 namespace DeskQuadra.Infrastructure.WindowsShell.Services;
 
@@ -16,7 +17,7 @@ public sealed class FileLauncherService : IFileLauncherService
             return false;
         }
 
-        if (!File.Exists(filePath) && !Directory.Exists(filePath))
+        if (!FileSystemUtils.PathExists(filePath))
         {
             return false;
         }
