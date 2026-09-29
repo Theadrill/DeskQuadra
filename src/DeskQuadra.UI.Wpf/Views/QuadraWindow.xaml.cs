@@ -846,6 +846,40 @@ public partial class QuadraWindow : Window
         }
     }
 
+    // Botão direito no vazio da Quadra abre o MESMO menu da barra (REUSE: mesma instância,
+    // sem duplicar markup). Preview (tunelamento) checa o alvo antes do menu do item.
+    private void ItemsEmpty_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Em cima de item: não rouba — deixa o menu do item abrir normalmente.
+        DependencyObject? dep = e.OriginalSource as DependencyObject;
+        while (dep != null && dep != this)
+        {
+            if (dep is FrameworkElement fe && fe.DataContext is DesktopItemViewModel)
+            {
+                return;
+            }
+            dep = VisualTreeHelper.GetParent(dep);
+        }
+
+        var menu = TitleBarBorder?.ContextMenu;
+        if (menu == null)
+        {
+            return;
+        }
+
+        // Reusa a instância da barra (sem duplicar markup). Abertura programática
+        // (IsOpen = true) não dispara o ContextMenuOpening do dono — só Opened/Closed
+        // do menu. Sem a sincronização explícita, os itens caem no estilo claro padrão
+        // (submenu "Ordenar por" branco) e na densidade de mouse mesmo no modo touch.
+        // Mesmo padrão do TitleBar_ContextMenuOpening: cadeado + densidade por gesto/preferência.
+        LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
+        bool isTouch = InputDeviceDetector.IsTouchInteraction(e) || ResolvePreferenceIsTouch();
+        ApplyMenuDensity(menu, isTouch: isTouch);
+        menu.PlacementTarget = ItemsScrollViewer;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
     private void ScrollViewer_ManipulationBoundaryFeedback(object sender, ManipulationBoundaryFeedbackEventArgs e)
     {
         // Neutraliza o tremor/salto da janela nos limites superior e inferior da rolagem

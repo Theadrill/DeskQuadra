@@ -34,6 +34,7 @@
         </Style>
 
         <!-- Estilo Compacto para Mouse (~26px) -->
+        <!-- Suporta submenu: folha mantém o mesmo Border/pixel; pai usa PART_Popup + seta "›" -->
         <Style x:Key="MouseMenuItemStyle" TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource Menu.MouseItem.Foreground}"/>
             <Setter Property="FontSize" Value="{DynamicResource Menu.MouseItem.FontSize}"/>
@@ -42,11 +43,49 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.MouseItem.CornerRadius}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
-                        </Border>
+                        <Grid>
+                            <!-- Área do item-folha: visual idêntico ao anterior (sem deslocamento de pixel) -->
+                            <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.MouseItem.CornerRadius}" Padding="{TemplateBinding Padding}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+                                    <!-- Seta só aparece no item-pai (HasItems); Collapsed não afeta a folha -->
+                                    <TextBlock x:Name="SubmenuArrow" Grid.Column="1" Text="›" Margin="12,0,0,0"
+                                               VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}" Opacity="0.7"
+                                               FontSize="{TemplateBinding FontSize}" Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                            <!-- Popup do submenu no padrão Fluent escuro do ModernContextMenuStyle -->
+                            <!-- Nome PART_Popup é obrigatório: o MenuItem procura esse filho para abrir o submenu -->
+                            <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="-2" VerticalOffset="-4"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   AllowsTransparency="True" Focusable="False"
+                                   IsOpen="{TemplateBinding IsSubmenuOpen}">
+                                <Border Background="{DynamicResource Menu.Background}"
+                                        BorderBrush="{DynamicResource Menu.BorderBrush}"
+                                        BorderThickness="{DynamicResource Menu.BorderThickness}"
+                                        CornerRadius="{DynamicResource Menu.CornerRadius}"
+                                        Padding="{DynamicResource Menu.Padding}">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="{DynamicResource Menu.Shadow.BlurRadius}" ShadowDepth="{DynamicResource Menu.Shadow.Depth}" Opacity="{DynamicResource Menu.Shadow.Opacity}" Color="{DynamicResource Menu.Shadow.Color}"/>
+                                    </Border.Effect>
+                                    <StackPanel IsItemsHost="True"/>
+                                </Border>
+                            </Popup>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.MouseItem.Hover.Background}"/>
+                            </Trigger>
+                            <!-- Mostra a seta só no item-pai -->
+                            <Trigger Property="HasItems" Value="True">
+                                <Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <!-- Mantém o destaque do pai enquanto o submenu está aberto -->
+                            <Trigger Property="IsSubmenuOpen" Value="True">
                                 <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.MouseItem.Hover.Background}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -56,6 +95,7 @@
         </Style>
 
         <!-- Estilo Ergonômico Espaçoso para Toque com o Dedo (Touch - 46px com alvo mínimo WCAG 44px+) -->
+        <!-- Suporta submenu: folha mantém o mesmo Border/pixel; pai usa PART_Popup + seta "›" -->
         <Style x:Key="TouchMenuItemStyle" TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource Menu.TouchItem.Foreground}"/>
             <Setter Property="FontSize" Value="{DynamicResource Menu.TouchItem.FontSize}"/>
@@ -65,11 +105,49 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.TouchItem.CornerRadius}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
-                        </Border>
+                        <Grid>
+                            <!-- Área do item-folha: visual idêntico ao anterior (sem deslocamento de pixel) -->
+                            <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="{DynamicResource Menu.TouchItem.CornerRadius}" Padding="{TemplateBinding Padding}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+                                    <!-- Seta só aparece no item-pai (HasItems); Collapsed não afeta a folha -->
+                                    <TextBlock x:Name="SubmenuArrow" Grid.Column="1" Text="›" Margin="12,0,0,0"
+                                               VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}" Opacity="0.7"
+                                               FontSize="{TemplateBinding FontSize}" Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                            <!-- Popup do submenu no padrão Fluent escuro do ModernContextMenuStyle -->
+                            <!-- Nome PART_Popup é obrigatório: o MenuItem procura esse filho para abrir o submenu -->
+                            <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="-2" VerticalOffset="-4"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   AllowsTransparency="True" Focusable="False"
+                                   IsOpen="{TemplateBinding IsSubmenuOpen}">
+                                <Border Background="{DynamicResource Menu.Background}"
+                                        BorderBrush="{DynamicResource Menu.BorderBrush}"
+                                        BorderThickness="{DynamicResource Menu.BorderThickness}"
+                                        CornerRadius="{DynamicResource Menu.CornerRadius}"
+                                        Padding="{DynamicResource Menu.Padding}">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="{DynamicResource Menu.Shadow.BlurRadius}" ShadowDepth="{DynamicResource Menu.Shadow.Depth}" Opacity="{DynamicResource Menu.Shadow.Opacity}" Color="{DynamicResource Menu.Shadow.Color}"/>
+                                    </Border.Effect>
+                                    <StackPanel IsItemsHost="True"/>
+                                </Border>
+                            </Popup>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.TouchItem.Hover.Background}"/>
+                            </Trigger>
+                            <!-- Mostra a seta só no item-pai -->
+                            <Trigger Property="HasItems" Value="True">
+                                <Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <!-- Mantém o destaque do pai enquanto o submenu está aberto -->
+                            <Trigger Property="IsSubmenuOpen" Value="True">
                                 <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Menu.TouchItem.Hover.Background}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">

@@ -109,18 +109,14 @@
                     <Border.ContextMenu>
                         <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_Rescan}" Click="RescanMenu_Click"/>
-                            <Separator/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortBy}">
                                 <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortName}" Click="SortByName_Click"/>
                                 <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortType}" Click="SortByType_Click"/>
                                 <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortDate}" Click="SortByDate_Click"/>
                                 <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortManual}" Click="SortByManual_Click"/>
                             </MenuItem>
-                            <Separator/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_NewQuadra}" Click="NewQuadraMenu_Click"/>
-                            <Separator/>
                             <MenuItem x:Name="LockQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_LockQuadra}" IsCheckable="True" Click="LockQuadraMenu_Click"/>
-                            <Separator/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_CloseQuadra}" Click="CloseButton_Click"/>
                         </ContextMenu>
                     </Border.ContextMenu>
@@ -215,6 +211,8 @@
                                   IsManipulationEnabled="True"
                                   ManipulationBoundaryFeedback="ScrollViewer_ManipulationBoundaryFeedback"
                                   Padding="2"
+                                  Background="Transparent"
+                                  PreviewMouseRightButtonDown="ItemsEmpty_PreviewMouseRightButtonDown"
                                   Focusable="False">
                         <ItemsControl ItemsSource="{Binding Items}">
                             <ItemsControl.ItemsPanel>
@@ -238,7 +236,6 @@
                                             <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Open}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_OpenLocation}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>
-                                                <Separator Background="{DynamicResource Quadra.Separator.Background}" Margin="{DynamicResource Quadra.Separator.Margin}"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Remove}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>

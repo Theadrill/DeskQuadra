@@ -144,15 +144,7 @@ public sealed class QuadraViewModel : ViewModelBase
         _quadra = quadra;
         _iconExtractor = iconExtractor;
 
-        foreach (var item in quadra.Items)
-        {
-            Items.Add(new DesktopItemViewModel(item, iconExtractor));
-        }
-
-        if (quadra.SortMode != SortMode.Manual)
-        {
-            SortItems(quadra.SortMode);
-        }
+        RebuildItemViewModels();
     }
 
     public void AddItem(string filePath)
@@ -249,6 +241,13 @@ public sealed class QuadraViewModel : ViewModelBase
 
     public void RefreshItems()
     {
+        RebuildItemViewModels();
+
+        NotifyItemsChanged();
+    }
+
+    private void RebuildItemViewModels()
+    {
         Items.Clear();
         foreach (var item in _quadra.Items)
         {
@@ -259,8 +258,6 @@ public sealed class QuadraViewModel : ViewModelBase
         {
             SortItems(SortMode);
         }
-
-        NotifyItemsChanged();
     }
 
     private void NotifyItemsChanged()

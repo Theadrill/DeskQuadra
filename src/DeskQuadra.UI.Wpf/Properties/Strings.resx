@@ -68,7 +68,7 @@
     <value>Mostrar todas</value>
   </data>
   <data name="TrayLockAllQuadras" xml:space="preserve">
-    <value>🔒 Travar todas as Quadras</value>
+    <value>Travar todas as Quadras</value>
   </data>
   <data name="TrayExit" xml:space="preserve">
     <value>Sair</value>
@@ -88,16 +88,16 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
     <value>Confirmar teste de travamento</value>
   </data>
   <data name="CreationMenuCreateQuadraHere" xml:space="preserve">
-    <value>➕ Criar Quadra Aqui</value>
+    <value>Criar Quadra Aqui</value>
   </data>
   <data name="CreationMenuCancelAndShowWindowsMenu" xml:space="preserve">
-    <value>✕ Cancelar</value>
+    <value>Cancelar</value>
   </data>
   <data name="QuadraDefaultTitleFormat" xml:space="preserve">
     <value>Quadra {0}</value>
   </data>
   <data name="QuadraMenu_Rescan" xml:space="preserve">
-    <value>↻ Atualizar Atalhos do Desktop</value>
+    <value>Atualizar Atalhos do Desktop</value>
   </data>
   <data name="QuadraMenu_SortBy" xml:space="preserve">
     <value>Ordenar por</value>
@@ -115,10 +115,10 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
     <value>Manual</value>
   </data>
   <data name="QuadraMenu_NewQuadra" xml:space="preserve">
-    <value>+ Nova Quadra</value>
+    <value>Nova Quadra</value>
   </data>
   <data name="QuadraMenu_LockQuadra" xml:space="preserve">
-    <value>🔒 Travar esta Quadra</value>
+    <value>Travar esta Quadra</value>
   </data>
   <data name="QuadraMenu_CloseQuadra" xml:space="preserve">
     <value>Fechar Quadra</value>
