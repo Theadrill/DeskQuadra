@@ -6,28 +6,16 @@ namespace DeskQuadra.Core.Tests;
 
 public class JsonLayoutRepositoryTests : IDisposable
 {
-    private readonly string _testDir;
+    private readonly TempDirectory _temp = new("DeskQuadraTests_");
+    private string _testDir => _temp.Path;
     private readonly JsonLayoutRepository _repository;
 
     public JsonLayoutRepositoryTests()
     {
-        _testDir = Path.Combine(Path.GetTempPath(), "DeskQuadraTests_" + Guid.NewGuid().ToString("N"));
         _repository = new JsonLayoutRepository(_testDir);
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            if (Directory.Exists(_testDir))
-            {
-                Directory.Delete(_testDir, recursive: true);
-            }
-        }
-        catch
-        {
-        }
-    }
+    public void Dispose() => _temp.Dispose();
 
     [Fact]
     public async Task SaveLayoutAsync_And_LoadLayoutAsync_RoundtripsSuccessfully()
@@ -206,7 +194,8 @@ public class JsonLayoutRepositoryTests : IDisposable
     [Fact]
     public void JsonStorageDefaults_GetAppDataDirectory_RespectsCustomDir()
     {
-        var custom = Path.Combine(Path.GetTempPath(), "DeskQuadraCustom_" + Guid.NewGuid().ToString("N"));
+        using var temp = new TempDirectory("DeskQuadraCustom_");
+        var custom = temp.Path;
 
         Assert.Equal(custom, JsonStorageDefaults.GetAppDataDirectory(custom));
         Assert.EndsWith("DeskQuadra", JsonStorageDefaults.GetAppDataDirectory(null));

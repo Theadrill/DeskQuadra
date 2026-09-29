@@ -9,22 +9,10 @@ namespace DeskQuadra.Core.Tests;
 /// </summary>
 public sealed class FileSystemTests : IDisposable
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "DeskQuadra_FileSystem_" + Guid.NewGuid().ToString("N"));
+    private readonly TempDirectory _temp = new("DeskQuadra_FileSystem_");
+    private string _root => _temp.Path;
 
-    public void Dispose()
-    {
-        try
-        {
-            if (Directory.Exists(_root))
-            {
-                Directory.Delete(_root, recursive: true);
-            }
-        }
-        catch
-        {
-            // Best-effort: temp de teste nunca deve falhar a suite.
-        }
-    }
+    public void Dispose() => _temp.Dispose();
 
     [Fact]
     public void PathExists_ArquivoExistente_RetornaVerdadeiro()

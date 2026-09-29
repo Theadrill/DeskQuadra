@@ -12,22 +12,10 @@ public sealed class FileDuplicatorTests : IDisposable
     private const string Suffix = " - Cópia";
     private const string IndexedFormat = " - Cópia ({0})";
 
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "DeskQuadra_FileDuplicator_" + Guid.NewGuid().ToString("N"));
+    private readonly TempDirectory _temp = new("DeskQuadra_FileDuplicator_");
+    private string _root => _temp.Path;
 
-    public void Dispose()
-    {
-        try
-        {
-            if (Directory.Exists(_root))
-            {
-                Directory.Delete(_root, recursive: true);
-            }
-        }
-        catch
-        {
-            // Best-effort: temp de teste nunca deve falhar a suite.
-        }
-    }
+    public void Dispose() => _temp.Dispose();
 
     private string NewDir(string name)
     {
