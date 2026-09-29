@@ -116,23 +116,33 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
 
     public void HideQuadra(Guid id)
     {
-        if (_activeQuadras.TryGetValue(id, out var quadra))
-        {
-            // Esconde a Quadra mantendo o modelo: persiste e avisa a UI para fechar a janela
-            quadra.IsHidden = true;
-            NotifyQuadraChanged(quadra);
-            QuadraHidden?.Invoke(this, id);
-        }
+        // Delega ao miolo comum (lookup + flag + Notify + evento).
+        SetHidden(id, true);
     }
 
     public void RestoreQuadra(Guid id)
     {
+        // Espelho do Hide: mesmo miolo, com flag desligada.
+        SetHidden(id, false);
+    }
+
+    // Miolo comum de Hide/Restore: busca, alterna IsHidden, persiste via Notify e avisa a UI.
+    // Id inexistente: sem efeito (sem Notify, sem evento), como antes.
+    private void SetHidden(Guid id, bool hidden)
+    {
         if (_activeQuadras.TryGetValue(id, out var quadra))
         {
-            // Restaura a Quadra escondida: persiste e avisa a UI para reabrir a janela
-            quadra.IsHidden = false;
+            // Esconde (true) mantendo o modelo ou restaura (false) para reabrir a janela.
+            quadra.IsHidden = hidden;
             NotifyQuadraChanged(quadra);
-            QuadraRestored?.Invoke(this, id);
+            if (hidden)
+            {
+                QuadraHidden?.Invoke(this, id);
+            }
+            else
+            {
+                QuadraRestored?.Invoke(this, id);
+            }
         }
     }
 
