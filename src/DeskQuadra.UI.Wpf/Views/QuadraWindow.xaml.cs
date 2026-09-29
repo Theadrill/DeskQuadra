@@ -406,14 +406,21 @@ public partial class QuadraWindow : Window
 
     private void SetResizeThumbsVisibility(Visibility visibility)
     {
-        ResizeThumbTop.Visibility = visibility;
-        ResizeThumbBottom.Visibility = visibility;
-        ResizeThumbLeft.Visibility = visibility;
-        ResizeThumbRight.Visibility = visibility;
-        ResizeThumbTopLeft.Visibility = visibility;
-        ResizeThumbTopRight.Visibility = visibility;
-        ResizeThumbBottomLeft.Visibility = visibility;
-        ResizeThumbBottomRight.Visibility = visibility;
+        var thumbs = new[]
+        {
+            ResizeThumbTop,
+            ResizeThumbBottom,
+            ResizeThumbLeft,
+            ResizeThumbRight,
+            ResizeThumbTopLeft,
+            ResizeThumbTopRight,
+            ResizeThumbBottomLeft,
+            ResizeThumbBottomRight,
+        };
+        foreach (var thumb in thumbs)
+        {
+            thumb.Visibility = visibility;
+        }
     }
 
     // Sincroniza a grade de itens com o modelo (usado quando outra Quadra move itens para cá)
