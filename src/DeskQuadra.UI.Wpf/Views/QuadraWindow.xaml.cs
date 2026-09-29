@@ -1498,35 +1498,30 @@ public partial class QuadraWindow : Window
     // Direção por eixo a partir do sinal da variação (receita do XML-doc do SizeSnapper):
     // borda direita/inferior: change > 0 = Growing; borda esquerda/superior: invertido
     // (change < 0 = Growing, a dimensão aumenta). Zero = Unknown (banda base).
-    private static ResizeDirection HorizontalResizeDirection(double change, bool fromLeftEdge)
+    // E5-UI: núcleo único — os dois eixos usam o mesmo enum e a mesma regra; só
+    // o nome da borda inicial difere (esquerda/superior), parametrizado via fromStartEdge.
+    private static ResizeDirection AxisResizeDirection(double change, bool fromStartEdge)
     {
         if (change > 0)
         {
-            return fromLeftEdge ? ResizeDirection.Shrinking : ResizeDirection.Growing;
+            return fromStartEdge ? ResizeDirection.Shrinking : ResizeDirection.Growing;
         }
 
         if (change < 0)
         {
-            return fromLeftEdge ? ResizeDirection.Growing : ResizeDirection.Shrinking;
+            return fromStartEdge ? ResizeDirection.Growing : ResizeDirection.Shrinking;
         }
 
         return ResizeDirection.Unknown;
     }
+
+    // Wrappers finos por eixo — preservam os call sites (8 handlers) sem cast,
+    // pois ambos os eixos retornam o mesmo enum ResizeDirection.
+    private static ResizeDirection HorizontalResizeDirection(double change, bool fromLeftEdge)
+        => AxisResizeDirection(change, fromLeftEdge);
 
     private static ResizeDirection VerticalResizeDirection(double change, bool fromTopEdge)
-    {
-        if (change > 0)
-        {
-            return fromTopEdge ? ResizeDirection.Shrinking : ResizeDirection.Growing;
-        }
-
-        if (change < 0)
-        {
-            return fromTopEdge ? ResizeDirection.Growing : ResizeDirection.Shrinking;
-        }
-
-        return ResizeDirection.Unknown;
-    }
+        => AxisResizeDirection(change, fromTopEdge);
 
     // E3-UI: núcleo local das 4 bordas — só o snap (tamanho bruto + passo/chrome/
     // direção/mínimo variam por chamador; threshold/histerese são os mesmos).
