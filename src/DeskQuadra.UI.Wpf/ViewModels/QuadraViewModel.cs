@@ -177,8 +177,7 @@ public sealed class QuadraViewModel : ViewModelBase
             SortItems(SortMode);
         }
 
-        OnPropertyChanged(nameof(HasItems));
-        OnPropertyChanged(nameof(EmptyMessageVisibility));
+        NotifyItemsChanged();
     }
 
     public void AddItem(DesktopItem item)
@@ -193,8 +192,7 @@ public sealed class QuadraViewModel : ViewModelBase
             SortItems(SortMode);
         }
 
-        OnPropertyChanged(nameof(HasItems));
-        OnPropertyChanged(nameof(EmptyMessageVisibility));
+        NotifyItemsChanged();
     }
 
     public bool RemoveItem(DesktopItemViewModel item)
@@ -212,8 +210,7 @@ public sealed class QuadraViewModel : ViewModelBase
             {
                 Items[i].Model.OrderIndex = i;
             }
-            OnPropertyChanged(nameof(HasItems));
-            OnPropertyChanged(nameof(EmptyMessageVisibility));
+            NotifyItemsChanged();
         }
 
         return removed;
@@ -255,6 +252,11 @@ public sealed class QuadraViewModel : ViewModelBase
             SortItems(SortMode);
         }
 
+        NotifyItemsChanged();
+    }
+
+    private void NotifyItemsChanged()
+    {
         OnPropertyChanged(nameof(HasItems));
         OnPropertyChanged(nameof(EmptyMessageVisibility));
     }
