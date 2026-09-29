@@ -20,6 +20,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.Title;
         set
         {
+            // Mantido manual de propósito: delega ao modelo (_quadra.Title é property, não ref-field); SetProperty exigiria overload — fora do escopo.
             if (_quadra.Title != value)
             {
                 _quadra.Title = value;
@@ -33,6 +34,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.Left;
         set
         {
+            // Mantido manual de propósito: epsilon 0.001 evita churn de binding em resize/janela; SetProperty usaria igualdade exata.
             if (Math.Abs(_quadra.Left - value) > 0.001)
             {
                 _quadra.Left = value;
@@ -46,6 +48,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.Top;
         set
         {
+            // Mantido manual de propósito: epsilon 0.001 evita churn de binding em resize/janela; SetProperty usaria igualdade exata.
             if (Math.Abs(_quadra.Top - value) > 0.001)
             {
                 _quadra.Top = value;
@@ -59,6 +62,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.Width;
         set
         {
+            // Mantido manual de propósito: epsilon 0.001 evita churn de binding em resize/janela; SetProperty usaria igualdade exata.
             if (Math.Abs(_quadra.Width - value) > 0.001)
             {
                 _quadra.Width = value;
@@ -72,6 +76,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.Height;
         set
         {
+            // Mantido manual de propósito: epsilon 0.001 evita churn de binding em resize/janela; SetProperty usaria igualdade exata.
             if (Math.Abs(_quadra.Height - value) > 0.001)
             {
                 _quadra.Height = value;
@@ -87,6 +92,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.IsLocked;
         set
         {
+            // Mantido manual de propósito: delega ao modelo (_quadra.IsLocked é property, não ref-field); SetProperty exigiria overload — fora do escopo.
             if (_quadra.IsLocked != value)
             {
                 _quadra.IsLocked = value;
@@ -101,6 +107,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.IsCollapsed;
         set
         {
+            // Mantido manual de propósito: delega ao modelo (_quadra.IsCollapsed é property, não ref-field); SetProperty exigiria overload — fora do escopo.
             if (_quadra.IsCollapsed != value)
             {
                 _quadra.IsCollapsed = value;
@@ -114,6 +121,7 @@ public sealed class QuadraViewModel : ViewModelBase
         get => _quadra.SortMode;
         set
         {
+            // Mantido manual de propósito: delega ao modelo (_quadra.SortMode é property, não ref-field); SetProperty exigiria overload — fora do escopo.
             if (_quadra.SortMode != value)
             {
                 _quadra.SortMode = value;
