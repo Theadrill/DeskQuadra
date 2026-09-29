@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.IO;
+using System.Text;
 
 [assembly: InternalsVisibleTo("DeskQuadra.UI.Wpf")]
 // D12: libera o helper puro/testável ao projeto de teste sem referência nova
@@ -516,6 +518,100 @@ internal static class NativeMethods
         catch
         {
             // Silencioso, padrão do projeto: sem o par, o ESC só fecha o popup.
+        }
+    }
+
+    // E12-UI: atalho .lnk — destino via IShellLinkW::GetPath (COM, thread STA da UI).
+    // Dono da memória: chamador aloca o StringBuilder, o shell preenche; COM liberado no finally.
+    internal const uint SLGP_UNCPRIORITY = 0x0002;
+    internal const uint STGM_READ = 0;
+    internal const int MaxPathChars = 260;
+
+    [ComImport]
+    [Guid("000214F9-0000-0000-C000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IShellLinkW
+    {
+        // GetPath é o primeiro slot após IUnknown — declaração mínima basta para este uso.
+        // Marshalling explícito Unicode (LPWStr), sem CharSet.Auto.
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cch, nint pfd, uint fFlags);
+    }
+
+    [ComImport]
+    [Guid("00021401-0000-0000-C000-000000000046")]
+    internal class ShellLink
+    {
+    }
+
+    [ComImport]
+    [Guid("0000010B-0000-0000-C000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IPersistFile
+    {
+        void GetClassID(out Guid pClassID);
+        [PreserveSig] int IsDirty();
+        void Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, uint dwMode);
+    }
+
+    // E12-UI: resolve o destino do .lnk ou retorna null (best-effort, sem exceção).
+    // Nulo = mantém o comportamento atual no chamador (seleciona o próprio .lnk).
+    internal static string? TryResolveShortcutTarget(string? lnkPath)
+    {
+        // Só atalho com extensão .lnk; resto não resolve.
+        if (string.IsNullOrWhiteSpace(lnkPath))
+        {
+            return null;
+        }
+
+        if (!lnkPath.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            // Atalho inexistente = quebrado, volta ao comportamento atual.
+            if (!File.Exists(lnkPath))
+            {
+                return null;
+            }
+
+            object? comObj = null;
+            try
+            {
+                comObj = new ShellLink();
+                var persist = (IPersistFile)comObj;
+                persist.Load(lnkPath, STGM_READ);
+                var link = (IShellLinkW)comObj;
+                var sb = new StringBuilder(MaxPathChars);
+                link.GetPath(sb, sb.Capacity, IntPtr.Zero, SLGP_UNCPRIORITY);
+                string target = sb.ToString();
+                if (string.IsNullOrWhiteSpace(target))
+                {
+                    return null;
+                }
+
+                // Destino quebrado = null para o chamador selecionar o próprio .lnk.
+                if (!File.Exists(target) && !Directory.Exists(target))
+                {
+                    return null;
+                }
+
+                return target;
+            }
+            finally
+            {
+                // Libera o RCW do COM; sem isso vaza referência do ShellLink.
+                if (comObj is not null && Marshal.IsComObject(comObj))
+                {
+                    Marshal.ReleaseComObject(comObj);
+                }
+            }
+        }
+        catch
+        {
+            // Silencioso, padrão do projeto: falha de COM/IO nunca quebra o "abrir local".
+            return null;
         }
     }
 }

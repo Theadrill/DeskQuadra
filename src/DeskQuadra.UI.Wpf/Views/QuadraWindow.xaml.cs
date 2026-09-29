@@ -1220,20 +1220,38 @@ public partial class QuadraWindow : Window
         }
     }
 
+    // E12-UI: núcleo local do "abrir local" — branch arquivo/diretório aqui dentro, preservando quoting e flags.
+    // Se for atalho .lnk, abre o local do destino; destino quebrado = seleciona o próprio .lnk.
+    private static void OpenInExplorer(string path)
+    {
+        string effective = path;
+        if (path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+        {
+            // Best-effort silencioso: null = mantém o comportamento atual (o próprio .lnk).
+            string? target = NativeMethods.TryResolveShortcutTarget(path);
+            if (!string.IsNullOrWhiteSpace(target) && (File.Exists(target) || Directory.Exists(target)))
+            {
+                effective = target;
+            }
+        }
+
+        if (File.Exists(effective))
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{effective}\"") { UseShellExecute = true });
+        }
+        else if (Directory.Exists(effective))
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{effective}\"") { UseShellExecute = true });
+        }
+    }
+
     private void ItemMenuOpenLocation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
         {
             try
             {
-                if (File.Exists(item.FilePath))
-                {
-                    Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{item.FilePath}\"") { UseShellExecute = true });
-                }
-                else if (Directory.Exists(item.FilePath))
-                {
-                    Process.Start(new ProcessStartInfo("explorer.exe", $"\"{item.FilePath}\"") { UseShellExecute = true });
-                }
+                OpenInExplorer(item.FilePath);
             }
             catch
             {
