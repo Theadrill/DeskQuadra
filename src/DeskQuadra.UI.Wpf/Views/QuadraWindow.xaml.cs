@@ -1354,6 +1354,12 @@ public partial class QuadraWindow : Window
         ApplyCollapsed(true, persist: true);
     }
 
+    // E11-UI: núcleo local da duplicação com sufixo padrão (resx) — preserva os args dos 2 call sites.
+    private static string DuplicateWithStandardSuffix(string path)
+    {
+        return FileDuplicator.Duplicate(path, Strings.FileCopySuffix, Strings.FileCopySuffixIndexedFormat);
+    }
+
     private void Quadra_Drop(object sender, DragEventArgs e)
     {
         CancelSpringTimer();
@@ -1398,7 +1404,7 @@ public partial class QuadraWindow : Window
                 if (isCopy)
                 {
                     // Duplicação física no disco (Ctrl + Drag), tanto na mesma Quadra quanto entre Quadras
-                    string duplicatedPath = FileDuplicator.Duplicate(payload.Item.FilePath, Strings.FileCopySuffix, Strings.FileCopySuffixIndexedFormat);
+                    string duplicatedPath = DuplicateWithStandardSuffix(payload.Item.FilePath);
                     _viewModel.AddItem(duplicatedPath);
                     e.Effects = DragDropEffects.Copy;
                 }
@@ -1425,7 +1431,7 @@ public partial class QuadraWindow : Window
             {
                 foreach (var file in files)
                 {
-                    string targetFile = isCopy ? FileDuplicator.Duplicate(file, Strings.FileCopySuffix, Strings.FileCopySuffixIndexedFormat) : file;
+                    string targetFile = isCopy ? DuplicateWithStandardSuffix(file) : file;
                     _viewModel.AddItem(targetFile);
                 }
 
