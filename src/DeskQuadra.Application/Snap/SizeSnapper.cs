@@ -70,29 +70,28 @@ public static class SizeSnapper
             return new SizeSnapResult(currentSize, false, 0);
         }
 
-        if (cellStep <= 0.0)
+        // Validação dos parâmetros via helpers locais (mensagens preservadas verbatim).
+        ThrowIfNotPositive(nameof(cellStep), cellStep, "O passo da célula deve ser maior que zero.");
+        ThrowIfNegative(nameof(chrome), chrome, "O chrome não pode ser negativo.");
+        ThrowIfNegative(nameof(threshold), threshold, "O threshold não pode ser negativo.");
+        ThrowIfNegative(nameof(hysteresis), hysteresis, "A histerese não pode ser negativa.");
+        ThrowIfNegative(nameof(minSize), minSize, "O tamanho mínimo não pode ser negativo.");
+
+        // Helpers locais: eliminam os 5 blocos if repetidos sem mudar a semântica.
+        static void ThrowIfNegative(string name, double value, string message)
         {
-            throw new ArgumentOutOfRangeException(nameof(cellStep), "O passo da célula deve ser maior que zero.");
+            if (value < 0.0)
+            {
+                throw new ArgumentOutOfRangeException(name, message);
+            }
         }
 
-        if (chrome < 0.0)
+        static void ThrowIfNotPositive(string name, double value, string message)
         {
-            throw new ArgumentOutOfRangeException(nameof(chrome), "O chrome não pode ser negativo.");
-        }
-
-        if (threshold < 0.0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(threshold), "O threshold não pode ser negativo.");
-        }
-
-        if (hysteresis < 0.0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(hysteresis), "A histerese não pode ser negativa.");
-        }
-
-        if (minSize < 0.0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(minSize), "O tamanho mínimo não pode ser negativo.");
+            if (value <= 0.0)
+            {
+                throw new ArgumentOutOfRangeException(name, message);
+            }
         }
 
         // Piso: mínimo da janela, garantindo ao menos 1 célula visível.
