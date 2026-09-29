@@ -38,4 +38,17 @@ public class DpiHelperTests
         Assert.Equal(1.0, x);
         Assert.Equal(1.0, y);
     }
+
+    [Fact]
+    public void MapPhysicalToDip_ComScalePronto_ConverteOsQuatroPuros()
+    {
+        // Sem Visual/Dispatcher: overload puro recebe o scale pronto.
+        // Sem Math.Max aqui — o mínimo fica nos chamadores (10/200/140).
+        var (left, top, width, height) = DpiHelper.MapPhysicalToDip(2.0, 1.5, 200.0, 150.0, 400.0, 300.0);
+
+        Assert.Equal(100.0, left);
+        Assert.Equal(100.0, top);
+        Assert.Equal(200.0, width);
+        Assert.Equal(200.0, height);
+    }
 }

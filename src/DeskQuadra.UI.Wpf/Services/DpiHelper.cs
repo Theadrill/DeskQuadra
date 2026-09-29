@@ -40,4 +40,32 @@ internal static class DpiHelper
     /// DIP→físico: multiplicação pura com Round→int p/ SetWindowPos.
     /// </summary>
     public static int DipToPhysical(double dip, double scale) => (int)Math.Round(dip * scale);
+
+    /// <summary>
+    /// Mapeia um retângulo físico (left/top/width/height) para DIP puro,
+    /// sem nenhum Math.Max (o mínimo fica nos chamadores: 200/140 no App,
+    /// 10 na seleção, nenhum na workArea do arrasto).
+    /// </summary>
+    public static (double Left, double Top, double Width, double Height) MapPhysicalToDip(
+        double scaleX, double scaleY,
+        double physicalLeft, double physicalTop,
+        double physicalWidth, double physicalHeight) => (
+        PhysicalToDip(physicalLeft, scaleX),
+        PhysicalToDip(physicalTop, scaleY),
+        PhysicalToDip(physicalWidth, scaleX),
+        PhysicalToDip(physicalHeight, scaleY));
+
+    /// <summary>
+    /// Mapeia um retângulo físico para DIP lendo a escala do visual
+    /// (uma única leitura via <see cref="GetScale"/>; Math.Max fica no chamador).
+    /// Deve ser chamado na thread da UI, como o molde original.
+    /// </summary>
+    public static (double Left, double Top, double Width, double Height) MapPhysicalToDip(
+        Visual? visual,
+        double physicalLeft, double physicalTop,
+        double physicalWidth, double physicalHeight)
+    {
+        var (x, y) = GetScale(visual);
+        return MapPhysicalToDip(x, y, physicalLeft, physicalTop, physicalWidth, physicalHeight);
+    }
 }

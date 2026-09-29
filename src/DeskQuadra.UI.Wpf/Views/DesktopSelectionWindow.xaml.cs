@@ -22,12 +22,12 @@ public partial class DesktopSelectionWindow : Window
 
     public void UpdateBounds(double physicalLeft, double physicalTop, double physicalWidth, double physicalHeight)
     {
-        var (dpiX, dpiY) = DpiHelper.GetScale(this);
+        var (dipLeft, dipTop, rawWidth, rawHeight) = DpiHelper.MapPhysicalToDip(this, physicalLeft, physicalTop, physicalWidth, physicalHeight);
 
-        Left = DpiHelper.PhysicalToDip(physicalLeft, dpiX);
-        Top = DpiHelper.PhysicalToDip(physicalTop, dpiY);
-        Width = Math.Max(10, DpiHelper.PhysicalToDip(physicalWidth, dpiX));
-        Height = Math.Max(10, DpiHelper.PhysicalToDip(physicalHeight, dpiY));
+        Left = dipLeft;
+        Top = dipTop;
+        Width = Math.Max(10, rawWidth);
+        Height = Math.Max(10, rawHeight);
 
         DimensionText.Text = $"{Math.Round(Width)} × {Math.Round(Height)}";
     }

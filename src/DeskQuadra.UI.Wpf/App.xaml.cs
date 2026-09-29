@@ -223,12 +223,12 @@ public partial class App : System.Windows.Application
                 _selectionWindow.Hide();
                 ChordDiagLog.Log($"overlay Hide (Completed) {ChordDiagLog.Snapshot()}"); // ChordDiag
 
-                var (dpiX, dpiY) = Services.DpiHelper.GetScale(_selectionWindow);
+                var (rawLeft, rawTop, rawWidth, rawHeight) = Services.DpiHelper.MapPhysicalToDip(_selectionWindow, rect.Left, rect.Top, rect.Width, rect.Height);
 
-                double dipLeft = Services.DpiHelper.PhysicalToDip(rect.Left, dpiX);
-                double dipTop = Services.DpiHelper.PhysicalToDip(rect.Top, dpiY);
-                double dipWidth = Math.Max(200, Services.DpiHelper.PhysicalToDip(rect.Width, dpiX));
-                double dipHeight = Math.Max(140, Services.DpiHelper.PhysicalToDip(rect.Height, dpiY));
+                double dipLeft = rawLeft;
+                double dipTop = rawTop;
+                double dipWidth = Math.Max(200, rawWidth);
+                double dipHeight = Math.Max(140, rawHeight);
 
                 ShowDualCreationMenu(dipLeft, dipTop, dipWidth, dipHeight, coordinator, ResolveEffectiveIsTouch());
             });

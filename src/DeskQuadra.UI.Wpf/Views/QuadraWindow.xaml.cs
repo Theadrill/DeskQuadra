@@ -619,11 +619,8 @@ public partial class QuadraWindow : Window
             Rect2D workAreaRect;
             if (hMonitor != IntPtr.Zero && NativeMethods.GetMonitorInfo(hMonitor, ref monitorInfo))
             {
-                workAreaRect = new Rect2D(
-                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Left, dpiX),
-                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Top, dpiY),
-                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, dpiX),
-                    DpiHelper.PhysicalToDip(monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top, dpiY));
+                var (waLeft, waTop, waWidth, waHeight) = DpiHelper.MapPhysicalToDip(dpiX, dpiY, monitorInfo.rcWork.Left, monitorInfo.rcWork.Top, monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top);
+                workAreaRect = new Rect2D(waLeft, waTop, waWidth, waHeight);
             }
             else
             {
