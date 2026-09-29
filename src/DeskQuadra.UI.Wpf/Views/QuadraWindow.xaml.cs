@@ -252,11 +252,11 @@ public partial class QuadraWindow : Window
     // Alterna recolhido/expandido (duplo-clique ou chevron; o lock NÃO bloqueia)
     private void ToggleCollapsed()
     {
-        CancelSpringTimer();
+        // Cancela os transitórios na mesma ordem anterior (spring, peek, pós-drop);
+        // os flags temporários são limpos em seguida sem mudar a semântica (campos disjuntos).
+        CancelTransientTimers();
         _springExpanded = false;
-        CancelPeekTimers();
         _peekExpanded = false;
-        CancelPostDropCollapseTimer();
         ApplyCollapsed(!_viewModel.IsCollapsed, persist: true);
     }
 
@@ -340,6 +340,15 @@ public partial class QuadraWindow : Window
     {
         CancelPeekEnterTimer();
         CancelPeekExitTimer();
+    }
+
+    // Cancela os timers transitórios do roll-up/peek/spring (mesma ordem dos pontos de chamada).
+    // Não inclui a inércia do touch (_touchInertiaTimer, recorrente) — só os 4 one-shots via OneShotTimer.
+    private void CancelTransientTimers()
+    {
+        CancelSpringTimer();
+        CancelPeekTimers();
+        CancelPostDropCollapseTimer();
     }
 
     private void CollapseButton_Click(object sender, RoutedEventArgs e)
@@ -1465,9 +1474,8 @@ public partial class QuadraWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _touchInertiaTimer?.Stop();
-        CancelSpringTimer();
-        CancelPeekTimers();
-        CancelPostDropCollapseTimer();
+        // Janela fechando: mesmo trio de transitórios do recolher (inércia fica acima, fora do helper).
+        CancelTransientTimers();
         MouseEnter -= Quadra_PeekMouseEnter;
         MouseLeave -= Quadra_PeekMouseLeave;
         GlobalItemSelected -= OnGlobalItemSelected;
