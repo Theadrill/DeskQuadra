@@ -1366,6 +1366,15 @@ public partial class QuadraWindow : Window
         // Estava recolhida no persistido e expandiu temporariamente (spring ou peek): volta a recolher sozinha após ~3s
         bool armPostDrop = wasSpringExpanded || wasPeekExpanded || _awaitingPostDropCollapse;
 
+        // Saída única do Drop: só rearma o colapso pós-drop (~3s), sem tocar em Handled/efeitos
+        void FinishDrop(bool arm)
+        {
+            if (arm)
+            {
+                ArmPostDropCollapseTimer();
+            }
+        }
+
         bool isCopy = IsCopyRequested(e);
 
         if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
@@ -1381,10 +1390,8 @@ public partial class QuadraWindow : Window
                         _coordinator.NotifyQuadraChanged(_viewModel.Model);
                     }
                     e.Handled = true;
-                    if (armPostDrop)
-                    {
-                        ArmPostDropCollapseTimer();
-                    }
+                    // Mantém a ordem: Handled antes do rearmar pós-drop
+                    FinishDrop(armPostDrop);
                     return;
                 }
 
@@ -1405,10 +1412,8 @@ public partial class QuadraWindow : Window
 
                 _coordinator.NotifyQuadraChanged(_viewModel.Model);
                 e.Handled = true;
-                if (armPostDrop)
-                {
-                    ArmPostDropCollapseTimer();
-                }
+                // Mantém a ordem: Handled antes do rearmar pós-drop
+                FinishDrop(armPostDrop);
                 return;
             }
         }
@@ -1429,10 +1434,8 @@ public partial class QuadraWindow : Window
             }
         }
 
-        if (armPostDrop)
-        {
-            ArmPostDropCollapseTimer();
-        }
+        // Saída do caminho FileDrop/ignorado: só rearma, sem alterar Handled aqui
+        FinishDrop(armPostDrop);
     }
 
     private void RescanMenu_Click(object sender, RoutedEventArgs e)
