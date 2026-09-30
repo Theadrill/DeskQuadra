@@ -237,6 +237,7 @@
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Open}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_OpenLocation}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Remove}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
+                                                <MenuItem x:Name="ItemMenuMoveItem" Header="{x:Static properties:Strings.ItemMenu_Move}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuMove_Click" Visibility="Collapsed"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <Border.Style>

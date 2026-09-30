@@ -206,6 +206,8 @@ public partial class App : System.Windows.Application
                     if (!NativeMethods.IsOwnProcessWindow(hwndUnder))
                     {
                         QuadraWindow.DeselectAllGlobally();
+                        // MOVER armado: tap fora de qualquer Quadra cancela sem mover
+                        QuadraWindow.CancelTouchMoveFromOutside();
                     }
                 }
             }, System.Windows.Threading.DispatcherPriority.Background);

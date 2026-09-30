@@ -43,6 +43,15 @@ public partial class QuadraWindow : Window
     private DesktopItemViewModel? _draggedItemCandidate;
     private bool _isItemDragging;
 
+    // MOVER-via-touch (Fatia 1, sem overview): armado compartilhado entre Quadras.
+    // Destaque REUSE o IsSelected (visual de seleção existente, sem cor/tema novo).
+    private static TouchMoveState? s_touchMove;
+    // Timeout ~8s: única exceção à regra de timers — dá saída sem gesto (dedo parado, menu fechado).
+    private static DispatcherTimer? s_touchMoveTimeoutTimer;
+    // ESC com escopo estrito (padrão do menu dual): dono é o HWND da origem, registra ao armar e solta ao desarmar.
+    private static IntPtr s_touchMoveEscHwnd = IntPtr.Zero;
+    private const int TouchMoveEscHotkeyId = 0xD9A1;
+
     // Densidade Aparência (Fatia 2): último modo aplicado + preferência global para WM_DISPLAYCHANGE.
     // Sem hook/timer novo: leitura sob demanda (App) + reavaliação trivial no WndProc existente.
     private bool _isTouchDensity;
@@ -109,6 +118,10 @@ public partial class QuadraWindow : Window
         ItemsScrollViewer.PreviewMouseLeftButtonDown += ItemsScrollViewer_TouchScrollDown;
         ItemsScrollViewer.PreviewMouseMove += ItemsScrollViewer_TouchScrollMove;
         ItemsScrollViewer.PreviewMouseLeftButtonUp += ItemsScrollViewer_TouchScrollUp;
+
+        // MOVER-via-touch: tap de destino em qualquer ponto da Quadra (vazio, barra ou ícone).
+        // Tunelamento passa aqui antes dos filhos; fora do armado retorna imediato (mouse intacto).
+        PreviewMouseLeftButtonDown += Quadra_TouchMoveDestinationDown;
 
         // Hover-peek do roll-up (seção 10): entrada arma expansão temporária, saída recolhe com debounce
         MouseEnter += Quadra_PeekMouseEnter;
@@ -540,6 +553,15 @@ public partial class QuadraWindow : Window
                 handled = true;
                 return IntPtr.Zero;
             }
+        }
+        else if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == TouchMoveEscHotkeyId && s_touchMove != null)
+        {
+            // ESC com mover armado: cancela sem mover e republica o ESC (padrão par-gesto do menu dual).
+            // Sem hook novo: usa o HwndSource já instalado (mesmo WndProc); escopo estrito via hotkey da origem.
+            CancelTouchMove();
+            try { NativeMethods.RepublishEscapeKey(); } catch { /* silencioso */ }
+            handled = true;
+            return IntPtr.Zero;
         }
 
         return IntPtr.Zero;
@@ -1142,6 +1164,12 @@ public partial class QuadraWindow : Window
             // (gesto OU preferência, mesmo padrão do App.ResolveEffectiveIsTouch).
             bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
+            // MOVER só no touch: no mouse a opção nem aparece (padrão do arquivo via Strings).
+            var moveItem = fe.ContextMenu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Name == "ItemMenuMoveItem");
+            if (moveItem != null)
+            {
+                moveItem.Visibility = isTouch ? Visibility.Visible : Visibility.Collapsed;
+            }
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
             fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
             _activeOpenItemContextMenu = fe.ContextMenu;
@@ -1305,6 +1333,128 @@ public partial class QuadraWindow : Window
             _viewModel.RemoveItem(item);
             _coordinator.NotifyQuadraChanged(_viewModel.Model);
         }
+    }
+
+    // MOVER-via-touch: arma o modo mover (só chega aqui pelo menu touch).
+    private void ItemMenuMove_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem mi || mi.DataContext is not DesktopItemViewModel item)
+        {
+            return;
+        }
+        // Rearme: novo MOVER substitui o anterior (limpa destaque/timeout/ESC antigos)
+        CancelTouchMove();
+        s_touchMove = new TouchMoveState(QuadraId, item.Id);
+        // Destaque REUSE IsSelected (visual de seleção existente, sem cor/tema novo)
+        item.IsSelected = true;
+        // Timeout ~8s: one-shot via OneShotTimer (mesmo molde dos transitórios do roll-up)
+        OneShotTimer.Arm(ref s_touchMoveTimeoutTimer, TouchMoveState.TimeoutMilliseconds, TouchMoveTimeout_Tick);
+        // ESC com escopo estrito (padrão do menu dual): registra ao armar, best-effort silencioso
+        try
+        {
+            IntPtr hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero && NativeMethods.RegisterHotKey(hwnd, TouchMoveEscHotkeyId, 0, NativeMethods.VK_ESCAPE))
+            {
+                s_touchMoveEscHwnd = hwnd;
+            }
+        }
+        catch { /* sem ESC o modo segue cancelando por tap/timeout */ }
+    }
+
+    // Tap de destino: qualquer ponto da Quadra (vazio, barra ou ícone). Fora do armado = return (mouse intacto).
+    private void Quadra_TouchMoveDestinationDown(object sender, MouseButtonEventArgs e)
+    {
+        var armed = s_touchMove;
+        if (armed == null)
+        {
+            return;
+        }
+        // Consome o tap como escolha de destino (sem drag/scroll/launch)
+        e.Handled = true;
+        CompleteTouchMove(armed);
+    }
+
+    // Destino distinto move; mesma Quadra ou expirado cancela sem mover.
+    private void CompleteTouchMove(TouchMoveState armed)
+    {
+        if (armed.IsExpired(DateTime.UtcNow)
+            || armed.ResolveDestination(QuadraId) == TouchMoveResolution.CancelSameQuadra)
+        {
+            CancelTouchMove();
+            return;
+        }
+        // REUSE núcleo do drop de mouse (Quadra_Drop, ramo Move): só vinculação + persistência, disco intacto
+        var source = FindQuadraWindow(armed.SourceQuadraId);
+        var item = source?._viewModel.Items.FirstOrDefault(i => i.Id == armed.ItemId);
+        if (source == null || source == this || item == null)
+        {
+            CancelTouchMove();
+            return;
+        }
+        _viewModel.AddItem(item.Model);
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        source._viewModel.RemoveItem(item);
+        source._coordinator.NotifyQuadraChanged(source._viewModel.Model);
+        CancelTouchMove();
+    }
+
+    // Tap fora de qualquer Quadra (desktop vazio): cancela sem mover (chamado pelo App no GlobalLeftClick).
+    public static void CancelTouchMoveFromOutside()
+    {
+        if (s_touchMove != null)
+        {
+            CancelTouchMove();
+        }
+    }
+
+    // Desarma por todos os motivos (ESC, timeout, fora, origem, pós-move): restaura sem mover nada.
+    private static void CancelTouchMove()
+    {
+        var armed = s_touchMove;
+        s_touchMove = null;
+        OneShotTimer.Cancel(ref s_touchMoveTimeoutTimer, TouchMoveTimeout_Tick);
+        // Solta o ESC do escopo estrito registrado ao armar
+        if (s_touchMoveEscHwnd != IntPtr.Zero)
+        {
+            try { NativeMethods.UnregisterHotKey(s_touchMoveEscHwnd, TouchMoveEscHotkeyId); } catch { /* silencioso */ }
+            s_touchMoveEscHwnd = IntPtr.Zero;
+        }
+        // Apaga o destaque REUSE (o fora-da-Quadra já limpa via DeselectAllGlobally; aqui é belt-and-braces)
+        if (armed != null)
+        {
+            try
+            {
+                var vm = FindQuadraWindow(armed.SourceQuadraId)?._viewModel.Items.FirstOrDefault(i => i.Id == armed.ItemId);
+                if (vm != null)
+                {
+                    vm.IsSelected = false;
+                }
+            }
+            catch { /* silencioso */ }
+        }
+    }
+
+    private static void TouchMoveTimeout_Tick(object? sender, EventArgs e)
+    {
+        CancelTouchMove();
+    }
+
+    // REUSE padrão do RefreshQuadraWindow: localiza a janela aberta pelo Id.
+    private static QuadraWindow? FindQuadraWindow(Guid id)
+    {
+        var app = System.Windows.Application.Current;
+        if (app == null)
+        {
+            return null;
+        }
+        foreach (Window window in app.Windows)
+        {
+            if (window is QuadraWindow other && other.QuadraId == id)
+            {
+                return other;
+            }
+        }
+        return null;
     }
 
     private void DesktopItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -1539,10 +1689,16 @@ public partial class QuadraWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _touchInertiaTimer?.Stop();
+        // MOVER armado com origem aqui: fechar cancela sem mover (sem destaque/timeout/ESC órfãos)
+        if (s_touchMove != null && s_touchMove.SourceQuadraId == QuadraId)
+        {
+            CancelTouchMove();
+        }
         // Janela fechando: mesmo trio de transitórios do recolher (inércia fica acima, fora do helper).
         CancelTransientTimers();
         MouseEnter -= Quadra_PeekMouseEnter;
         MouseLeave -= Quadra_PeekMouseLeave;
+        PreviewMouseLeftButtonDown -= Quadra_TouchMoveDestinationDown;
         GlobalItemSelected -= OnGlobalItemSelected;
         GlobalCloseMenusRequested -= OnGlobalCloseMenusRequested;
         LocationChanged -= OnPositionOrSizeChanged;

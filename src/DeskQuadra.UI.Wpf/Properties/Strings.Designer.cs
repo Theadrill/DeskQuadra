@@ -124,6 +124,8 @@ namespace DeskQuadra.UI.Wpf.Properties
 
         public static string ItemMenu_Remove => ResourceManager.GetString("ItemMenu_Remove", resourceCulture);
 
+        public static string ItemMenu_Move => ResourceManager.GetString("ItemMenu_Move", resourceCulture);
+
         public static string Dialog_CloseTitle => ResourceManager.GetString("Dialog_CloseTitle", resourceCulture);
 
         public static string Dialog_CloseMessageFormat => ResourceManager.GetString("Dialog_CloseMessageFormat", resourceCulture);

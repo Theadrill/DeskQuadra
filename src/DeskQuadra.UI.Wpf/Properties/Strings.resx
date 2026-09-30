@@ -150,6 +150,9 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="ItemMenu_Remove" xml:space="preserve">
     <value>Remover desta Quadra</value>
   </data>
+  <data name="ItemMenu_Move" xml:space="preserve">
+    <value>Mover</value>
+  </data>
   <data name="Dialog_CloseTitle" xml:space="preserve">
     <value>Fechar Quadra</value>
   </data>
