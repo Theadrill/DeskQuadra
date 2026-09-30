@@ -25,6 +25,10 @@ public static class DensityResolver
     public const double NormalIconSize = 38.0;
     public const double TouchIconSize = 48.0;
 
+    // Título da Quadra: Normal 12 (Default.xaml) vs Touch +25% = 15.
+    public const double NormalTitleFontSize = 12.0;
+    public const double TouchTitleFontSize = 15.0;
+
     /// <summary>
     /// Verdadeiro quando o hardware tem touch: digitizer indica touch integrado/externo
     /// OU SM_MAXIMUMTOUCHES &gt; 0 (cobre digitizer sem NID mas com toques reportados).
@@ -58,4 +62,7 @@ public static class DensityResolver
 
     // Ícone cresce dentro da célula fixa 78x96 (não mexe no snap D9).
     public static double IconSize(bool isTouch) => isTouch ? TouchIconSize : NormalIconSize;
+
+    // Título cresce 25% só no Touch; Normal preserva o token do tema.
+    public static double TitleFontSize(bool isTouch) => isTouch ? TouchTitleFontSize : NormalTitleFontSize;
 }

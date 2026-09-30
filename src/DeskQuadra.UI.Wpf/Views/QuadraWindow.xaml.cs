@@ -223,7 +223,7 @@ public partial class QuadraWindow : Window
     }
 
     // Densidade (Fatia 2 + fatia vertical): barra 28/42 + botão 24/44 + ícone 38/48
-    // DENTRO da célula fixa 78x96 (snap D9 intacto) + respiro do item.
+    // + título 12/15 DENTRO da célula fixa 78x96 (snap D9 intacto) + respiro do item.
     // Via recursos existentes (Quadra.TitleButton.Size + chaves Quadra.Density.* e
     // Quadra.Item.Padding/Margin); não toca em roll-up/spring/peek/lock/drag/scroll
     // (só dimensões). Seguro com janela recolhida.
@@ -247,6 +247,8 @@ public partial class QuadraWindow : Window
         // (o slot app.Resources["Quadra.Item.*"] é sombreado pelo Touch, então TryFindResource
         // direto retornaria o override no toggle Touch->Normal).
         app.Resources["Quadra.Density.Icon.Size"] = DensityResolver.IconSize(isTouch);
+        // Título Touch +25% via override do token (XAML já usa DynamicResource; Normal relê o base 12).
+        app.Resources["Quadra.Title.FontSize"] = DensityResolver.TitleFontSize(isTouch);
         app.Resources["Quadra.Item.Padding"] = isTouch
             ? ThemeResolver.Get("Quadra.Item.Padding.Touch", new Thickness(8, 8, 8, 4))
             : GetThemeBase("Quadra.Item.Padding", new Thickness(4, 4, 4, 2));
