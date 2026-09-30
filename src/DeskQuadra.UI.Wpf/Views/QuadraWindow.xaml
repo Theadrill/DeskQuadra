@@ -333,5 +333,29 @@
         <primitives:Thumb x:Name="ResizeThumbBottomRight" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                           Cursor="SizeNWSE" Style="{StaticResource ResizeThumbStyle}"
                           DragDelta="ResizeBottomRight_DragDelta"/>
+
+        <!-- Alças visíveis do RESIZE-via-touch (só com armado; tap atravessa p/ os thumbs) -->
+        <Grid x:Name="TouchResizeHandlesOverlay"
+              Visibility="Collapsed"
+              IsHitTestVisible="False">
+            <!-- Cantos -->
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Top"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+            <!-- Meios de borda -->
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Top"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+            <Ellipse Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Center"
+                     Fill="{DynamicResource Quadra.Item.Selected.BorderBrush}" IsHitTestVisible="False"/>
+        </Grid>
     </Grid>
 </Window>

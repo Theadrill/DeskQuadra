@@ -54,8 +54,18 @@ public partial class QuadraWindow : Window
     private const int TouchMoveEscHotkeyId = 0xD9A1;
 
     // REDIMENSIONAR-via-touch (Fatia 1, só gesto + modo armado): Quadra dona + título guardado.
-    // Sem borda/grip novo (fatia 2); o aviso é o próprio título trocado pela instrução.
+    // Fatia 2 engrossa as pegas; o aviso segue no título trocado pela instrução.
     private static TouchResizeState? s_touchResize;
+    // REDIMENSIONAR-via-touch (Fatia 2, bordas grossas): valores armados vs normais do XAML.
+    // Normal: bordas 6, cantos 10x10, container 1 (Quadra.BorderThickness). Armado: dedo agarra fácil.
+    private const double TouchResizeArmedEdgeThickness = 48.0;
+    private const double TouchResizeArmedCornerSize = 56.0;
+    private static readonly Thickness TouchResizeArmedBorderThickness = new(4);
+    // Foto fiel p/ restaurar o exato original ao desarmar (mesmo molde do título da fatia 1).
+    private double? _savedResizeEdgeHeight;
+    private double? _savedResizeEdgeWidth;
+    private double? _savedResizeCornerSize;
+    private Thickness? _savedContainerBorderThickness;
     // Timeout ~8s: dedo parado/menu fechado sai sem gesto (mesmo molde do MOVER).
     private static DispatcherTimer? s_touchResizeTimeoutTimer;
     // ESC com escopo estrito (mesmo padrão do MOVER/dual): id próprio sem colidir com 0xD9A1/0xD9AD.
@@ -1946,12 +1956,14 @@ public partial class QuadraWindow : Window
     }
 
     // Arma: guarda o título original (sem recalcular), troca pelo de instrução e arma timeout + ESC.
+    // Fatia 2: engrossa as pegas só na armada (hitbox + visual juntos).
     private void ArmTouchResize()
     {
-        // Rearme: novo gesto substitui o anterior (restaura título/timeout/ESC antigos)
+        // Rearme: novo gesto substitui o anterior (restaura título/grossura/timeout/ESC antigos)
         CancelTouchResize();
         s_touchResize = new TouchResizeState(QuadraId, _viewModel.Title);
         _viewModel.Title = Strings.TouchResizeArmedHint;
+        ApplyTouchResizeThickness();
         // Timeout ~8s: one-shot via OneShotTimer (mesmo molde do MOVER)
         OneShotTimer.Arm(ref s_touchResizeTimeoutTimer, TouchResizeState.TimeoutMilliseconds, TouchResizeTimeout_Tick);
         // ESC com escopo estrito: registra ao armar, best-effort silencioso
@@ -1966,6 +1978,72 @@ public partial class QuadraWindow : Window
         catch { /* sem ESC o modo segue cancelando por tap fora/timeout */ }
     }
 
+    // Engrossa as pegas só enquanto armado: thumbs (hitbox do dedo) + borda do
+    // container (visual). REUSE os 8 arrastes — só alarga o que o dedo agarra.
+    // Destaque REUSE o acento existente (seleção), sem cor chapada/token novo.
+    private void ApplyTouchResizeThickness()
+    {
+        // Guarda uma vez (rearme/restaura usam a foto; sem recalcular)
+        _savedResizeEdgeHeight ??= ResizeThumbTop.Height;
+        _savedResizeEdgeWidth ??= ResizeThumbLeft.Width;
+        _savedResizeCornerSize ??= ResizeThumbTopLeft.Width;
+        _savedContainerBorderThickness ??= QuadraContainer.BorderThickness;
+        ResizeThumbTop.Height = TouchResizeArmedEdgeThickness;
+        ResizeThumbBottom.Height = TouchResizeArmedEdgeThickness;
+        ResizeThumbLeft.Width = TouchResizeArmedEdgeThickness;
+        ResizeThumbRight.Width = TouchResizeArmedEdgeThickness;
+        ResizeThumbTopLeft.Width = TouchResizeArmedCornerSize;
+        ResizeThumbTopLeft.Height = TouchResizeArmedCornerSize;
+        ResizeThumbTopRight.Width = TouchResizeArmedCornerSize;
+        ResizeThumbTopRight.Height = TouchResizeArmedCornerSize;
+        ResizeThumbBottomLeft.Width = TouchResizeArmedCornerSize;
+        ResizeThumbBottomLeft.Height = TouchResizeArmedCornerSize;
+        ResizeThumbBottomRight.Width = TouchResizeArmedCornerSize;
+        ResizeThumbBottomRight.Height = TouchResizeArmedCornerSize;
+        QuadraContainer.BorderThickness = TouchResizeArmedBorderThickness;
+        QuadraContainer.SetResourceReference(Border.BorderBrushProperty, "Quadra.Item.Selected.BorderBrush");
+        // Alças: só no armado (fora é sempre Collapsed, sem foto)
+        TouchResizeHandlesOverlay.Visibility = Visibility.Visible;
+    }
+
+    // Volta ao exato original (hitbox + visual); idempotente e silencioso.
+    private void RestoreTouchResizeThickness()
+    {
+        if (_savedResizeEdgeHeight.HasValue)
+        {
+            ResizeThumbTop.Height = _savedResizeEdgeHeight.Value;
+            ResizeThumbBottom.Height = _savedResizeEdgeHeight.Value;
+            _savedResizeEdgeHeight = null;
+        }
+        if (_savedResizeEdgeWidth.HasValue)
+        {
+            ResizeThumbLeft.Width = _savedResizeEdgeWidth.Value;
+            ResizeThumbRight.Width = _savedResizeEdgeWidth.Value;
+            _savedResizeEdgeWidth = null;
+        }
+        if (_savedResizeCornerSize.HasValue)
+        {
+            ResizeThumbTopLeft.Width = _savedResizeCornerSize.Value;
+            ResizeThumbTopLeft.Height = _savedResizeCornerSize.Value;
+            ResizeThumbTopRight.Width = _savedResizeCornerSize.Value;
+            ResizeThumbTopRight.Height = _savedResizeCornerSize.Value;
+            ResizeThumbBottomLeft.Width = _savedResizeCornerSize.Value;
+            ResizeThumbBottomLeft.Height = _savedResizeCornerSize.Value;
+            ResizeThumbBottomRight.Width = _savedResizeCornerSize.Value;
+            ResizeThumbBottomRight.Height = _savedResizeCornerSize.Value;
+            _savedResizeCornerSize = null;
+        }
+        if (_savedContainerBorderThickness.HasValue)
+        {
+            QuadraContainer.BorderThickness = _savedContainerBorderThickness.Value;
+            _savedContainerBorderThickness = null;
+        }
+        // Reamarra no token original (viva DynamicResource, sem valor chapado)
+        QuadraContainer.SetResourceReference(Border.BorderBrushProperty, "Quadra.BorderBrush");
+        // Alças somem em todo desarme (qualquer cancela)
+        TouchResizeHandlesOverlay.Visibility = Visibility.Collapsed;
+    }
+
     // Tap fora de qualquer Quadra (desktop vazio): restaura o título (REUSE do caminho GlobalLeftClick do App).
     // Ignora o LDown que é o próprio tap do menu (enfileirado antes do arme via BeginInvoke Background).
     public static void CancelTouchResizeFromOutside(DateTime raiseUtc)
@@ -1976,7 +2054,8 @@ public partial class QuadraWindow : Window
         }
     }
 
-    // Desarma por todos os motivos (ESC, timeout, fora, fechar): restaura o título guardado, sem mais nada.
+    // Desarma por todos os motivos (ESC, timeout, fora, outra Quadra, fechar):
+    // restaura título + grossura guardados, sem mais nada.
     private static void CancelTouchResize()
     {
         var armed = s_touchResize;
@@ -1997,6 +2076,8 @@ public partial class QuadraWindow : Window
                 if (owner != null)
                 {
                     owner._viewModel.Title = armed.OriginalTitle;
+                    // Afina de volta ao exato original (só a armada engrossou)
+                    owner.RestoreTouchResizeThickness();
                 }
             }
             catch { /* silencioso */ }
