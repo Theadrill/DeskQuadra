@@ -493,8 +493,7 @@ public partial class QuadraWindow : Window
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         // Reavaliação trivial de Auto ao trocar display (sem hook/timer novo; só se preferência for Auto).
-        const int WM_DISPLAYCHANGE = 0x007E;
-        if (msg == WM_DISPLAYCHANGE && CurrentDensityPreference == DensityPreference.Auto && HasTouchHardwareProvider != null)
+        if (msg == NativeMethods.WM_DISPLAYCHANGE && CurrentDensityPreference == DensityPreference.Auto && HasTouchHardwareProvider != null)
         {
             try
             {
@@ -534,7 +533,7 @@ public partial class QuadraWindow : Window
         }
         else if (msg == NativeMethods.WM_SYSCOMMAND)
         {
-            int command = (int)wParam & 0xFFF0;
+            int command = (int)wParam & NativeMethods.SC_MASK;
             if (command == NativeMethods.SC_MINIMIZE)
             {
                 // Rejeita qualquer comando direto de minimização
@@ -870,7 +869,7 @@ public partial class QuadraWindow : Window
         // (submenu "Ordenar por" branco) e na densidade de mouse mesmo no modo touch.
         // Mesmo padrão do TitleBar_ContextMenuOpening: cadeado + densidade por gesto/preferência.
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
-        bool isTouch = InputDeviceDetector.IsTouchInteraction(e) || ResolvePreferenceIsTouch();
+        bool isTouch = ResolveEffectiveIsTouch(e);
         ApplyMenuDensity(menu, isTouch: isTouch);
         menu.PlacementTarget = ItemsScrollViewer;
         menu.IsOpen = true;
@@ -1141,7 +1140,7 @@ public partial class QuadraWindow : Window
             // Toque usa itens de 46px; mouse segue compacto (~26px).
             // Híbrido preservado: toque real abre menu grande mesmo em modo Normal
             // (gesto OU preferência, mesmo padrão do App.ResolveEffectiveIsTouch).
-            bool isTouch = InputDeviceDetector.IsEventFromTouch(e) || ResolvePreferenceIsTouch();
+            bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
             fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
@@ -1161,6 +1160,14 @@ public partial class QuadraWindow : Window
     {
         bool hasHardware = HasTouchHardwareProvider?.Invoke() ?? _isTouchDensity;
         return DensityResolver.ResolveIsTouch(CurrentDensityPreference, hasHardware);
+    }
+
+    // E16-UI: decisão "touch efetivo" p/ densidade de menu — gesto OU preferência, num ponto só.
+    // Bit a bit: p/ MouseButton/MouseEventArgs, IsEventFromTouch ≡ IsTouchInteraction
+    // (mesmos 3 termos OR — Stylus-touch, mensagem touch, flag global — só muda a ordem).
+    private bool ResolveEffectiveIsTouch(RoutedEventArgs e)
+    {
+        return InputDeviceDetector.IsEventFromTouch(e) || ResolvePreferenceIsTouch();
     }
 
     private static void ApplyStyleRecursively(ItemCollection items, Style style)
@@ -1312,7 +1319,7 @@ public partial class QuadraWindow : Window
             || Keyboard.IsKeyDown(Key.LeftCtrl)
             || Keyboard.IsKeyDown(Key.RightCtrl)
             || Keyboard.Modifiers.HasFlag(ModifierKeys.Control)
-            || (NativeMethods.GetKeyState(0x11 /* VK_CONTROL */) & 0x8000) != 0;
+            || (NativeMethods.GetKeyState(NativeMethods.VK_CONTROL) & 0x8000) != 0;
     }
 
     private void Quadra_DragOver(object sender, DragEventArgs e)
@@ -1516,7 +1523,7 @@ public partial class QuadraWindow : Window
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
-            bool isTouch = InputDeviceDetector.IsEventFromTouch(e) || ResolvePreferenceIsTouch();
+            bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
         }
     }

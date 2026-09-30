@@ -38,6 +38,8 @@ internal static class NativeMethods
     public const int WM_MOVING = 0x0216;
     public const int WM_SYSCOMMAND = 0x0112;
     public const int SC_MINIMIZE = 0xF020;
+    public const int SC_MASK = 0xFFF0;
+    public const int WM_DISPLAYCHANGE = 0x007E;
 
     public enum INPUT_MESSAGE_DEVICE_TYPE
     {
@@ -132,7 +134,9 @@ internal static class NativeMethods
     public const uint SMTO_NORMAL = 0x0000;
 
     public const int WM_NCLBUTTONDOWN = 0x00A1;
+    public const int WM_NCHITTEST = 0x0084;
     public const int HTCAPTION = 0x0002;
+    public const int HTTRANSPARENT = -1;
 
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -338,6 +342,7 @@ internal static class NativeMethods
     public const int WM_RBUTTONDOWN = 0x0204;
     public const int WM_RBUTTONUP = 0x0205;
     public const int VK_RBUTTON = 0x02;
+    public const int VK_CONTROL = 0x11;
     public const uint GA_ROOT = 2;
 
     [DllImport("user32.dll")]

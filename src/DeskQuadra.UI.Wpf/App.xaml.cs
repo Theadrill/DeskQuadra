@@ -551,6 +551,14 @@ public partial class App : System.Windows.Application
     // desregistra em todos os fechamentos; dono é o HWND da _selectionWindow).
     private const int DualMenuEscHotkeyId = 0xD9AD;
 
+    // Dismiss do dual via hook único do desenho (sem segundo WH_MOUSE_LL):
+    // lifetime explícito enquanto o popup dual estiver aberto — assinante do
+    // hook + juiz do BeginInvoke enraizados em campo, null em DesligarEscDual.
+    // Nunca só em variável local de método que retorna (GC coletaria e o
+    // Windows chamaria memória liberada).
+    private Action<NativeMethods.POINT>? _dualDismissWatcher;
+    private Action? _dualDismissUiJudge;
+
     private void ShowDualCreationMenu(double left, double top, double width, double height, ILayoutCoordinator coordinator, bool isTouch)
     {
         var popup = new Popup
@@ -631,10 +639,33 @@ public partial class App : System.Windows.Application
         };
 
         // Desliga em TODOS os fechamentos (Criar, Cancelar, Closed).
+        // Sem segundo hook: desassina o watcher do hook único do desenho e
+        // libera os delegates enraizados em campo. Guarda per-invocação só
+        // p/ identidade (o lifetime segue no campo, nunca só no local).
+        Action<NativeMethods.POINT>? installedDualWatcher = null;
         void DesligarEscDual()
         {
             try { escSource?.RemoveHook(escHook); } catch { /* silencioso */ }
             try { if (escOwnerHwnd != nint.Zero) NativeMethods.UnregisterHotKey(escOwnerHwnd, DualMenuEscHotkeyId); } catch { /* silencioso */ }
+            var selfDualWatcher = installedDualWatcher;
+            if (selfDualWatcher != null)
+            {
+                try
+                {
+                    if (_drawingService is DesktopDrawingService svcOff
+                        && svcOff.DualDismissWatcher == selfDualWatcher)
+                    {
+                        svcOff.DualDismissWatcher = null;
+                    }
+                }
+                catch { /* silencioso */ }
+                if (_dualDismissWatcher == selfDualWatcher)
+                {
+                    _dualDismissWatcher = null;
+                    _dualDismissUiJudge = null;
+                }
+                installedDualWatcher = null;
+            }
         }
 
         try { escSource?.AddHook(escHook); } catch { /* silencioso */ }
@@ -718,6 +749,43 @@ public partial class App : System.Windows.Application
             DesligarEscDual();
             ChordDiagLog.Log($"popup-dual Closed {ChordDiagLog.Snapshot()}"); // ChordDiag (dismiss leve: StaysOpen=false fecha sem Click)
         };
+        // Toque: fecha fora no Down (tap qualquer duração) e no RDown (segurar). // toque: cobre tap+segurar
+        // REUSE sem segundo WH_MOUSE_LL: assina o watcher do hook único do
+        // desenho (vê injetado que o desenho ignora). Delegates enraizados em
+        // campo (_dualDismissWatcher/_dualDismissUiJudge) enquanto o dual está
+        // aberto; nunca só em local (GC). Nunca engole — o repasse segue no hook.
+        _dualDismissWatcher = (NativeMethods.POINT ptDual) => // toque: sensor cego e rápido
+        {
+            try // toque: hook nunca lança
+            {
+                var ptCopyDual = ptDual; // toque: copia p/ closure (sem race entre taps)
+                Action judgeDual = () => // toque: juiz na UI
+                {
+                    try // toque: best-effort silencioso
+                    {
+                        if (!popup.IsOpen) return; // toque: já fechado
+                        IntPtr popupHwndDual = IntPtr.Zero; // toque: HWND atual
+                        try { var srcDual = PresentationSource.FromVisual(border) as HwndSource; if (srcDual != null) popupHwndDual = srcDual.Handle; } catch { /* silencioso */ } // toque: HWND fresco
+                        if (popupHwndDual == IntPtr.Zero) return; // toque: sem HWND nunca fecha (não se sabe onde foi o clique)
+                        IntPtr underDual = IntPtr.Zero; // toque: quem está sob ponto
+                        try { underDual = NativeMethods.WindowFromPoint(ptCopyDual); } catch { /* silencioso */ } // toque: sondagem DPI-safe
+                        if (underDual == popupHwndDual) return; // toque: dentro vira botão
+                        ChordDiagLog.Log($"popup-dual close (fora/watcher) {ChordDiagLog.Snapshot()}"); // toque: rastro no log // ChordDiag
+                        try { popup.IsOpen = false; } catch { /* silencioso */ } // toque: fecha fora
+                    }
+                    catch { /* silencioso */ } // toque: nunca quebra UI
+                };
+                _dualDismissUiJudge = judgeDual; // toque: enraíza o juiz enquanto o dual está aberto
+                try // toque: decide na UI
+                {
+                    Dispatcher.BeginInvoke(judgeDual, System.Windows.Threading.DispatcherPriority.Input); // toque: fecha rápido
+                }
+                catch { /* silencioso */ } // toque: sem dispatcher segue mouse
+            }
+            catch { /* silencioso */ } // toque: hook nunca falha
+        };
+        try { if (_drawingService is DesktopDrawingService svcOn) svcOn.DualDismissWatcher = _dualDismissWatcher; } catch { /* silencioso */ } // toque: liga watcher
+        installedDualWatcher = _dualDismissWatcher; // toque: arma o desligar (sem isso nunca desassina)
         popup.IsOpen = true;
         // Liga o ESC só com o popup aberto (escopo estrito, modificador zero =
         // ESC puro); falha aqui só perde o ESC, o popup segue normal.

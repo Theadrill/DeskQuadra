@@ -239,3 +239,7 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
   - `DragDrop.DoDragDrop` é modal e trava a thread — desacoplar do pipeline de input como tentado em `1584f94`.
 * **Critério de Teste do PO (O que você vai testar):**
   - Arrastar com o dedo sobre ícones scrolla com inércia; tocar seleciona; segurar e soltar abre o menu grande de toque; segurar e mover arrasta o item para outra Quadra.
+
+### 2026-09-30 — Dismiss do menu dual com toque
+* **Entregue:** dismiss fora do menu via hook único (`DualDismissWatcher`). **Validado pelo PO como "bom o suficiente por enquanto": perfeito dentro das Quadras, meio inconstante fora no desktop vazio.**
+* **Pendente:** review geral no sistema de toques do app para aprimorar isso no futuro.

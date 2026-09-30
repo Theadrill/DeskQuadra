@@ -25,6 +25,12 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
     public event EventHandler? DrawingCancelled;
     public event EventHandler? GlobalLeftClick;
 
+    // Dismiss do dual via hook único (sem segundo WH_MOUSE_LL): assinante
+    // opcional, null por padrão = custo de um if no caminho quente. Notificado
+    // em LDown/LUp/RDown INCLUSIVE injetados (exceção ao repasse precoce de
+    // injetado só quando houver assinante); nunca altera o repasse.
+    internal Action<NativeMethods.POINT>? DualDismissWatcher { get; set; }
+
     public bool IsDrawingActive => _isDownOnDesktop && _isDragging;
 
     public DesktopDrawingService()
@@ -61,6 +67,23 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
         if (nCode >= 0)
         {
             int msg = wParam.ToInt32();
+
+            // Dual-dismiss via hook único: notifica o assinante (se houver) em
+            // LDown/LUp/RDown INCLUSIVE injetados, antes do repasse precoce de
+            // injetado abaixo. Sem assinante = custo de um if. Nunca engole.
+            var dualWatcher = DualDismissWatcher;
+            if (dualWatcher != null)
+            {
+                if (msg == 0x0201 /* WM_LBUTTONDOWN */ || msg == 0x0202 /* WM_LBUTTONUP */ || msg == NativeMethods.WM_RBUTTONDOWN)
+                {
+                    try
+                    {
+                        var dualStruct = Marshal.PtrToStructure<NativeMethods.MSLLHOOKSTRUCT>(lParam);
+                        try { dualWatcher(dualStruct.pt); } catch { /* silencioso */ }
+                    }
+                    catch { /* silencioso */ }
+                }
+            }
 
             // Par-gesto: a republicação via SendInput volta pelo hook marcada como
             // injetada — repassa de imediato sem processar para não realimentar o gesto.

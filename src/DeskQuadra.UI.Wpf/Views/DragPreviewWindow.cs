@@ -101,13 +101,10 @@ public sealed class DragPreviewWindow : Window
 
     private static IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        const int WM_NCHITTEST = 0x0084;
-        const int HTTRANSPARENT = -1;
-
-        if (msg == WM_NCHITTEST)
+        if (msg == NativeMethods.WM_NCHITTEST)
         {
             handled = true;
-            return new IntPtr(HTTRANSPARENT);
+            return new IntPtr(NativeMethods.HTTRANSPARENT);
         }
         return IntPtr.Zero;
     }
