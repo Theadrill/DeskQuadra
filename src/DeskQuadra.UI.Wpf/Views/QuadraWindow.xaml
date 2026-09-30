@@ -309,30 +309,30 @@
         <!-- Bordas Simples -->
         <primitives:Thumb x:Name="ResizeThumbTop" Height="6" VerticalAlignment="Top" Margin="6,0,6,0"
                           Cursor="SizeNS" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeTop_DragDelta"/>
+                          DragDelta="ResizeTop_DragDelta" DragCompleted="Resize_DragCompleted"/>
         <primitives:Thumb x:Name="ResizeThumbBottom" Height="6" VerticalAlignment="Bottom" Margin="6,0,6,0"
                           Cursor="SizeNS" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeBottom_DragDelta"/>
+                          DragDelta="ResizeBottom_DragDelta" DragCompleted="Resize_DragCompleted"/>
         <primitives:Thumb x:Name="ResizeThumbLeft" Width="6" HorizontalAlignment="Left" Margin="0,6,0,6"
                           Cursor="SizeWE" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeLeft_DragDelta"/>
+                          DragDelta="ResizeLeft_DragDelta" DragCompleted="Resize_DragCompleted"/>
         <primitives:Thumb x:Name="ResizeThumbRight" Width="6" HorizontalAlignment="Right" Margin="0,6,0,6"
                           Cursor="SizeWE" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeRight_DragDelta"/>
+                          DragDelta="ResizeRight_DragDelta" DragCompleted="Resize_DragCompleted"/>
 
         <!-- Cantos (Diagonal) -->
         <primitives:Thumb x:Name="ResizeThumbTopLeft" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
                           Cursor="SizeNWSE" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeTopLeft_DragDelta"/>
+                          DragDelta="ResizeTopLeft_DragDelta" DragCompleted="Resize_DragCompleted"/>
         <primitives:Thumb x:Name="ResizeThumbTopRight" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
                           Cursor="SizeNESW" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeTopRight_DragDelta"/>
+                          DragDelta="ResizeTopRight_DragDelta" DragCompleted="Resize_DragCompleted"/>
         <primitives:Thumb x:Name="ResizeThumbBottomLeft" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                           Cursor="SizeNESW" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeBottomLeft_DragDelta"/>
+                          DragDelta="ResizeBottomLeft_DragDelta" DragCompleted="Resize_DragCompleted"/>
         <primitives:Thumb x:Name="ResizeThumbBottomRight" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                           Cursor="SizeNWSE" Style="{StaticResource ResizeThumbStyle}"
-                          DragDelta="ResizeBottomRight_DragDelta"/>
+                          DragDelta="ResizeBottomRight_DragDelta" DragCompleted="Resize_DragCompleted"/>
 
         <!-- Alças visíveis do RESIZE-via-touch (só com armado; tap atravessa p/ os thumbs) -->
         <Grid x:Name="TouchResizeHandlesOverlay"

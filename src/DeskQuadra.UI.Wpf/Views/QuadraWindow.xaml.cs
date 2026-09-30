@@ -2179,11 +2179,11 @@ public partial class QuadraWindow : Window
     // E3-UI: núcleo local das 4 bordas — só o snap (tamanho bruto + passo/chrome/
     // direção/mínimo variam por chamador; threshold/histerese são os mesmos).
     // Guard (CanTransform), IsFinite e atribuição/compensação seguem nos handlers.
-    private SizeSnapResult SnapEdge(double rawSize, double step, double chrome, ResizeDirection direction, double minSize)
+    private SizeSnapResult SnapEdge(double rawSize, double step, double chrome, ResizeDirection direction, double minSize, double? thresholdOverride = null)
     {
         return SizeSnapper.SnapDimension(
             rawSize, step, chrome,
-            threshold: ResizeSnapThreshold,
+            threshold: thresholdOverride ?? ResizeSnapThreshold,
             direction: direction,
             hysteresis: ResizeSnapHysteresis,
             minSize: minSize);
@@ -2192,13 +2192,14 @@ public partial class QuadraWindow : Window
     // E3-UI: núcleo local dos 4 cantos — passos/chromes/mínimos são fixos da grade;
     // só o tamanho bruto e as direções variam por chamador. Guard, IsFinite e a
     // ordem de atribuição (Width/Left/Height/Top) seguem nos handlers.
-    private SizeSnapResult2D SnapCorner(double rawWidth, double rawHeight, ResizeDirection horizontalDirection, ResizeDirection verticalDirection)
+    private SizeSnapResult2D SnapCorner(double rawWidth, double rawHeight, ResizeDirection horizontalDirection, ResizeDirection verticalDirection, double? thresholdOverride = null)
     {
+        double threshold = thresholdOverride ?? ResizeSnapThreshold;
         return SizeSnapper.SnapSize(
             rawWidth, rawHeight,
             horizontalStep: ResizeCellWidth, verticalStep: ResizeCellHeight,
             horizontalChrome: HorizontalResizeChrome, verticalChrome: VerticalResizeChrome,
-            threshold: ResizeSnapThreshold,
+            threshold: threshold,
             horizontalDirection: horizontalDirection,
             verticalDirection: verticalDirection,
             hysteresis: ResizeSnapHysteresis,
@@ -2377,5 +2378,53 @@ public partial class QuadraWindow : Window
         double heightDelta = Height - snapped.Height;
         Height = snapped.Height;
         Top += heightDelta;
+    }
+
+    // Assenta na grade ao soltar: o dedo anda aos saltos e pode pousar fora da
+    // banda de 12px (o mouse desliza e sempre gruda); ao soltar, se estiver a até
+    // 20px do detente, assenta (sem tranco: longe disso, fica onde largou, como o mouse).
+    // Sem movimento = return (tap na pega não pula). Vale p/ mouse também.
+    // O snap usa SEMPRE o chrome normal: a borda grossa é transitória e o que
+    // trava aqui é o que persiste após afinar (detente armado deslocaria 6px p/ fora).
+    private void Resize_DragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        if (!CanTransform() || sender is not FrameworkElement thumb)
+        {
+            return;
+        }
+        if (Math.Abs(e.HorizontalChange) < 0.5 && Math.Abs(e.VerticalChange) < 0.5)
+        {
+            return;
+        }
+        bool horizontal = thumb.Name.Contains("Left") || thumb.Name.Contains("Right");
+        bool vertical = thumb.Name.Contains("Top") || thumb.Name.Contains("Bottom");
+        if (horizontal)
+        {
+            var settled = SnapEdge(Width, ResizeCellWidth, HorizontalResizeChrome,
+                ResizeDirection.Unknown, MinWidth, thresholdOverride: 20.0);
+            if (double.IsFinite(settled.SnappedSize))
+            {
+                double widthDelta = Width - settled.SnappedSize;
+                Width = settled.SnappedSize;
+                if (thumb.Name.Contains("Left"))
+                {
+                    Left += widthDelta;
+                }
+            }
+        }
+        if (vertical)
+        {
+            var settled = SnapEdge(Height, ResizeCellHeight, VerticalResizeChrome,
+                ResizeDirection.Unknown, MinHeight, thresholdOverride: 20.0);
+            if (double.IsFinite(settled.SnappedSize))
+            {
+                double heightDelta = Height - settled.SnappedSize;
+                Height = settled.SnappedSize;
+                if (thumb.Name.Contains("Top"))
+                {
+                    Top += heightDelta;
+                }
+            }
+        }
     }
 }
