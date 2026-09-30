@@ -117,6 +117,7 @@
                             </MenuItem>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_NewQuadra}" Click="NewQuadraMenu_Click"/>
                             <MenuItem x:Name="LockQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_LockQuadra}" IsCheckable="True" Click="LockQuadraMenu_Click"/>
+                            <MenuItem x:Name="ResizeQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_ResizeQuadra}" Click="ResizeQuadraMenu_Click" Visibility="Collapsed"/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_CloseQuadra}" Click="CloseButton_Click"/>
                         </ContextMenu>
                     </Border.ContextMenu>

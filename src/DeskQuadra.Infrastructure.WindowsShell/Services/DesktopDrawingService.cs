@@ -89,6 +89,15 @@ public sealed class DesktopDrawingService : IDesktopDrawingService
             // injetada — repassa de imediato sem processar para não realimentar o gesto.
             if (IsInjectedHookEvent(lParam))
             {
+                // Tap touch fora da Quadra chega injetado (LLMHF_INJECTED): repassa
+                // sem tocar no gesto, mas dispara GlobalLeftClick no LDown para o
+                // App cancelar MOVER/RESIZE armados. Sem loop: nada no app sintetiza
+                // LDown via SendInput (só botão-direito + ESC), então LDown injetado
+                // é sempre dedo de verdade.
+                if (msg == 0x0201 /* WM_LBUTTONDOWN */)
+                {
+                    GlobalLeftClick?.Invoke(this, EventArgs.Empty);
+                }
                 ChordDiagLog.LogVerbose("Injetado -> repassou sem processar"); // ChordDiag
                 return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
             }

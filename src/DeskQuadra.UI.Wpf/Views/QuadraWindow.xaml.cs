@@ -53,6 +53,15 @@ public partial class QuadraWindow : Window
     private static IntPtr s_touchMoveEscHwnd = IntPtr.Zero;
     private const int TouchMoveEscHotkeyId = 0xD9A1;
 
+    // REDIMENSIONAR-via-touch (Fatia 1, só gesto + modo armado): Quadra dona + título guardado.
+    // Sem borda/grip novo (fatia 2); o aviso é o próprio título trocado pela instrução.
+    private static TouchResizeState? s_touchResize;
+    // Timeout ~8s: dedo parado/menu fechado sai sem gesto (mesmo molde do MOVER).
+    private static DispatcherTimer? s_touchResizeTimeoutTimer;
+    // ESC com escopo estrito (mesmo padrão do MOVER/dual): id próprio sem colidir com 0xD9A1/0xD9AD.
+    private static IntPtr s_touchResizeEscHwnd = IntPtr.Zero;
+    private const int TouchResizeEscHotkeyId = 0xD9A2;
+
     // MOVER-via-touch (Fatia 2, overview estilo launcher): foto fiel p/ restaurar sem persistir sujeira.
     // Flag de congelamento: enquanto != null, OnPositionOrSizeChanged retorna cedo + bindings TwoWay
     // ficam desligados — o save com debounce NÃO pode gravar o layout miniatura como real
@@ -572,6 +581,14 @@ public partial class QuadraWindow : Window
             handled = true;
             return IntPtr.Zero;
         }
+        else if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == TouchResizeEscHotkeyId && s_touchResize != null)
+        {
+            // ESC com resize armado: restaura o título e republica o ESC (mesmo molde do MOVER).
+            CancelTouchResize();
+            try { NativeMethods.RepublishEscapeKey(); } catch { /* silencioso */ }
+            handled = true;
+            return IntPtr.Zero;
+        }
 
         return IntPtr.Zero;
     }
@@ -909,6 +926,9 @@ public partial class QuadraWindow : Window
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
         bool isTouch = ResolveEffectiveIsTouch(e);
         ApplyMenuDensity(menu, isTouch: isTouch);
+        // Visibilidade só por gesto real (sem preferência): mouse nunca vê Redimensionar.
+        bool touchGesture = InputDeviceDetector.IsTouchInteraction(e);
+        ResizeQuadraMenuItem.Visibility = (touchGesture && CanTransform()) ? Visibility.Visible : Visibility.Collapsed;
         menu.PlacementTarget = ItemsScrollViewer;
         menu.IsOpen = true;
         e.Handled = true;
@@ -1180,11 +1200,13 @@ public partial class QuadraWindow : Window
             // (gesto OU preferência, mesmo padrão do App.ResolveEffectiveIsTouch).
             bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
-            // MOVER só no touch: no mouse a opção nem aparece (padrão do arquivo via Strings).
+            // MOVER só por gesto real (sem preferência): sem gesto no args, vale o estado
+            // de gesto (mensagem atual + flag, já resetada no mouse real).
+            bool touchGesture = InputDeviceDetector.IsEventFromTouch(e);
             var moveItem = fe.ContextMenu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Name == "ItemMenuMoveItem");
             if (moveItem != null)
             {
-                moveItem.Visibility = isTouch ? Visibility.Visible : Visibility.Collapsed;
+                moveItem.Visibility = touchGesture ? Visibility.Visible : Visibility.Collapsed;
             }
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
             fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
@@ -1379,9 +1401,15 @@ public partial class QuadraWindow : Window
         EnterTouchMoveOverview(this);
     }
 
-    // Tap de destino: qualquer ponto da Quadra (vazio, barra ou ícone). Fora do armado = return (mouse intacto).
+    // Tap de destino do MOVER + cancela do RESIZE em outra Quadra (qualquer ponto: vazio, barra ou ícone). Fora do armado = return (mouse intacto).
     private void Quadra_TouchMoveDestinationDown(object sender, MouseButtonEventArgs e)
     {
+        var resizeArmed = s_touchResize;
+        if (resizeArmed != null && resizeArmed.QuadraId != QuadraId)
+        {
+            // Tap em outra Quadra desarma o resize sem consumir (B reage normal).
+            CancelTouchResize();
+        }
         var armed = s_touchMove;
         if (armed == null)
         {
@@ -1430,9 +1458,10 @@ public partial class QuadraWindow : Window
     }
 
     // Tap fora de qualquer Quadra (desktop vazio): cancela sem mover (chamado pelo App no GlobalLeftClick).
-    public static void CancelTouchMoveFromOutside()
+    // Ignora o LDown que é o próprio tap do menu (enfileirado antes do arme via BeginInvoke Background).
+    public static void CancelTouchMoveFromOutside(DateTime raiseUtc)
     {
-        if (s_touchMove != null)
+        if (s_touchMove != null && s_touchMove.ArmedAtUtc <= raiseUtc)
         {
             CancelTouchMove();
         }
@@ -1900,7 +1929,83 @@ public partial class QuadraWindow : Window
         {
             bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
+            // Visibilidade só por gesto real (sem preferência): mouse nunca vê Redimensionar.
+            bool touchGesture = InputDeviceDetector.IsEventFromTouch(e);
+            ResizeQuadraMenuItem.Visibility = (touchGesture && CanTransform()) ? Visibility.Visible : Visibility.Collapsed;
         }
+    }
+
+    // REDIMENSIONAR-via-touch (Fatia 1): arma o modo na Quadra (só chega aqui pelo menu touch).
+    private void ResizeQuadraMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanTransform())
+        {
+            return;
+        }
+        ArmTouchResize();
+    }
+
+    // Arma: guarda o título original (sem recalcular), troca pelo de instrução e arma timeout + ESC.
+    private void ArmTouchResize()
+    {
+        // Rearme: novo gesto substitui o anterior (restaura título/timeout/ESC antigos)
+        CancelTouchResize();
+        s_touchResize = new TouchResizeState(QuadraId, _viewModel.Title);
+        _viewModel.Title = Strings.TouchResizeArmedHint;
+        // Timeout ~8s: one-shot via OneShotTimer (mesmo molde do MOVER)
+        OneShotTimer.Arm(ref s_touchResizeTimeoutTimer, TouchResizeState.TimeoutMilliseconds, TouchResizeTimeout_Tick);
+        // ESC com escopo estrito: registra ao armar, best-effort silencioso
+        try
+        {
+            IntPtr hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero && NativeMethods.RegisterHotKey(hwnd, TouchResizeEscHotkeyId, 0, NativeMethods.VK_ESCAPE))
+            {
+                s_touchResizeEscHwnd = hwnd;
+            }
+        }
+        catch { /* sem ESC o modo segue cancelando por tap fora/timeout */ }
+    }
+
+    // Tap fora de qualquer Quadra (desktop vazio): restaura o título (REUSE do caminho GlobalLeftClick do App).
+    // Ignora o LDown que é o próprio tap do menu (enfileirado antes do arme via BeginInvoke Background).
+    public static void CancelTouchResizeFromOutside(DateTime raiseUtc)
+    {
+        if (s_touchResize != null && s_touchResize.ArmedAtUtc <= raiseUtc)
+        {
+            CancelTouchResize();
+        }
+    }
+
+    // Desarma por todos os motivos (ESC, timeout, fora, fechar): restaura o título guardado, sem mais nada.
+    private static void CancelTouchResize()
+    {
+        var armed = s_touchResize;
+        s_touchResize = null;
+        OneShotTimer.Cancel(ref s_touchResizeTimeoutTimer, TouchResizeTimeout_Tick);
+        // Solta o ESC do escopo estrito registrado ao armar
+        if (s_touchResizeEscHwnd != IntPtr.Zero)
+        {
+            try { NativeMethods.UnregisterHotKey(s_touchResizeEscHwnd, TouchResizeEscHotkeyId); } catch { /* silencioso */ }
+            s_touchResizeEscHwnd = IntPtr.Zero;
+        }
+        // Restaura o título original guardado no arme (sem recalcular, sem Notify)
+        if (armed != null)
+        {
+            try
+            {
+                var owner = FindQuadraWindow(armed.QuadraId);
+                if (owner != null)
+                {
+                    owner._viewModel.Title = armed.OriginalTitle;
+                }
+            }
+            catch { /* silencioso */ }
+        }
+    }
+
+    private static void TouchResizeTimeout_Tick(object? sender, EventArgs e)
+    {
+        CancelTouchResize();
     }
 
     // Alterna a trava individual e persiste
@@ -1918,6 +2023,11 @@ public partial class QuadraWindow : Window
         if (s_touchMove != null && s_touchMove.SourceQuadraId == QuadraId)
         {
             CancelTouchMove();
+        }
+        // Resize armado nesta Quadra: fechar restaura o título (sem timeout/ESC órfãos)
+        if (s_touchResize != null && s_touchResize.QuadraId == QuadraId)
+        {
+            CancelTouchResize();
         }
         // Janela fechando: mesmo trio de transitórios do recolher (inércia fica acima, fora do helper).
         CancelTransientTimers();

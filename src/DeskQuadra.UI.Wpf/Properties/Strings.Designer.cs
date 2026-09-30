@@ -171,5 +171,9 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string Dialog_KeepPrevious => ResourceManager.GetString("Dialog_KeepPrevious", resourceCulture);
 
         public static string TouchMoveOverviewHint => ResourceManager.GetString("TouchMoveOverviewHint", resourceCulture);
+
+        public static string QuadraMenu_ResizeQuadra => ResourceManager.GetString("QuadraMenu_ResizeQuadra", resourceCulture);
+
+        public static string TouchResizeArmedHint => ResourceManager.GetString("TouchResizeArmedHint", resourceCulture);
     }
 }

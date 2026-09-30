@@ -198,6 +198,10 @@ public partial class App : System.Windows.Application
 
         _drawingService.GlobalLeftClick += (s, ev) =>
         {
+            // Carimbo do LDown real: o BeginInvoke abaixo (Background) roda DEPOIS do
+            // Click que arma MOVER/RESIZE; o cancela-fora ignora o LDown que é o
+            // próprio tap do menu (armado depois deste instante).
+            DateTime raiseUtc = DateTime.UtcNow;
             Dispatcher.BeginInvoke(() =>
             {
                 if (NativeMethods.GetCursorPos(out var pt))
@@ -207,7 +211,9 @@ public partial class App : System.Windows.Application
                     {
                         QuadraWindow.DeselectAllGlobally();
                         // MOVER armado: tap fora de qualquer Quadra cancela sem mover
-                        QuadraWindow.CancelTouchMoveFromOutside();
+                        QuadraWindow.CancelTouchMoveFromOutside(raiseUtc);
+                        // Resize armado: tap fora restaura o título (mesmo caminho do MOVER)
+                        QuadraWindow.CancelTouchResizeFromOutside(raiseUtc);
                     }
                 }
             }, System.Windows.Threading.DispatcherPriority.Background);

@@ -222,4 +222,10 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="TouchMoveOverviewHint" xml:space="preserve">
     <value>Toque em uma Quadra para concluir — ESC cancela</value>
   </data>
+  <data name="QuadraMenu_ResizeQuadra" xml:space="preserve">
+    <value>Redimensionar</value>
+  </data>
+  <data name="TouchResizeArmedHint" xml:space="preserve">
+    <value>↔ Arraste as bordas para redimensionar</value>
+  </data>
 </root>
