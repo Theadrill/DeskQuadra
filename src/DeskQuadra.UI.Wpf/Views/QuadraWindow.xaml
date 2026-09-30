@@ -167,7 +167,8 @@
                         </Button>
 
                         <!-- Botão Adicionar Atalho / Arquivo -->
-                        <Button Grid.Column="3"
+                        <Button x:Name="AddFileButton"
+                                Grid.Column="3"
                                   Style="{StaticResource TitleBarButtonStyle}"
                                   ToolTip="{x:Static properties:Strings.Quadra_AddTooltip}"
                                   Click="AddFileButton_Click"
@@ -175,8 +176,9 @@
                              <TextBlock Text="+" FontSize="{DynamicResource Quadra.AddGlyph.FontSize}" FontWeight="Bold"/>
                          </Button>
 
-                          <!-- Botão Fechar / Ocultar -->
-                        <Button Grid.Column="4"
+                           <!-- Botão Fechar / Ocultar -->
+                        <Button x:Name="CloseButton"
+                                Grid.Column="4"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="{x:Static properties:Strings.Quadra_CloseTooltip}"
                                 Click="CloseButton_Click">

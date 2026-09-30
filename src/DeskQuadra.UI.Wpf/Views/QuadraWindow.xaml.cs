@@ -66,6 +66,10 @@ public partial class QuadraWindow : Window
     private double? _savedResizeEdgeWidth;
     private double? _savedResizeCornerSize;
     private Thickness? _savedContainerBorderThickness;
+    // Botões somem no armado (sem toque acidental); foto p/ voltar exato.
+    private Visibility? _savedCollapseButtonVisibility;
+    private Visibility? _savedAddFileButtonVisibility;
+    private Visibility? _savedCloseButtonVisibility;
     // Timeout ~8s: dedo parado/menu fechado sai sem gesto (mesmo molde do MOVER).
     private static DispatcherTimer? s_touchResizeTimeoutTimer;
     // ESC com escopo estrito (mesmo padrão do MOVER/dual): id próprio sem colidir com 0xD9A1/0xD9AD.
@@ -1990,6 +1994,13 @@ public partial class QuadraWindow : Window
         _savedResizeEdgeWidth ??= ResizeThumbLeft.Width;
         _savedResizeCornerSize ??= ResizeThumbTopLeft.Width;
         _savedContainerBorderThickness ??= QuadraContainer.BorderThickness;
+        // Armada: esconde +, X e chevron (só aqui, só enquanto armado).
+        _savedCollapseButtonVisibility ??= CollapseButton.Visibility;
+        _savedAddFileButtonVisibility ??= AddFileButton.Visibility;
+        _savedCloseButtonVisibility ??= CloseButton.Visibility;
+        CollapseButton.Visibility = Visibility.Collapsed;
+        AddFileButton.Visibility = Visibility.Collapsed;
+        CloseButton.Visibility = Visibility.Collapsed;
         ResizeThumbTop.Height = TouchResizeArmedEdgeThickness;
         ResizeThumbBottom.Height = TouchResizeArmedEdgeThickness;
         ResizeThumbLeft.Width = TouchResizeArmedEdgeThickness;
@@ -2039,6 +2050,22 @@ public partial class QuadraWindow : Window
         {
             QuadraContainer.BorderThickness = _savedContainerBorderThickness.Value;
             _savedContainerBorderThickness = null;
+        }
+        // Desarme (qualquer cancela): volta exato o que estava.
+        if (_savedCollapseButtonVisibility.HasValue)
+        {
+            CollapseButton.Visibility = _savedCollapseButtonVisibility.Value;
+            _savedCollapseButtonVisibility = null;
+        }
+        if (_savedAddFileButtonVisibility.HasValue)
+        {
+            AddFileButton.Visibility = _savedAddFileButtonVisibility.Value;
+            _savedAddFileButtonVisibility = null;
+        }
+        if (_savedCloseButtonVisibility.HasValue)
+        {
+            CloseButton.Visibility = _savedCloseButtonVisibility.Value;
+            _savedCloseButtonVisibility = null;
         }
         // Reamarra no token original (viva DynamicResource, sem valor chapado)
         QuadraContainer.SetResourceReference(Border.BorderBrushProperty, "Quadra.BorderBrush");
