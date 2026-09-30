@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -51,6 +52,14 @@ public partial class QuadraWindow : Window
     // ESC com escopo estrito (padrão do menu dual): dono é o HWND da origem, registra ao armar e solta ao desarmar.
     private static IntPtr s_touchMoveEscHwnd = IntPtr.Zero;
     private const int TouchMoveEscHotkeyId = 0xD9A1;
+
+    // MOVER-via-touch (Fatia 2, overview estilo launcher): foto fiel p/ restaurar sem persistir sujeira.
+    // Flag de congelamento: enquanto != null, OnPositionOrSizeChanged retorna cedo + bindings TwoWay
+    // ficam desligados — o save com debounce NÃO pode gravar o layout miniatura como real
+    // (sem esse congelamento a fatia está errada).
+    private static List<QuadraOverviewFrame>? s_overviewSnapshot;
+    // Faixa inferior do overview (topmost, sem Win32 novo).
+    private static TouchMoveBannerWindow? s_overviewBanner;
 
     // Densidade Aparência (Fatia 2): último modo aplicado + preferência global para WM_DISPLAYCHANGE.
     // Sem hook/timer novo: leitura sob demanda (App) + reavaliação trivial no WndProc existente.
@@ -775,6 +784,13 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        // Overview ativo: congela a persistência — minis não sincronizam nem notificam
+        // (o debounce gravaria o layout miniatura como real).
+        if (s_overviewSnapshot != null)
+        {
+            return;
+        }
+
         // Troca programática de recolher/expandir: não sincroniza nem persiste aqui (ApplyCollapsed cuida disso)
         if (_isApplyingCollapse)
         {
@@ -1359,6 +1375,8 @@ public partial class QuadraWindow : Window
             }
         }
         catch { /* sem ESC o modo segue cancelando por tap/timeout */ }
+        // Fatia 2: ao armar, abre o overview estilo launcher (REUSE TouchMoveState/timeout/ESC/cancelas da fatia 1).
+        EnterTouchMoveOverview(this);
     }
 
     // Tap de destino: qualquer ponto da Quadra (vazio, barra ou ícone). Fora do armado = return (mouse intacto).
@@ -1383,16 +1401,29 @@ public partial class QuadraWindow : Window
             CancelTouchMove();
             return;
         }
+        // Overview ativo: restaura o layout fotografado FIEL e descongela antes de mover —
+        // o move abaixo persiste pelo caminho normal (Notify), sem sujeira de miniatura.
+        if (s_overviewSnapshot != null)
+        {
+            CommitOverviewRestore();
+        }
+        ExecuteTouchMove(this, armed);
+    }
+
+    // Núcleo do move da fatia 1 (extração p/ REUSE no commit do overview):
+    // só vinculação + persistência, disco intacto.
+    private static void ExecuteTouchMove(QuadraWindow dest, TouchMoveState armed)
+    {
         // REUSE núcleo do drop de mouse (Quadra_Drop, ramo Move): só vinculação + persistência, disco intacto
         var source = FindQuadraWindow(armed.SourceQuadraId);
         var item = source?._viewModel.Items.FirstOrDefault(i => i.Id == armed.ItemId);
-        if (source == null || source == this || item == null)
+        if (source == null || source == dest || item == null)
         {
             CancelTouchMove();
             return;
         }
-        _viewModel.AddItem(item.Model);
-        _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        dest._viewModel.AddItem(item.Model);
+        dest._coordinator.NotifyQuadraChanged(dest._viewModel.Model);
         source._viewModel.RemoveItem(item);
         source._coordinator.NotifyQuadraChanged(source._viewModel.Model);
         CancelTouchMove();
@@ -1410,6 +1441,12 @@ public partial class QuadraWindow : Window
     // Desarma por todos os motivos (ESC, timeout, fora, origem, pós-move): restaura sem mover nada.
     private static void CancelTouchMove()
     {
+        // Overview ativo: cancela restaura fiel SEM mover e descongela sem persistir sujeira
+        // (todos os cancelas já desembocam aqui: ESC, timeout, tap fora, origem).
+        if (s_overviewSnapshot != null)
+        {
+            CancelOverviewRestore();
+        }
         var armed = s_touchMove;
         s_touchMove = null;
         OneShotTimer.Cancel(ref s_touchMoveTimeoutTimer, TouchMoveTimeout_Tick);
@@ -1437,6 +1474,194 @@ public partial class QuadraWindow : Window
     private static void TouchMoveTimeout_Tick(object? sender, EventArgs e)
     {
         CancelTouchMove();
+    }
+
+    // --- Overview estilo launcher (fatia 2, 1 tela) ---
+    // Ao armar: fotografa TODAS as Quadras abertas (id, bounds DIP, recolhida?, travada?) e
+    // rearranja numa grade miniatura na tela do gesto. Escondidas ficam de fora (sem janela aberta).
+    // Outros monitores: Quadras de outras telas vêm p/ a grade também (abas multi-monitor ficam p/ depois).
+    // Travadas participam como destino normal (lock trava a janela, não o conteúdo).
+    // Recolhidas aparecem como mini expandidas (expansão visual sem persistir; a foto guarda a expandida).
+    // Mouse intacto: só entra por MOVER touch (ItemMenuMove_Click, invisível no mouse).
+    private static void EnterTouchMoveOverview(QuadraWindow source)
+    {
+        if (s_overviewSnapshot != null)
+        {
+            return;
+        }
+        var windows = new List<QuadraWindow>();
+        var app = System.Windows.Application.Current;
+        if (app != null)
+        {
+            foreach (Window window in app.Windows)
+            {
+                if (window is QuadraWindow quadra)
+                {
+                    windows.Add(quadra);
+                }
+            }
+        }
+        if (windows.Count == 0)
+        {
+            return;
+        }
+        var frames = new List<QuadraOverviewFrame>(windows.Count);
+        foreach (var quadra in windows)
+        {
+            bool collapsed = quadra._viewModel.IsCollapsed;
+            frames.Add(new QuadraOverviewFrame(
+                quadra.QuadraId, quadra.Left, quadra.Top, quadra.Width, quadra.Height,
+                collapsed ? quadra._viewModel.Model.Height : quadra.Height,
+                collapsed, quadra._viewModel.IsLocked,
+                quadra.MinWidth, quadra.MinHeight));
+        }
+        var snapshot = TouchMoveOverviewLayout.Snapshot(frames);
+        var (waLeft, waTop, waWidth, waHeight) = GetGestureWorkAreaDip(source);
+        // Grade no topo: área útil cheia em waTop; reserva INFERIOR descontada só da altura (faixa vai embaixo).
+        var slots = TouchMoveOverviewLayout.ComputeGrid(waLeft, waTop, waWidth, waHeight - TouchMoveOverviewLayout.BannerReserveDip, snapshot)
+            .ToDictionary(s => s.Id);
+        if (slots.Count == 0)
+        {
+            return;
+        }
+        // Congela a persistência ANTES de mexer nas janelas (ver campo: debounce não grava miniatura).
+        s_overviewSnapshot = new List<QuadraOverviewFrame>(snapshot);
+        try
+        {
+            foreach (var quadra in windows)
+            {
+                if (!slots.TryGetValue(quadra.QuadraId, out var slot))
+                {
+                    continue;
+                }
+                // Desliga o TwoWay p/ a mini não sujar o modelo (religa fiel na saída).
+                BindingOperations.ClearBinding(quadra, Window.LeftProperty);
+                BindingOperations.ClearBinding(quadra, Window.TopProperty);
+                BindingOperations.ClearBinding(quadra, Window.WidthProperty);
+                BindingOperations.ClearBinding(quadra, Window.HeightProperty);
+                if (quadra._viewModel.IsCollapsed)
+                {
+                    quadra.ApplyCollapsed(false, persist: false); // mini expandida, sem persistir
+                }
+                // Mínimo transitório tocável p/ a mini com título legível no touch.
+                quadra.MinWidth = 120;
+                quadra.MinHeight = 96;
+                quadra.Left = slot.Left;
+                quadra.Top = slot.Top;
+                quadra.Width = slot.Width;
+                quadra.Height = slot.Height;
+            }
+            // Faixa inferior [instrução][CANCELAR]: tap nela cancela pelo funil existente.
+            // Sem Owner de propósito: a origem é filha do WorkerW (SetParent) e o fechamento da
+            // faixa já é garantido por todos os cancelas + commit (finally do RestoreOverviewSnapshot).
+            s_overviewBanner = new TouchMoveBannerWindow(
+                waLeft + TouchMoveOverviewLayout.MarginDip,
+                waTop + waHeight - TouchMoveOverviewLayout.MarginDip - TouchMoveOverviewLayout.BannerReserveDip,
+                Math.Max(200, waWidth - 2 * TouchMoveOverviewLayout.MarginDip),
+                CancelTouchMove);
+            s_overviewBanner.Show();
+        }
+        catch
+        {
+            // Best-effort: falha ao rearranjar desfaz sem derrubar o armado (fatia 1 segue válida).
+            CancelOverviewRestore();
+        }
+    }
+
+    // Saída por cancela (ESC/timeout/fora/origem): restaura fiel SEM mover, descongela sem persistir sujeira.
+    private static void CancelOverviewRestore()
+    {
+        RestoreOverviewSnapshot();
+    }
+
+    // Saída por commit (tap na mini): restaura fiel e descongela; o move persiste pelo caminho normal.
+    private static void CommitOverviewRestore()
+    {
+        RestoreOverviewSnapshot();
+    }
+
+    // Restaura fiel posição, tamanho, recolhida e mínimos; religa o TwoWay; fecha a faixa; sem Notify.
+    private static void RestoreOverviewSnapshot()
+    {
+        var snapshot = s_overviewSnapshot;
+        s_overviewSnapshot = null;
+        try
+        {
+            if (snapshot != null)
+            {
+                foreach (var frame in TouchMoveOverviewLayout.RestoreTargets(snapshot))
+                {
+                    var quadra = FindQuadraWindow(frame.Id);
+                    if (quadra == null)
+                    {
+                        continue;
+                    }
+                    quadra.MinWidth = frame.MinWidth;
+                    quadra.MinHeight = frame.MinHeight;
+                    if (frame.IsCollapsed)
+                    {
+                        // Altura expandida primeiro: o recolher guarda a atual como expandida.
+                        quadra.Height = frame.ExpandedHeight;
+                        quadra.Width = frame.Width;
+                        quadra.Left = frame.Left;
+                        quadra.Top = frame.Top;
+                        if (!quadra._viewModel.IsCollapsed)
+                        {
+                            quadra.ApplyCollapsed(true, persist: false);
+                        }
+                    }
+                    else
+                    {
+                        quadra.Left = frame.Left;
+                        quadra.Top = frame.Top;
+                        quadra.Width = frame.Width;
+                        quadra.Height = frame.Height;
+                        if (quadra._viewModel.IsCollapsed)
+                        {
+                            quadra.ApplyCollapsed(false, persist: false);
+                        }
+                    }
+                    BindQuadraBounds(quadra);
+                }
+            }
+        }
+        finally
+        {
+            // Faixa sempre fecha, mesmo com janela faltando (sem Win32/Notify aqui).
+            try { s_overviewBanner?.Close(); } catch { /* silencioso */ }
+            s_overviewBanner = null;
+        }
+    }
+
+    // Religa o TwoWay do XAML (Left/Top/Width/Height) após o overview — mesmos paths e modo.
+    private static void BindQuadraBounds(QuadraWindow quadra)
+    {
+        quadra.SetBinding(Window.LeftProperty, new Binding("Left") { Mode = BindingMode.TwoWay });
+        quadra.SetBinding(Window.TopProperty, new Binding("Top") { Mode = BindingMode.TwoWay });
+        quadra.SetBinding(Window.WidthProperty, new Binding("Width") { Mode = BindingMode.TwoWay });
+        quadra.SetBinding(Window.HeightProperty, new Binding("Height") { Mode = BindingMode.TwoWay });
+    }
+
+    // Tela do gesto em DIP (molde do arraste da barra: MonitorFromWindow + MapPhysicalToDip; 1 tela agora).
+    private static (double Left, double Top, double Width, double Height) GetGestureWorkAreaDip(QuadraWindow source)
+    {
+        try
+        {
+            var (dpiX, dpiY) = DpiHelper.GetScale(source);
+            IntPtr hwnd = new WindowInteropHelper(source).Handle;
+            IntPtr hMonitor = NativeMethods.MonitorFromWindow(hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            var info = new NativeMethods.MONITORINFO();
+            info.cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>();
+            if (hMonitor != IntPtr.Zero && NativeMethods.GetMonitorInfo(hMonitor, ref info))
+            {
+                return DpiHelper.MapPhysicalToDip(
+                    dpiX, dpiY, info.rcWork.Left, info.rcWork.Top,
+                    info.rcWork.Right - info.rcWork.Left, info.rcWork.Bottom - info.rcWork.Top);
+            }
+        }
+        catch { /* silencioso: cai no fallback */ }
+        var wa = SystemParameters.WorkArea;
+        return (wa.Left, wa.Top, wa.Width, wa.Height);
     }
 
     // REUSE padrão do RefreshQuadraWindow: localiza a janela aberta pelo Id.
@@ -1710,8 +1935,9 @@ public partial class QuadraWindow : Window
     // Manipuladores de Redimensionamento Livre + snap de grade (Fatia 2)
     // ==========================================
 
-    // D9: guard único dos 8 arrastes — mesma regra de antes (travada ou recolhida = return).
-    private bool CanTransform() => !_viewModel.IsLocked && !_viewModel.IsCollapsed;
+    // D9: guard único dos 8 arrastes — mesma regra de antes (travada ou recolhida = return),
+    // mais overview ativo (grade estável: resize só após sair do MOVER).
+    private bool CanTransform() => !_viewModel.IsLocked && !_viewModel.IsCollapsed && s_overviewSnapshot == null;
 
     // Grade: célula 78×96 (WrapPanel ItemWidth/ItemHeight no XAML:295).
     private const double ResizeCellWidth = 78.0;

@@ -219,4 +219,7 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="Dialog_KeepPrevious" xml:space="preserve">
     <value>Manter Anterior</value>
   </data>
+  <data name="TouchMoveOverviewHint" xml:space="preserve">
+    <value>Toque em uma Quadra para concluir — ESC cancela</value>
+  </data>
 </root>

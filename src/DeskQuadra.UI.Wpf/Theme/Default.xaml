@@ -181,4 +181,9 @@
     <SolidColorBrush x:Key="DragPreview.Foreground" Color="#FFF5F5F5"/>
     <sys:Double x:Key="DragPreview.FontSize">12</sys:Double>
     <FontWeight x:Key="DragPreview.FontWeight">SemiBold</FontWeight>
+    <!-- ===== Faixa do overview MOVER-via-touch: botão CANCELAR (fundo opaco; par medido) ===== -->
+    <!-- Escolha: sem token vermelho de perigo no tema (só Dialog.Primary azul); par novo -->
+    <!-- TouchMove.Cancel.* validado: branco s/ #B3261E = 6.54:1 ≥ 4.5 AA). -->
+    <SolidColorBrush x:Key="TouchMove.Cancel.Background" Color="#FFB3261E"/>
+    <SolidColorBrush x:Key="TouchMove.Cancel.Foreground" Color="#FFFFFFFF"/>
 </ResourceDictionary>
