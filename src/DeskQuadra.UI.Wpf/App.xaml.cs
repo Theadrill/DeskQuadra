@@ -341,11 +341,12 @@ public partial class App : System.Windows.Application
     // Cria o ícone da bandeja com menu das Quadras escondidas e opção Sair
     private void CreateTrayIcon()
     {
-        // TODO Fase 5: ícone próprio (.ico do DeskQuadra); provisório usa o ícone padrão do sistema.
+        // Ícone próprio (Fase 5): Assets/DeskQuadra.ico via AppIcon; fallback
+        // silencioso para o ícone padrão do sistema se o recurso falhar.
         _trayIcon = new WinForms.NotifyIcon
         {
             Text = UiStrings.TrayTooltip,
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = Services.AppIcon.Tray ?? System.Drawing.SystemIcons.Application,
             Visible = true
         };
 

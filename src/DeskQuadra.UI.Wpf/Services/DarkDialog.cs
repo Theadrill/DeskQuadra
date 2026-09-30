@@ -67,6 +67,17 @@ public static class DarkDialog
             Content = panel
         };
 
+        // Ícone próprio (Fase 5): null-safe (sem ícone se o recurso falhar).
+        try
+        {
+            var icon = AppIcon.Wpf;
+            if (icon != null)
+            {
+                dialog.Icon = icon;
+            }
+        }
+        catch { /* silencioso, padrão do projeto */ }
+
         if (owner is not null)
         {
             dialog.Owner = owner;

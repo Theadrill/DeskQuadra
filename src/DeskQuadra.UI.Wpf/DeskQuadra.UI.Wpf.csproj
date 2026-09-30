@@ -36,7 +36,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- Ícone próprio (Fase 5): exe + janelas + tray a partir de Assets/DeskQuadra.ico. -->
+    <ApplicationIcon>Assets\DeskQuadra.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <!-- Fonte única do ícone (Resource embutido: XAML via Icon + AppIcon.cs via pack URI).
+       Tray usa variante própria com crop justo (a arte cheia some na taskbar escura em 16px). -->
+  <ItemGroup>
+    <Resource Include="Assets\DeskQuadra.ico" />
+    <Resource Include="Assets\DeskQuadra.Tray.ico" />
+  </ItemGroup>
 
   <!-- Remove os usings implícitos do WinForms para não ambiguar com tipos WPF (Button, Point, MouseEventArgs...).
        O tray usa alias "WinForms =" e System.Drawing qualificado em App.xaml.cs. -->
