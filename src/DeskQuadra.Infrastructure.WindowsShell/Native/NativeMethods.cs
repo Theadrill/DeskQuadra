@@ -558,6 +558,36 @@ internal static class NativeMethods
         void Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, uint dwMode);
     }
 
+    // Excluir-via-Shell: SHFileOperationW (FO_DELETE) com flags mínimas.
+    // Lixeira = FOF_ALLOWUNDO (com undo); permanente = sem o flag (sem undo).
+    // FOF_NOCONFIRMATION + FOF_NOERRORUI + FOF_SILENT: sem 2º prompt do Explorer
+    // (o app já confirma no DarkDialog) e sem UI de erro/progresso.
+    internal const uint FO_DELETE = 0x0003;
+    internal const ushort FOF_ALLOWUNDO = 0x0040;
+    internal const ushort FOF_NOCONFIRMATION = 0x0010;
+    internal const ushort FOF_NOERRORUI = 0x0400;
+    internal const ushort FOF_SILENT = 0x0004;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    internal struct SHFILEOPSTRUCT
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string pFrom;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string? pTo;
+        public ushort fFlags;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string? lpszProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    internal static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
+
     // E12-UI: resolve o destino do .lnk ou retorna null (best-effort, sem exceção).
     // Nulo = mantém o comportamento atual no chamador (seleciona o próprio .lnk).
     internal static string? TryResolveShortcutTarget(string? lnkPath)

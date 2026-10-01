@@ -153,6 +153,9 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="ItemMenu_Move" xml:space="preserve">
     <value>Mover</value>
   </data>
+  <data name="ItemMenu_Delete" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
   <data name="Dialog_CloseTitle" xml:space="preserve">
     <value>Fechar Quadra</value>
   </data>
@@ -173,6 +176,24 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   </data>
   <data name="Dialog_DeleteDefaultMessage" xml:space="preserve">
     <value>Esta é a Quadra padrão; os itens saem da visualização mas ficam no disco. Deseja continuar?</value>
+  </data>
+  <data name="Dialog_DeleteItemTitle" xml:space="preserve">
+    <value>Excluir item</value>
+  </data>
+  <data name="Dialog_DeleteItemMessageFormat" xml:space="preserve">
+    <value>"{0}": enviar para a Lixeira ou excluir permanentemente?</value>
+  </data>
+  <data name="Dialog_RecycleBin" xml:space="preserve">
+    <value>Lixeira</value>
+  </data>
+  <data name="Dialog_DeletePermanently" xml:space="preserve">
+    <value>Permanentemente</value>
+  </data>
+  <data name="Dialog_DeletePermanentTitle" xml:space="preserve">
+    <value>Excluir permanentemente?</value>
+  </data>
+  <data name="Dialog_DeletePermanentMessageFormat" xml:space="preserve">
+    <value>Tem certeza? "{0}" será excluído para sempre e não poderá ser recuperado.</value>
   </data>
   <data name="Dialog_AddFilesTitle" xml:space="preserve">
     <value>Adicionar Atalhos ou Arquivos à Quadra</value>

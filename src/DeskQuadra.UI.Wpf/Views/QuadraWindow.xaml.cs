@@ -13,6 +13,7 @@ using DeskQuadra.Application.Services;
 using DeskQuadra.Application.Snap;
 using DeskQuadra.Core;
 using DeskQuadra.Core.Contracts;
+using DeskQuadra.Core.FileDeletion;
 using DeskQuadra.Core.FileDuplication;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
@@ -32,6 +33,7 @@ public partial class QuadraWindow : Window
     private readonly ISnapEngine _snapEngine;
     private readonly ILayoutCoordinator _coordinator;
     private readonly IFileLauncherService _launcherService;
+    private readonly IFileDeletionService _deletionService;
 
     private bool _isInitializing = true;
     private bool _isDragging;
@@ -112,7 +114,8 @@ public partial class QuadraWindow : Window
         IWindowAnchorService anchorService,
         ISnapEngine snapEngine,
         ILayoutCoordinator coordinator,
-        IFileLauncherService launcherService)
+        IFileLauncherService launcherService,
+        IFileDeletionService deletionService)
     {
         _viewModel = viewModel;
         DataContext = viewModel;
@@ -120,6 +123,7 @@ public partial class QuadraWindow : Window
         _snapEngine = snapEngine;
         _coordinator = coordinator;
         _launcherService = launcherService;
+        _deletionService = deletionService;
 
         // Configura posicionamento manual estrito antes da inicialização visual
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -1387,6 +1391,68 @@ public partial class QuadraWindow : Window
             _viewModel.RemoveItem(item);
             _coordinator.NotifyQuadraChanged(_viewModel.Model);
         }
+    }
+
+    // Excluir-via-ícone: 1º modal escuro (Lixeira direto / Permanentemente com 2ª
+    // confirmação / Cancelar nada). Execução no Shell; o item some da Quadra pelo
+    // caminho existente (desvincula + persiste, como o Remover).
+    private void ItemMenuDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem mi || mi.DataContext is not DesktopItemViewModel item)
+        {
+            return;
+        }
+
+        int choice = DarkDialog.ShowOptions(
+            Strings.Dialog_DeleteItemTitle,
+            string.Format(Strings.Dialog_DeleteItemMessageFormat, item.Name),
+            this,
+            330,
+            (Strings.Dialog_RecycleBin, true),
+            (Strings.Dialog_DeletePermanently, false),
+            (Strings.Dialog_Cancel, false));
+
+        if (ItemDeletionPlan.Resolve(choice, permanentConfirmed: false) == ItemDeleteAction.Recycle)
+        {
+            ExecuteItemDelete(item, recycle: true);
+            return;
+        }
+
+        if (choice == 1)
+        {
+            bool confirmed = DarkDialog.Show(
+                Strings.Dialog_DeletePermanentTitle,
+                string.Format(Strings.Dialog_DeletePermanentMessageFormat, item.Name),
+                Strings.Dialog_Delete,
+                Strings.Dialog_Cancel,
+                owner: this);
+            if (ItemDeletionPlan.Resolve(choice, confirmed) == ItemDeleteAction.Permanent)
+            {
+                ExecuteItemDelete(item, recycle: false);
+            }
+        }
+        // Cancelar/fechar: sem efeito.
+    }
+
+    private void ExecuteItemDelete(DesktopItemViewModel item, bool recycle)
+    {
+        bool deleted;
+        try
+        {
+            deleted = _deletionService.Delete(item.FilePath, recycle);
+        }
+        catch
+        {
+            deleted = false; // Silencioso, padrão do projeto.
+        }
+
+        if (!deleted)
+        {
+            return;
+        }
+
+        _viewModel.RemoveItem(item);
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
     }
 
     // MOVER-via-touch: arma o modo mover (só chega aqui pelo menu touch).

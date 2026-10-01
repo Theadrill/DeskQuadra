@@ -296,9 +296,10 @@ public partial class App : System.Windows.Application
         var iconExtractor = _serviceProvider.GetRequiredService<IIconExtractorService>();
         var coordinator = _serviceProvider.GetRequiredService<ILayoutCoordinator>();
         var launcherService = _serviceProvider.GetRequiredService<IFileLauncherService>();
+        var deletionService = _serviceProvider.GetRequiredService<IFileDeletionService>();
 
         var viewModel = new QuadraViewModel(quadra, iconExtractor);
-        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService);
+        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService, deletionService);
         window.Closed += (s, e) => _quadraWindows.Remove(quadra.Id);
         _quadraWindows[quadra.Id] = window;
         window.Show();
