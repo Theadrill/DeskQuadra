@@ -96,14 +96,14 @@
     <sys:Double x:Key="Menu.Shadow.Opacity">0.55</sys:Double>
 
     <SolidColorBrush x:Key="Menu.MouseItem.Foreground" Color="#EEEEEE"/>
-    <sys:Double x:Key="Menu.MouseItem.FontSize">12</sys:Double>
+    <sys:Double x:Key="Menu.MouseItem.FontSize">14.4</sys:Double>
     <sys:Double x:Key="Menu.MouseItem.MinHeight">26</sys:Double>
     <Thickness x:Key="Menu.MouseItem.Padding">10,5</Thickness>
     <CornerRadius x:Key="Menu.MouseItem.CornerRadius">4</CornerRadius>
     <SolidColorBrush x:Key="Menu.MouseItem.Hover.Background" Color="#2EFFFFFF"/>
 
     <SolidColorBrush x:Key="Menu.TouchItem.Foreground" Color="#FFFFFF"/>
-    <sys:Double x:Key="Menu.TouchItem.FontSize">13</sys:Double>
+    <sys:Double x:Key="Menu.TouchItem.FontSize">15.6</sys:Double>
     <FontWeight x:Key="Menu.TouchItem.FontWeight">Medium</FontWeight>
     <sys:Double x:Key="Menu.TouchItem.MinHeight">46</sys:Double>
     <Thickness x:Key="Menu.TouchItem.Padding">16,12</Thickness>
