@@ -2,7 +2,7 @@
 
 O DeskQuadra redefine a experiência da área de trabalho do Windows, transformando um ambiente antes disperso em um espaço visualmente estruturado, intencional e harmonioso através de áreas dedicadas para organizar e harmonizar seus atalhos.
 
-## TODO / Roadmap
+## TODO / Roadmap (pós-1.0 — nada bloqueia o release)
 
 - [ ] **MOVER touch — abas multi-monitor:** BLOQUEADO (PO sem segundo monitor para validar; overview traz tudo para a tela do gesto até lá).
 - [ ] **Review geral do sistema de toques:** dismiss do menu dual validado como "bom o suficiente" (perfeito dentro das Quadras, inconstante no desktop vazio) — aprimorar no futuro.
@@ -10,3 +10,9 @@ O DeskQuadra redefine a experiência da área de trabalho do Windows, transforma
 - [x] **Ícone próprio:** aplicado (exe + janelas + tray, arte do PO).
 - [ ] **D11 — re-auditar fakes de teste** no final do projeto.
 - [ ] **Remover temporários no final:** `HangTestSwitch`, `ChordDiagLog`.
+
+## Créditos (bibliotecas de terceiros)
+
+- **Vanara.PInvoke.Shell32** ([dahall/Vanara](https://github.com/dahall/Vanara), licença MIT) — só as declarações P/Invoke do Shell do Windows (tipos `IContextMenu`, `QueryContextMenu`, `InvokeCommand`); a lógica de menu de terceiros é nossa.
+- **Microsoft.Extensions.DependencyInjection** (Microsoft, licença MIT) — injeção de dependência.
+- **xUnit + coverlet** (testes; fora do distribuível).
