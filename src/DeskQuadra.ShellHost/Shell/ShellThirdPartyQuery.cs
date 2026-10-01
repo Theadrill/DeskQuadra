@@ -1,20 +1,24 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using DeskQuadra.Core.ThirdParty;
 using Vanara;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.Shell32;
 using static Vanara.PInvoke.User32;
 
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.ShellHost.Shell;
 
-// T2 terceiros: query SÓ LEITURA do menu clássico do Shell (pipeline §1:
-// SHParseDisplayName → SHBindToParent → IShellFolder.GetUIObjectOf(IContextMenu)
-// → QueryContextMenu num HMENU fantasma → enumeração recursiva).
-// RODA EM THREAD STA DEDICADA COM MESSAGE QUEUE — NUNCA na UI do WPF.
+// T2 terceiros (movido em T5 p/ dentro do host, sem mudar regra): query SÓ
+// LEITURA do menu clássico do Shell (pipeline §1: SHParseDisplayName →
+// SHBindToParent → IShellFolder.GetUIObjectOf(IContextMenu) → QueryContextMenu
+// num HMENU fantasma → enumeração recursiva).
+// RODA EM THREAD STA DEDICADA COM MESSAGE QUEUE — antes era thread do app,
+// agora thread do HOST (a DLL do handler nunca entra no processo da UI).
 // NENHUM InvokeCommand/execução nesta fase (só QueryContextMenu + GCS_VERBW).
 // Tipos P/Invoke via Vanara MIT (5.0.7); lógica de enumeração nossa.
-// Falha/timeout = lista vazia (o chamador mantém o placeholder, silencioso).
+// Falha/timeout = lista vazia (o host responde entries=[] e a UI mantém o
+// placeholder, silencioso).
 internal static class ShellThirdPartyQuery
 {
     // Flags travadas §1. CMF_EXPLORE/NODEFAULT/INCLUDESTATIC/DEFAULTONLY NÃO entram.

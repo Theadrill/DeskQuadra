@@ -1,9 +1,11 @@
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.Core.ThirdParty;
 
-// T2 terceiros: nó BRUTO da enumeração do HMENU fantasma (antes do filtro §1).
+// T2 terceiros (movido em T5 p/ o Core, sem mudar forma): nó BRUTO da
+// enumeração do HMENU fantasma (antes do filtro §1). Produzido no ShellHost,
+// filtrado lá mesmo; viaja serializado no protocolo e vira ThirdPartyMenuEntry.
 // IsSeparator = MFT_SEPARATOR; IsPopup = tem hSubMenu (cascata, ex.: 7-Zip);
 // folha sem texto exibível cai no Build (sem Header não há o que espelhar).
-internal sealed record ShellMenuNode(
+public sealed record ShellMenuNode(
     string Label,
     string? Verb,
     uint CommandOffset,

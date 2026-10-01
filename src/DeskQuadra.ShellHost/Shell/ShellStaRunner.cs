@@ -1,19 +1,21 @@
 using System.Diagnostics;
+using DeskQuadra.Core.ThirdParty;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.User32;
 
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.ShellHost.Shell;
 
-// T3 terceiros: corredor STA compartilhado pela query (T2) e pelo invoke (T3).
-// Extração literal do padrão T2 (thread STA dedicada com message queue via
-// PeekMessage + Join com timeout): handlers do Shell podem PostMessage, e a
-// thread órfã é background e morre sozinha. NUNCA a UI do WPF.
-// Query usa QueryTimeoutMs (3s, intacto); invoke usa InvokeTimeoutMs (30s —
-// o handler pode abrir diálogo modal, ex.: "Add to archive" do 7-Zip).
+// T3 terceiros (movido em T5 p/ dentro do host, sem mudar regra): corredor STA
+// compartilhado pela query (T2) e pelo invoke (T3). Extração literal do padrão
+// T2 (thread STA dedicada com message queue via PeekMessage + Join com
+// timeout): handlers do Shell podem PostMessage, e a thread órfã é background
+// e morre sozinha.
+// Orçamentos no ShellHostProtocol (fonte única T5: cliente espera o mesmo no
+// processo; query ~3s intacto, invoke ~30s — o handler pode abrir modal).
 internal static class ShellStaRunner
 {
-    public const int QueryTimeoutMs = 3000;
-    public const int InvokeTimeoutMs = 30000;
+    public const int QueryTimeoutMs = ShellHostProtocol.QueryTimeoutMs;
+    public const int InvokeTimeoutMs = ShellHostProtocol.InvokeTimeoutMs;
 
     public static T Run<T>(Func<T> work, int timeoutMs, string threadName)
     {

@@ -1,10 +1,12 @@
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.Core.ThirdParty;
 
-// T2 terceiros: aplica o filtro §1 sobre a árvore bruta do HMENU fantasma.
+// T2 terceiros (movido em T5 p/ o Core, sem mudar regra): aplica o filtro §1
+// sobre a árvore bruta do HMENU fantasma. Roda DENTRO do ShellHost (a UI só
+// espelha o JSON já filtrado) — definição única, sem duplicar nas duas pontas.
 // Puro/testável: separador fora; folha nativa (verbo OU label) fora; folha sem
 // texto exibível fora; cascata sobrevive só com ≥1 filho mantido (espelhada
 // como submenu desabilitado); resto (inclusive verbo vazio) = terceiro.
-internal static class ThirdPartyTreeBuilder
+public static class ThirdPartyTreeBuilder
 {
     public static IReadOnlyList<ThirdPartyMenuEntry> Build(IReadOnlyList<ShellMenuNode>? nodes)
     {

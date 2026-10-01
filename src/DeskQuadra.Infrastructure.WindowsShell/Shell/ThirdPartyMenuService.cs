@@ -1,18 +1,22 @@
 using System.Collections.Concurrent;
 using System.IO;
+using DeskQuadra.Core.ThirdParty;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using Vanara.PInvoke;
 
 namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
 
-// T3 terceiros: query via ShellThirdPartyQuery (STA dedicada) + filtro §1 +
-// cache por extensão (positivo E negativo; sem expiração em T2, sem timers) +
-// invoke por VERBO via ShellThirdPartyInvoke (STA dedicada).
+// T5 terceiros: MESMA interface de T3, motor trocado — query/invoke agora
+// rodam no DeskQuadra.ShellHost (outro processo) via ShellHostClient
+// (one-shot stdin/stdout JSON, timeout/kill, host morto = vazio silencioso).
+// Mantidos aqui (UI-side, sem COM): cache por extensão (positivo E negativo;
+// sem expiração, sem timers) + registro do Shift/EXTENDEDVERBS por caminho +
+// guardas de alça. Visual e chamada intactos (zero XAML/resx em T5).
 // CMF_EXTENDEDVERBS só com Shift pressionado (GetKeyState no momento da abertura).
 // Query + alça de invoke resolvidos JUNTOS: GetForPath registra o Shift usado
 // por caminho; CreateHandle captura (path, verb, offset, extended) e TryInvoke
-// reexecuta o MESMO pipeline na MESMA interface raiz (verbo estável, imune a
-// reordenação de offsets; VALIDATEW+offset só no fallback de verbo vazio).
+// reenvia os MESMOS parâmetros ao host (verbo estável, imune a reordenação
+// de offsets; VALIDATEW+offset só no fallback de verbo vazio, dentro do host).
 // Tudo best-effort e silencioso: qualquer falha devolve lista vazia / false.
 public sealed class ThirdPartyMenuService : IThirdPartyMenuService
 {
@@ -28,6 +32,8 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
     private readonly ConcurrentDictionary<string, bool> _extendedByPath =
         new(StringComparer.OrdinalIgnoreCase);
     private const int MaxTrackedPaths = 1024;
+
+    private readonly ShellHostClient _host = new();
 
     public IReadOnlyList<ThirdPartyMenuEntry> GetForPath(string? path)
     {
@@ -70,8 +76,8 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
             // Caminho-verbo não exige offset válido (seleção é pelo verbo
             // estável); offset só é guardado como fallback p/ verbo vazio.
             string stableVerb = verb ?? string.Empty;
-            if (!ShellThirdPartyInvoke.HasStableVerb(stableVerb)
-                && !ShellThirdPartyInvoke.IsOffsetInRange(commandOffset))
+            if (!ShellHostProtocol.HasStableVerb(stableVerb)
+                && !ShellHostProtocol.IsOffsetInRange(commandOffset))
             {
                 return null;
             }
@@ -96,13 +102,24 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
                 return false;
             }
 
-            return ShellThirdPartyInvoke.TryInvoke(
+            // Guarda barata antes de spawnar (mesma do engine T3): fallback por
+            // offset exige faixa válida quando não há verbo estável.
+            if (!ShellHostProtocol.HasStableVerb(handle.Verb)
+                && !ShellHostProtocol.IsOffsetInRange(handle.CommandOffset))
+            {
+                return false;
+            }
+
+            // HWND/ponto atravessam o IPC como números (handle é válido entre
+            // processos; sem ponto = invoke sem PTINVOKE, best-effort).
+            return _host.InvokeMenu(
                 handle.Path,
                 handle.Verb,
                 handle.CommandOffset,
                 handle.IncludeExtendedVerbs,
-                hwnd,
-                invokePoint);
+                hwnd.ToInt64(),
+                invokePoint?.X,
+                invokePoint?.Y);
         }
         catch
         {
@@ -128,12 +145,15 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         }
     }
 
-    private static IReadOnlyList<ThirdPartyMenuEntry> QueryUncached(string path, bool extended)
+    private IReadOnlyList<ThirdPartyMenuEntry> QueryUncached(string path, bool extended)
     {
         try
         {
-            var raw = ShellThirdPartyQuery.QueryForPath(path, extended);
-            return ThirdPartyTreeBuilder.Build(raw);
+            // Host morto/timeout/resposta inválida = null = placeholder T1
+            // (silencioso, padrão do projeto). O host já filtra (§1); a UI só
+            // espelha. Cache negativo continua valendo (não respawna o host à
+            // toa a cada abertura do menu).
+            return _host.QueryMenu(path, extended) ?? Empty;
         }
         catch
         {

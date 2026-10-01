@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
+using DeskQuadra.Core.ThirdParty;
 using DeskQuadra.Infrastructure.WindowsShell.Shell;
+using DeskQuadra.ShellHost.Shell;
 using Vanara;
 using Vanara.PInvoke;
 
@@ -18,7 +20,7 @@ public class ThirdPartyInvokeTests
     [InlineData(null, false)]
     public void HasStableVerb_SóNãoVazioÉEstável(string? verb, bool expected)
     {
-        Assert.Equal(expected, ShellThirdPartyInvoke.HasStableVerb(verb));
+        Assert.Equal(expected, ShellHostProtocol.HasStableVerb(verb));
     }
 
     [Theory]
@@ -150,7 +152,7 @@ public class ThirdPartyInvokeTests
     [InlineData(0xFFFFFFFFu, false)]
     public void IsOffsetInRange_LimitesDoHmenuFantasma(uint offset, bool expected)
     {
-        Assert.Equal(expected, ShellThirdPartyInvoke.IsOffsetInRange(offset));
+        Assert.Equal(expected, ShellHostProtocol.IsOffsetInRange(offset));
     }
 
     [Fact]

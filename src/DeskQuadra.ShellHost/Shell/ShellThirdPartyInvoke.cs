@@ -1,16 +1,18 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using DeskQuadra.Core.ThirdParty;
 using Vanara;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.Shell32;
 using static Vanara.PInvoke.User32;
 
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.ShellHost.Shell;
 
-// T3 terceiros: InvokeCommand preferencialmente por VERBO canônico estável
-// (GCS_VERBW da folha T2, ex. "SevenZipCompressToZip") na MESMA interface
-// IContextMenu raiz da query, com lpVerb = ANSI + lpVerbW = Unicode e
-// CMIC_MASK_UNICODE. NADA de TrackPopupMenu.
+// T3 terceiros (movido em T5 p/ dentro do host, sem mudar regra):
+// InvokeCommand preferencialmente por VERBO canônico estável (GCS_VERBW da
+// folha T2, ex. "SevenZipCompressToZip") na MESMA interface IContextMenu raiz
+// da query, com lpVerb = ANSI + lpVerbW = Unicode e CMIC_MASK_UNICODE. NADA
+// de TrackPopupMenu.
 // MICRO-FIX offsets instáveis: handlers dinâmicos reordenam os offsets entre
 // duas QueryContextMenu (sonda headless + shell-menu.log provaram: offset 112
 // = "Comprimir e enviar por email" numa query e outra coisa noutra), então
@@ -26,8 +28,11 @@ namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
 // útil explícita — ANSI via HGlobal do chamador (vive até o InvokeCommand) +
 // lpVerbW string (o StructureToPtr copia p/ o bloco nativo) + cbSize cheio.
 // Interface COM viva do QueryContextMenu até o InvokeCommand na MESMA STA
-// dedicada. Falha/timeout = false (o chamador mantém o placeholder,
-// silencioso). Tipos P/Invoke via Vanara MIT (5.0.7); lógica de invoke nossa.
+// dedicada — agora thread do HOST (antes thread do app). Falha/timeout =
+// false (o host responde ok=false e a UI segue silenciosa). Tipos P/Invoke
+// via Vanara MIT (5.0.7); lógica de invoke nossa.
+// Guardas puras (HasStableVerb/IsOffsetInRange) moram no ShellHostProtocol
+// (fonte única: cliente valida ANTES de spawnar, host revalida aqui).
 internal static class ShellThirdPartyInvoke
 {
     private const uint IdCmdFirst = 1;
@@ -39,19 +44,10 @@ internal static class ShellThirdPartyInvoke
     // Mesmo molde do GetVerbW em ShellThirdPartyQuery.cs. Nunca IntPtr.Zero + 0.
     internal const int ValidateCapacityChars = 512;
 
-    // Faixa válida de offset (id - idCmdFirst) p/ o HMENU fantasma.
-    internal static bool IsOffsetInRange(uint commandOffset)
-        => commandOffset <= (IdCmdLast - IdCmdFirst);
-
     // Guarda GCS_VALIDATEW: S_OK = o item existe; S_FALSE/falha = não invoca.
     // (S_FALSE tem severity success — checar Failed NÃO basta.)
     internal static bool IsValidationSuccess(HRESULT hr)
         => hr == HRESULT.S_OK;
-
-    // Verbo canônico estável? Não-vazio = caminho-verbo (preferido, imune a
-    // reordenação de offsets). Vazio/nulo = fallback por offset (raro).
-    internal static bool HasStableVerb(string? verb)
-        => !string.IsNullOrEmpty(verb);
 
     // Construção pura/testável dos parâmetros de invoke por OFFSET
     // (MAKEINTRESOURCE, HIWORD(lpVerb)==0): FALLBACK p/ verbo vazio/nulo.
@@ -135,7 +131,7 @@ internal static class ShellThirdPartyInvoke
 
         // Offset só é exigido no caminho-fallback (verbo vazio): no
         // caminho-verbo a seleção é pelo verbo estável, imune a reordenação.
-        if (!HasStableVerb(verb) && !IsOffsetInRange(commandOffset))
+        if (!ShellHostProtocol.HasStableVerb(verb) && !ShellHostProtocol.IsOffsetInRange(commandOffset))
         {
             return false;
         }
@@ -157,7 +153,7 @@ internal static class ShellThirdPartyInvoke
         POINT? invokePoint,
         bool shiftDown)
     {
-        bool byVerb = HasStableVerb(verb);
+        bool byVerb = ShellHostProtocol.HasStableVerb(verb);
         // .lnk = invoke sobre o próprio link (SEM resolver o alvo antes, §1).
         HRESULT hr = SHParseDisplayName(path, null, out PIDL pidl, 0, out _);
         if (hr.Failed || pidl.IsNull)
@@ -218,7 +214,7 @@ internal static class ShellThirdPartyInvoke
                     // entre queries; o VALIDATEW abaixo só barra offset
                     // inexistente (S_FALSE), NÃO verbo trocado (o item
                     // existe, é outro — foi o caso Firefox.7z).
-                    if (!IsOffsetInRange(commandOffset))
+                    if (!ShellHostProtocol.IsOffsetInRange(commandOffset))
                     {
                         ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, verb, commandOffset, queryHr, "n/a", "n/a", "offset-out-of-range"));
                         return false;

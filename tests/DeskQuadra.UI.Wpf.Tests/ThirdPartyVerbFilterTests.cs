@@ -1,4 +1,4 @@
-using DeskQuadra.Infrastructure.WindowsShell.Shell;
+using DeskQuadra.Core.ThirdParty;
 
 namespace DeskQuadra.UI.Wpf.Tests;
 

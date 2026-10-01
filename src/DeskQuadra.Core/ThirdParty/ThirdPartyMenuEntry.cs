@@ -1,6 +1,9 @@
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.Core.ThirdParty;
 
-// T3 terceiros: item filtrado "só terceiros" pronto p/ espelhar no menu WPF.
+// T3 terceiros (movido em T5 p/ o Core, sem mudar forma): item filtrado "só
+// terceiros" pronto p/ espelhar no menu WPF. Mora no Core porque agora é
+// produzido no ShellHost (outro processo) e consumido na UI — definição única,
+// sem duplicar DTO nas duas pontas (o JSON do protocolo mapeia 1:1 p/ cá).
 // Label já limpo (sem '&'/'\t'). Verb = verbo canônico GCS_VERBW (seleção
 // estável do InvokeCommand via ThirdPartyInvokeHandle); CommandOffset =
 // offset do QueryContextMenu (id - idCmdFirst), guardado como FALLBACK p/

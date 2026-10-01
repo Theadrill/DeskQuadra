@@ -23,6 +23,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DeskQuadra.UI.Wpf\DeskQuadra.UI.Wpf.csproj" />
+    <!-- T5: engine de terceiros (flags/builders/validade) mora no ShellHost;
+         referência p/ testar a lógica pura movida sem COM (host é WinExe mas
+         gera a DLL gerenciada ao lado, referenciável). -->
+    <ProjectReference Include="..\..\src\DeskQuadra.ShellHost\DeskQuadra.ShellHost.csproj" />
   </ItemGroup>
 
 </Project>

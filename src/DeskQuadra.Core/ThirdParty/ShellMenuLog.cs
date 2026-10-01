@@ -1,17 +1,22 @@
-// Log diagnóstico do menu de terceiros em %APPDATA%\DeskQuadra\shell-menu.log.
+// Log diagnóstico do menu de terceiros em %APPDATA%\DeskQuadra\shell-menu.log
+// (movido em T5 p/ o Core, sem mudar forma: as DUAS pontas — host e cliente —
+// anexam no MESMO arquivo, cada linha diz de onde veio).
 // Mesmo molde de anchor.log/guardian.log: append best-effort, nunca lança,
 // nunca quebra o menu. Sem timers, sem mudança de comportamento — só LOGA.
 // Query: path, flags, nº de nós, falha/timeout. Invoke: path, offset,
-// hr de Query/Validate/Invoke, exceção.
+// hr de Query/Validate/Invoke, exceção. Host morto/timeout: linhas "host-*"
+// do cliente (supervisão T5).
 using System.IO;
 
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.Core.ThirdParty;
 
-internal static class ShellMenuLog
+public static class ShellMenuLog
 {
     private const string LogFileName = "shell-menu.log";
 
-    internal static string LogFilePath => Path.Combine(
+    // Público em T5 (era internal): o engine agora mora no ShellHost (outro
+    // assembly) e chama os Format* de lá — membro internal quebraria o host.
+    public static string LogFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "DeskQuadra",
         LogFileName);
@@ -35,13 +40,13 @@ internal static class ShellMenuLog
     }
 
     // Formatação pura/testável (sem I/O) — o I/O vive só em Log().
-    internal static string FormatQuery(string path, string flags, int nodeCount)
+    public static string FormatQuery(string path, string flags, int nodeCount)
         => $"query path='{path}' flags={flags} nodes={nodeCount}";
 
-    internal static string FormatQueryFailed(string path, string flags, string reason)
+    public static string FormatQueryFailed(string path, string flags, string reason)
         => $"query path='{path}' flags={flags} FAILED reason={reason}";
 
-    internal static string FormatInvoke(
+    public static string FormatInvoke(
         string path,
         string? verb,
         uint offset,
@@ -50,4 +55,11 @@ internal static class ShellMenuLog
         string invokeHr,
         string outcome)
         => $"invoke path='{path}' verb='{verb ?? string.Empty}' offset={offset} query={queryHr} validate={validateHr} invoke={invokeHr} outcome={outcome}";
+
+    // Linhas do cliente/supervisor T5 (host fora do ar, timeout/kill, spawn).
+    public static string FormatHostQuery(string path, bool extended, string outcome)
+        => $"host query path='{path}' extended={extended} outcome={outcome}";
+
+    public static string FormatHostInvoke(string path, string? verb, uint offset, string outcome)
+        => $"host invoke path='{path}' verb='{verb ?? string.Empty}' offset={offset} outcome={outcome}";
 }

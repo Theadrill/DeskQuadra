@@ -1,9 +1,12 @@
-namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
+namespace DeskQuadra.Core.ThirdParty;
 
-// T2 terceiros: filtro "só terceiros" puro/testável (denylist §1 do PLANO_MENU_TERCEIROS.md).
+// T2 terceiros (movido em T5 p/ o Core, sem mudar regra): filtro "só
+// terceiros" puro/testável (denylist §1 do PLANO_MENU_TERCEIROS.md).
 // Regra: MFT_SEPARATOR sempre fora; denylist canônica aplicada a GCS_VERBW E label;
 // resto (inclusive verbo vazio) = terceiro. Sem P/Invoke, sem thread, sem estado.
-internal static class ThirdPartyVerbFilter
+// Mora no Core porque o filtro agora roda DENTRO do ShellHost (a UI só espelha
+// o JSON já filtrado) — definição única, sem duplicar nas duas pontas.
+public static class ThirdPartyVerbFilter
 {
     // Verbos canônicos nativos do Explorer (GCS_VERBW). Refinado com dados reais
     // da máquina do PO (2026-10-01: OneDrive/GUID-brace, pin, PreviousVersions,

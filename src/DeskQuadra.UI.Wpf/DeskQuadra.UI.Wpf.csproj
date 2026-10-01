@@ -21,12 +21,36 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>
+    <!-- T5 isolamento: garante o build do ShellHost antes da UI, sem
+         referenciar (o cliente localiza o exe ao lado da UI em runtime). -->
+    <ProjectReference Include="..\DeskQuadra.ShellHost\DeskQuadra.ShellHost.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
   </ItemGroup>
 
   <Target Name="CopyGuardianToOutput" AfterTargets="Build">
     <Copy SourceFiles="..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.exe;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.dll;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.pdb;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.deps.json;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\DeskQuadra.Guardian.runtimeconfig.json"
           DestinationFolder="$(TargetDir)"
           SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- T5 isolamento (MESMO molde do Guardian acima, sem quebrar o dele):
+       o ShellHost anda ao lado da UI (exe+dll+pdb+deps.json+runtimeconfig —
+       o código gerenciado vive na DLL; só o exe é o apphost nativo).
+       As demais deps do host (Core, Vanara) já estão ao lado da UI pela
+       referência normal. Sem estes alvos o cliente não acha o exe e o menu
+       cai no placeholder (silencioso). -->
+  <Target Name="CopyShellHostToOutput" AfterTargets="Build">
+    <Copy SourceFiles="..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\DeskQuadra.ShellHost.exe;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\DeskQuadra.ShellHost.dll;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\DeskQuadra.ShellHost.pdb;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\DeskQuadra.ShellHost.deps.json;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\DeskQuadra.ShellHost.runtimeconfig.json"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyShellHostToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.ShellHost.exe;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.ShellHost.dll;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.ShellHost.pdb;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.ShellHost.deps.json;..\DeskQuadra.ShellHost\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.ShellHost.runtimeconfig.json"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="false" />
   </Target>
 
   <PropertyGroup>

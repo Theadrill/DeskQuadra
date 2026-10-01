@@ -1,9 +1,11 @@
+using DeskQuadra.Core.ThirdParty;
 using Vanara.PInvoke;
 
 namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
 
-// T3 terceiros: detecção (só leitura) + execução dos verbos clássicos de
-// terceiros de um item (.lnk = o próprio link) ou pasta.
+// T3 terceiros (T5: mesma interface, motor no ShellHost): detecção (só
+// leitura) + execução dos verbos clássicos de terceiros de um item
+// (.lnk = o próprio link) ou pasta.
 // GetForPath = lista (falha = lista vazia, a UI mantém o placeholder T1,
 // silencioso). CreateHandle + TryInvoke = executa por VERBO canônico estável
 // na STA dedicada (query + invoke na MESMA interface raiz); offset +

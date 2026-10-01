@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- T5 isolamento: handlers clássicos de terceiros são x64 — host 32 bits
+         não enxergaria os mesmos verbos (nem carregaria as DLLs). -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Mesma versão do portátil (host anda ao lado da UI, como o Guardian). -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Sem janela, sem XAML, sem WinForms: WinExe nunca abre console
+         (nem com duplo clique); IPC é stdin/stdout redirecionado. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeskQuadra.Core\DeskQuadra.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tipos P/Invoke do Shell via Vanara MIT (5.0.7, mesma versão vigente do
+         engine T2/T3); lógica de enumeração/invoke/filtro é nossa, movida sem
+         duplicar. Sem dependência nova além desta (in-box no resto). -->
+    <PackageReference Include="Vanara.PInvoke.Shell32" Version="5.0.7" />
+  </ItemGroup>
+
+</Project>

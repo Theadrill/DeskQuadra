@@ -16,6 +16,7 @@ using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.FileDeletion;
 using DeskQuadra.Core.FileDuplication;
 using DeskQuadra.Core.Models;
+using DeskQuadra.Core.ThirdParty;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.Infrastructure.WindowsShell.Shell;
 using DeskQuadra.UI.Wpf.Models;
@@ -1344,9 +1345,12 @@ public partial class QuadraWindow : Window
         return item;
     }
 
-    // Clique em item de terceiro = invoca por VERBO na STA dedicada e fecha o
-    // menu (padrão WPF, sem código extra). Roda FORA da UI do WPF (a STA faz o
-    // COM; aqui só o Join com timeout já existente). Falha = silenciosa.
+    // Clique em item de terceiro (T5: isolado no ShellHost): o invoke roda FORA
+    // da UI e FORA da thread do clique — verbo lento (diálogo modal do handler)
+    // não congela o app; o menu já fechou sozinho no clique (padrão WPF).
+    // hwnd + ponto capturados AQUI (thread da UI); o ThreadPool só entrega ao
+    // serviço (molde do RunPanicSequence do Guardian). Falha = silenciosa.
+    // Sem timer novo (só o timeout do host, já existente no protocolo).
     private void ThirdPartyItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem item || item.Tag is not ThirdPartyMenuTag tag || tag.Handle is null)
@@ -1377,14 +1381,19 @@ public partial class QuadraWindow : Window
             // Sem ponto: o invoke segue sem PTINVOKE (best-effort).
         }
 
-        try
+        ThirdPartyInvokeHandle handle = tag.Handle;
+        IThirdPartyMenuService service = _thirdPartyMenuService;
+        ThreadPool.QueueUserWorkItem(_ =>
         {
-            _thirdPartyMenuService.TryInvoke(tag.Handle, hwnd, point);
-        }
-        catch
-        {
-            // Silencioso, padrão do projeto.
-        }
+            try
+            {
+                service.TryInvoke(handle, hwnd, point);
+            }
+            catch
+            {
+                // Silencioso, padrão do projeto.
+            }
+        });
     }
 
     // T3 terceiros no menu do VAZIO/barra: PIDL da pasta (§1). A Quadra exibe itens

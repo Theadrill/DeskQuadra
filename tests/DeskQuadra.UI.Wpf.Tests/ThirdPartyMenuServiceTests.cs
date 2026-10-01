@@ -1,4 +1,5 @@
 using DeskQuadra.Infrastructure.WindowsShell.Shell;
+using DeskQuadra.ShellHost.Shell;
 using Vanara.PInvoke;
 
 namespace DeskQuadra.UI.Wpf.Tests;
