@@ -111,6 +111,14 @@
     <SolidColorBrush x:Key="Menu.TouchItem.Hover.Background" Color="#4D0078D4"/>
     <SolidColorBrush x:Key="Menu.TouchItem.Pressed.Background" Color="#800078D4"/>
 
+    <!-- ===== Separador de menu (T1 terceiros: UM Style compartilhado, REUSE tokens
+         Quadra.Separator.* — nunca estilo inline; Separator não é MenuItem, então
+         ApplyStyleRecursively o ignora e ele mantém este visual nas 2 densidades) ===== -->
+    <Style x:Key="MenuSeparatorStyle" TargetType="Separator">
+        <Setter Property="Background" Value="{DynamicResource Quadra.Separator.Background}"/>
+        <Setter Property="Margin" Value="{DynamicResource Quadra.Separator.Margin}"/>
+    </Style>
+
     <!-- ===== Seleção de área (retângulo de desenho) ===== -->
     <SolidColorBrush x:Key="Selection.Background" Color="#800078D4"/>
     <SolidColorBrush x:Key="Selection.BorderBrush" Color="#60CDFF"/>

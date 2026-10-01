@@ -159,6 +159,9 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="ItemMenu_Delete" xml:space="preserve">
     <value>Excluir</value>
   </data>
+  <data name="ThirdParty_NoActions" xml:space="preserve">
+    <value>Nenhuma ação de terceiros</value>
+  </data>
   <data name="Dialog_CloseTitle" xml:space="preserve">
     <value>Fechar Quadra</value>
   </data>

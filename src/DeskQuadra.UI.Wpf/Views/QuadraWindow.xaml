@@ -121,6 +121,11 @@
                             <MenuItem x:Name="LockQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_LockQuadra}" IsCheckable="True" Click="LockQuadraMenu_Click"/>
                             <MenuItem x:Name="ResizeQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_ResizeQuadra}" Click="ResizeQuadraMenu_Click" Visibility="Collapsed"/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_CloseQuadra}" Click="CloseButton_Click"/>
+                            <!-- T1 terceiros (vazio + barra: MESMA instância, um ponto só): Separator
+                                 padrão + placeholder desabilitado. Sem Style no item (ApplyStyleRecursively
+                                 aplica a densidade na abertura), tudo via token. -->
+                            <Separator Style="{StaticResource MenuSeparatorStyle}"/>
+                            <MenuItem x:Name="ThirdPartyPlaceholderItem" Header="{x:Static properties:Strings.ThirdParty_NoActions}" IsEnabled="False"/>
                         </ContextMenu>
                     </Border.ContextMenu>
                     <Grid Margin="{DynamicResource Quadra.Density.Title.Padding}">
@@ -259,6 +264,10 @@
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Remove}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Delete}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuDelete_Click"/>
                                                 <MenuItem x:Name="ItemMenuMoveItem" Header="{x:Static properties:Strings.ItemMenu_Move}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuMove_Click" Visibility="Collapsed"/>
+                                                <!-- T1 terceiros (ícone): Separator padrão + placeholder desabilitado.
+                                                     Sem Style no item (ApplyStyleRecursively aplica a densidade na abertura). -->
+                                                <Separator Style="{StaticResource MenuSeparatorStyle}"/>
+                                                <MenuItem x:Name="ThirdPartyPlaceholderItem" Header="{x:Static properties:Strings.ThirdParty_NoActions}" IsEnabled="False"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <Border.Style>
