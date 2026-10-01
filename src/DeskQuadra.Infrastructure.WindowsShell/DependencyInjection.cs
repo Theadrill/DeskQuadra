@@ -1,6 +1,7 @@
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Services;
+using DeskQuadra.Infrastructure.WindowsShell.Shell;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DeskQuadra.Infrastructure.WindowsShell;
@@ -17,6 +18,8 @@ public static class DependencyInjection
         services.AddSingleton<IFileDeletionService, ShellFileDeletionService>();
         services.AddSingleton<IDesktopDrawingService, DesktopDrawingService>();
         services.AddSingleton<IStartupService, RegistryStartupService>();
+        // T2 terceiros: detecção só leitura (lista, não executa) com cache por extensão.
+        services.AddSingleton<IThirdPartyMenuService, ThirdPartyMenuService>();
         return services;
     }
 }

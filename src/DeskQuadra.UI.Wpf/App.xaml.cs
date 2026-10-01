@@ -19,6 +19,7 @@ using DeskQuadra.Infrastructure.WindowsShell;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
 using DeskQuadra.Infrastructure.WindowsShell.Services;
+using DeskQuadra.Infrastructure.WindowsShell.Shell;
 using DeskQuadra.UI.Wpf.Services;
 using DeskQuadra.UI.Wpf.ViewModels;
 using DeskQuadra.UI.Wpf.Views;
@@ -297,9 +298,10 @@ public partial class App : System.Windows.Application
         var coordinator = _serviceProvider.GetRequiredService<ILayoutCoordinator>();
         var launcherService = _serviceProvider.GetRequiredService<IFileLauncherService>();
         var deletionService = _serviceProvider.GetRequiredService<IFileDeletionService>();
+        var thirdPartyMenuService = _serviceProvider.GetRequiredService<IThirdPartyMenuService>();
 
         var viewModel = new QuadraViewModel(quadra, iconExtractor);
-        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService, deletionService);
+        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService, deletionService, thirdPartyMenuService);
         window.Closed += (s, e) => _quadraWindows.Remove(quadra.Id);
         _quadraWindows[quadra.Id] = window;
         window.Show();

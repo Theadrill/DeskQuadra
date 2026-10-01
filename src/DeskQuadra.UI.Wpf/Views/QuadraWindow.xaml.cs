@@ -17,6 +17,7 @@ using DeskQuadra.Core.FileDeletion;
 using DeskQuadra.Core.FileDuplication;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
+using DeskQuadra.Infrastructure.WindowsShell.Shell;
 using DeskQuadra.UI.Wpf.Models;
 using DeskQuadra.UI.Wpf.Properties;
 using DeskQuadra.UI.Wpf.Services;
@@ -34,6 +35,7 @@ public partial class QuadraWindow : Window
     private readonly ILayoutCoordinator _coordinator;
     private readonly IFileLauncherService _launcherService;
     private readonly IFileDeletionService _deletionService;
+    private readonly IThirdPartyMenuService _thirdPartyMenuService;
 
     private bool _isInitializing = true;
     private bool _isDragging;
@@ -115,7 +117,8 @@ public partial class QuadraWindow : Window
         ISnapEngine snapEngine,
         ILayoutCoordinator coordinator,
         IFileLauncherService launcherService,
-        IFileDeletionService deletionService)
+        IFileDeletionService deletionService,
+        IThirdPartyMenuService thirdPartyMenuService)
     {
         _viewModel = viewModel;
         DataContext = viewModel;
@@ -124,6 +127,7 @@ public partial class QuadraWindow : Window
         _coordinator = coordinator;
         _launcherService = launcherService;
         _deletionService = deletionService;
+        _thirdPartyMenuService = thirdPartyMenuService;
 
         // Configura posicionamento manual estrito antes da inicialização visual
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -950,6 +954,8 @@ public partial class QuadraWindow : Window
         // Mesmo padrão do TitleBar_ContextMenuOpening: cadeado + densidade por gesto/preferência.
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
         bool isTouch = ResolveEffectiveIsTouch(e);
+        // T2 terceiros no vazio (PIDL da pasta Desktop) antes da densidade (§2).
+        PopulateThirdPartySection(menu, GetEmptySpaceFolderPath());
         ApplyMenuDensity(menu, isTouch: isTouch);
         // Visibilidade só por gesto real (sem preferência): mouse nunca vê Redimensionar.
         bool touchGesture = InputDeviceDetector.IsTouchInteraction(e);
@@ -1220,6 +1226,12 @@ public partial class QuadraWindow : Window
         // esquerdo e movimento cancela o hold no próprio SO.
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
+            // T2 terceiros: rótulos reais desabilitados do próprio item
+            // (.lnk = o próprio link). Antes da densidade (§2).
+            if (fe.DataContext is DesktopItemViewModel item)
+            {
+                PopulateThirdPartySection(fe.ContextMenu, item.FilePath);
+            }
             // Toque usa itens de 46px; mouse segue compacto (~26px).
             // Híbrido preservado: toque real abre menu grande mesmo em modo Normal
             // (gesto OU preferência, mesmo padrão do App.ResolveEffectiveIsTouch).
@@ -1243,6 +1255,92 @@ public partial class QuadraWindow : Window
     {
         var style = (Style)FindResource(isTouch ? "TouchMenuItemStyle" : "MouseMenuItemStyle");
         ApplyStyleRecursively(menu.Items, style);
+    }
+
+    // Sentinela T2: marca os MenuItem inseridos pelo PopulateThirdPartySection
+    // (topo e cascata). Permite limpeza idempotente sem tocar no placeholder T1.
+    private const string ThirdPartyItemTag = "DeskQuadra.ThirdPartyItem";
+
+    // T2 terceiros (só leitura, sem InvokeCommand): troca o placeholder T1 pelos
+    // rótulos reais do Shell, TODOS DESABILITADOS (cascata espelhada como submenu
+    // desabilitado). Chamar ANTES do ApplyMenuDensity (itens novos sem Style
+    // explícito herdam a densidade na abertura, §2). Falha/vazio = mostra o
+    // placeholder T1 (silencioso, padrão do projeto). Sem timers.
+    // Idempotente: o placeholder NUNCA é removido (só Collapsed/Visible) e os
+    // inseridos anteriormente são removidos no início (a instância do ContextMenu
+    // persiste entre aberturas — barra/vazio compartilham UMA).
+    private void PopulateThirdPartySection(ContextMenu menu, string? targetPath)
+    {
+        var placeholder = menu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Name == "ThirdPartyPlaceholderItem");
+        if (placeholder is null)
+        {
+            return;
+        }
+
+        for (int i = menu.Items.Count - 1; i >= 0; i--)
+        {
+            if (menu.Items[i] is MenuItem mi && Equals(mi.Tag, ThirdPartyItemTag))
+            {
+                menu.Items.RemoveAt(i);
+            }
+        }
+
+        IReadOnlyList<ThirdPartyMenuEntry> entries;
+        try
+        {
+            entries = _thirdPartyMenuService.GetForPath(targetPath);
+        }
+        catch
+        {
+            placeholder.Visibility = Visibility.Visible;
+            return;
+        }
+
+        if (entries.Count == 0)
+        {
+            placeholder.Visibility = Visibility.Visible;
+            return;
+        }
+
+        placeholder.Visibility = Visibility.Collapsed;
+        int index = menu.Items.IndexOf(placeholder);
+        foreach (var entry in entries)
+        {
+            menu.Items.Insert(++index, CreateThirdPartyItem(entry));
+        }
+    }
+
+    // Item novo SEMPRE sem Style/Height/cor (§2: ApplyStyleRecursively aplica a
+    // densidade do gesto na abertura; submenu novo idem).
+    private static MenuItem CreateThirdPartyItem(ThirdPartyMenuEntry entry)
+    {
+        var item = new MenuItem
+        {
+            Header = entry.Label,
+            IsEnabled = false,
+            Tag = ThirdPartyItemTag,
+        };
+        foreach (var child in entry.Children)
+        {
+            item.Items.Add(CreateThirdPartyItem(child));
+        }
+
+        return item;
+    }
+
+    // T2 terceiros no menu do VAZIO/barra: PIDL da pasta (§1). A Quadra exibe itens
+    // do Desktop — o vazio equivale à pasta Desktop do usuário.
+    private static string? GetEmptySpaceFolderPath()
+    {
+        try
+        {
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            return Directory.Exists(desktop) ? desktop : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     // Preferência global (mesmo padrão do App.ResolveEffectiveIsTouch): Touch/Normal
@@ -2014,6 +2112,8 @@ public partial class QuadraWindow : Window
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
+            // T2 terceiros no vazio (PIDL da pasta Desktop) antes da densidade (§2).
+            PopulateThirdPartySection(fe.ContextMenu, GetEmptySpaceFolderPath());
             bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
             // Visibilidade só por gesto real (sem preferência): mouse nunca vê Redimensionar.

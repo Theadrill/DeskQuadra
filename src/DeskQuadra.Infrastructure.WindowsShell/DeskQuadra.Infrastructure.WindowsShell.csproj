@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <!-- T2 terceiros: tipos P/Invoke do Shell via Vanara MIT (versão vigente 5.0.7
+         conferida no NuGet em 2026-10-01); lógica de enumeração/filtro é nossa. -->
+    <PackageReference Include="Vanara.PInvoke.Shell32" Version="5.0.7" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -343,10 +343,25 @@ internal static class NativeMethods
     public const int WM_RBUTTONUP = 0x0205;
     public const int VK_RBUTTON = 0x02;
     public const int VK_CONTROL = 0x11;
+    public const int VK_SHIFT = 0x10;
     public const uint GA_ROOT = 2;
 
     [DllImport("user32.dll")]
     public static extern short GetKeyState(int nVirtKey);
+
+    // T2 terceiros: Shift pressionado no momento da chamada (verbos estendidos
+    // CMF_EXTENDEDVERBS só com Shift, §1). Best-effort: exceção = false.
+    public static bool IsShiftPressed()
+    {
+        try
+        {
+            return (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
