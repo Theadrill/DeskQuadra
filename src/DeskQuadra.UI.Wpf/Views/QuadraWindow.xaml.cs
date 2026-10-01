@@ -1226,7 +1226,7 @@ public partial class QuadraWindow : Window
         // esquerdo e movimento cancela o hold no próprio SO.
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
-            // T2 terceiros: rótulos reais desabilitados do próprio item
+            // T3 terceiros: rótulos reais habilitados do próprio item
             // (.lnk = o próprio link). Antes da densidade (§2).
             if (fe.DataContext is DesktopItemViewModel item)
             {
@@ -1257,13 +1257,17 @@ public partial class QuadraWindow : Window
         ApplyStyleRecursively(menu.Items, style);
     }
 
-    // Sentinela T2: marca os MenuItem inseridos pelo PopulateThirdPartySection
-    // (topo e cascata). Permite limpeza idempotente sem tocar no placeholder T1.
-    private const string ThirdPartyItemTag = "DeskQuadra.ThirdPartyItem";
+    // Tag T3: marca os MenuItem inseridos pelo PopulateThirdPartySection (topo e
+    // cascata) e carrega a alça de invoke (folha) ou null (cascata = só submenu).
+    // Permite limpeza idempotente sem tocar no placeholder T1.
+    private sealed class ThirdPartyMenuTag
+    {
+        public ThirdPartyInvokeHandle? Handle;
+    }
 
-    // T2 terceiros (só leitura, sem InvokeCommand): troca o placeholder T1 pelos
-    // rótulos reais do Shell, TODOS DESABILITADOS (cascata espelhada como submenu
-    // desabilitado). Chamar ANTES do ApplyMenuDensity (itens novos sem Style
+    // T3 terceiros (habilita + invoca): troca o placeholder T1 pelos rótulos
+    // reais do Shell, HABILITADOS (folha invoca no clique; cascata abre o
+    // submenu). Chamar ANTES do ApplyMenuDensity (itens novos sem Style
     // explícito herdam a densidade na abertura, §2). Falha/vazio = mostra o
     // placeholder T1 (silencioso, padrão do projeto). Sem timers.
     // Idempotente: o placeholder NUNCA é removido (só Collapsed/Visible) e os
@@ -1279,7 +1283,7 @@ public partial class QuadraWindow : Window
 
         for (int i = menu.Items.Count - 1; i >= 0; i--)
         {
-            if (menu.Items[i] is MenuItem mi && Equals(mi.Tag, ThirdPartyItemTag))
+            if (menu.Items[i] is MenuItem mi && mi.Tag is ThirdPartyMenuTag)
             {
                 menu.Items.RemoveAt(i);
             }
@@ -1306,29 +1310,84 @@ public partial class QuadraWindow : Window
         int index = menu.Items.IndexOf(placeholder);
         foreach (var entry in entries)
         {
-            menu.Items.Insert(++index, CreateThirdPartyItem(entry));
+            menu.Items.Insert(++index, CreateThirdPartyItem(entry, targetPath));
         }
     }
 
     // Item novo SEMPRE sem Style/Height/cor (§2: ApplyStyleRecursively aplica a
-    // densidade do gesto na abertura; submenu novo idem).
-    private static MenuItem CreateThirdPartyItem(ThirdPartyMenuEntry entry)
+    // densidade do gesto na abertura; submenu novo idem). Folha = habilitada +
+    // Click invoca e o menu fecha sozinho (padrão WPF); cascata = habilitada
+    // (precisa abrir o submenu) sem invoke. Nativo/canônico continua fora
+    // (filtro T2 intacto, aplicado antes de chegar aqui).
+    private MenuItem CreateThirdPartyItem(ThirdPartyMenuEntry entry, string? targetPath)
     {
+        bool isLeaf = entry.Children.Count == 0;
+        ThirdPartyInvokeHandle? handle = isLeaf
+            ? _thirdPartyMenuService.CreateHandle(targetPath, entry.Verb, entry.CommandOffset)
+            : null;
         var item = new MenuItem
         {
             Header = entry.Label,
-            IsEnabled = false,
-            Tag = ThirdPartyItemTag,
+            IsEnabled = !isLeaf || handle is not null,
+            Tag = new ThirdPartyMenuTag { Handle = handle },
         };
+        if (isLeaf && handle is not null)
+        {
+            item.Click += ThirdPartyItem_Click;
+        }
+
         foreach (var child in entry.Children)
         {
-            item.Items.Add(CreateThirdPartyItem(child));
+            item.Items.Add(CreateThirdPartyItem(child, targetPath));
         }
 
         return item;
     }
 
-    // T2 terceiros no menu do VAZIO/barra: PIDL da pasta (§1). A Quadra exibe itens
+    // Clique em item de terceiro = invoca por VERBO na STA dedicada e fecha o
+    // menu (padrão WPF, sem código extra). Roda FORA da UI do WPF (a STA faz o
+    // COM; aqui só o Join com timeout já existente). Falha = silenciosa.
+    private void ThirdPartyItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem item || item.Tag is not ThirdPartyMenuTag tag || tag.Handle is null)
+        {
+            return;
+        }
+
+        IntPtr hwnd;
+        try
+        {
+            hwnd = new WindowInteropHelper(this).Handle;
+        }
+        catch
+        {
+            hwnd = IntPtr.Zero;
+        }
+
+        Vanara.PInvoke.POINT? point = null;
+        try
+        {
+            if (NativeMethods.GetCursorPos(out var cursor))
+            {
+                point = new Vanara.PInvoke.POINT { X = cursor.X, Y = cursor.Y };
+            }
+        }
+        catch
+        {
+            // Sem ponto: o invoke segue sem PTINVOKE (best-effort).
+        }
+
+        try
+        {
+            _thirdPartyMenuService.TryInvoke(tag.Handle, hwnd, point);
+        }
+        catch
+        {
+            // Silencioso, padrão do projeto.
+        }
+    }
+
+    // T3 terceiros no menu do VAZIO/barra: PIDL da pasta (§1). A Quadra exibe itens
     // do Desktop — o vazio equivale à pasta Desktop do usuário.
     private static string? GetEmptySpaceFolderPath()
     {
@@ -2112,7 +2171,7 @@ public partial class QuadraWindow : Window
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
-            // T2 terceiros no vazio (PIDL da pasta Desktop) antes da densidade (§2).
+        // T3 terceiros no vazio (PIDL da pasta Desktop) antes da densidade (§2).
             PopulateThirdPartySection(fe.ContextMenu, GetEmptySpaceFolderPath());
             bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);

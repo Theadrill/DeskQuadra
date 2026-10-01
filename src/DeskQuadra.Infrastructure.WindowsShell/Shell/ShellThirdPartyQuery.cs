@@ -36,58 +36,27 @@ internal static class ShellThirdPartyQuery
     private const int MaxDepth = 8;
     private const int LabelCapacityChars = 512;
     private const int VerbCapacityChars = 512;
-    private const int QueryTimeoutMs = 3000;
 
     public static IReadOnlyList<ShellMenuNode> QueryForPath(string path, bool includeExtendedVerbs)
     {
         CMF flags = BuildQueryFlags(includeExtendedVerbs);
         try
         {
-            return RunOnStaThread(() => QueryOnStaThread(path, flags));
+            var nodes = ShellStaRunner.Run(
+                () => QueryOnStaThread(path, flags),
+                ShellStaRunner.QueryTimeoutMs,
+                "DeskQuadra.ShellQuery");
+            ShellMenuLog.Log(ShellMenuLog.FormatQuery(path, flags.ToString(), nodes.Count));
+            return nodes;
         }
         catch (Exception ex)
         {
             // Silencioso, padrão do projeto: falha de COM/timeout nunca quebra o menu.
             Debug.WriteLine($"[ShellThirdPartyQuery] query falhou p/ '{path}': {ex.GetType().Name}");
+            string reason = ex is TimeoutException ? "timeout" : ex.GetType().Name;
+            ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), reason));
             return Array.Empty<ShellMenuNode>();
         }
-    }
-
-    // STA dedicada com message queue (PeekMessage cria a fila; handlers do Shell
-    // podem PostMessage). Join limitado: handler lento não congela a UI (T5 isola
-    // de vez com ShellHost + kill; aqui a thread órfã é background e morre sozinha).
-    private static IReadOnlyList<ShellMenuNode> RunOnStaThread(Func<IReadOnlyList<ShellMenuNode>> query)
-    {
-        IReadOnlyList<ShellMenuNode>? result = null;
-        Exception? error = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                PeekMessage(out MSG _, HWND.NULL, 0, 0, PM.M_NOREMOVE);
-                result = query();
-            }
-            catch (Exception ex)
-            {
-                error = ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Name = "DeskQuadra.ShellQuery";
-        thread.Start();
-
-        if (!thread.Join(QueryTimeoutMs))
-        {
-            throw new TimeoutException("QueryContextMenu excedeu o limite.");
-        }
-
-        if (error is not null)
-        {
-            throw error;
-        }
-
-        return result ?? Array.Empty<ShellMenuNode>();
     }
 
     private static IReadOnlyList<ShellMenuNode> QueryOnStaThread(string path, CMF flags)
@@ -96,6 +65,7 @@ internal static class ShellThirdPartyQuery
         HRESULT hr = SHParseDisplayName(path, null, out PIDL pidl, 0, out _);
         if (hr.Failed || pidl.IsNull)
         {
+            ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"parse 0x{(uint)hr:X8}"));
             return Array.Empty<ShellMenuNode>();
         }
 
@@ -104,6 +74,7 @@ internal static class ShellThirdPartyQuery
             hr = SHBindToParent(pidl, typeof(IShellFolder).GUID, out object? folderObj, out IntPtr childRel);
             if (hr.Failed || folderObj is not IShellFolder folder || childRel == IntPtr.Zero)
             {
+                ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"bind 0x{(uint)hr:X8}"));
                 return Array.Empty<ShellMenuNode>();
             }
 
@@ -113,6 +84,7 @@ internal static class ShellThirdPartyQuery
                 hr = folder.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidMenu, IntPtr.Zero, out object? menuObj);
                 if (hr.Failed || menuObj is not IContextMenu contextMenu)
                 {
+                    ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"menu 0x{(uint)hr:X8}"));
                     return Array.Empty<ShellMenuNode>();
                 }
 
@@ -121,12 +93,14 @@ internal static class ShellThirdPartyQuery
                     using var hMenu = CreatePopupMenu();
                     if (hMenu.IsInvalid)
                     {
+                        ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), "hmenu-invalid"));
                         return Array.Empty<ShellMenuNode>();
                     }
 
                     hr = contextMenu.QueryContextMenu(hMenu, 0, IdCmdFirst, IdCmdLast, flags);
                     if (hr.Failed)
                     {
+                        ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"query 0x{(uint)hr:X8}"));
                         return Array.Empty<ShellMenuNode>();
                     }
 
