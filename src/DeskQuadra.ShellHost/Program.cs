@@ -71,6 +71,11 @@ internal static class Program
                 return RunInvoke(stdout, line);
             }
 
+            if (op == ShellHostProtocol.InvokeByLabelOp)
+            {
+                return RunInvokeByLabel(stdout, line);
+            }
+
             WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(false, $"unknown-op {op}"));
             return 2;
         }
@@ -120,6 +125,32 @@ internal static class Program
             req.Path,
             req.Verb,
             req.Offset,
+            req.Extended,
+            new IntPtr(req.Hwnd),
+            point);
+        WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(ok, ok ? null : "invoke-failed"));
+        return 0;
+    }
+
+    private static int RunInvokeByLabel(TextWriter stdout, string? line)
+    {
+        var req = ShellHostProtocol.ParseInvokeByLabelRequest(line);
+        if (req is null)
+        {
+            WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(false, "bad-invoke-by-label"));
+            return 2;
+        }
+
+        POINT? point = req.X.HasValue && req.Y.HasValue
+            ? new POINT { X = req.X.Value, Y = req.Y.Value }
+            : null;
+
+        // FIX folhas sem verbo estável: sessão única (enumera + resolve o
+        // rótulo + invoca na MESMA interface, sem re-query, sem VALIDATEW).
+        // Caminho-verbo e fallback-offset passam por RunInvoke (intactos).
+        bool ok = ShellThirdPartyInvoke.TryInvokeByLabel(
+            req.Path,
+            req.Labels,
             req.Extended,
             new IntPtr(req.Hwnd),
             point);

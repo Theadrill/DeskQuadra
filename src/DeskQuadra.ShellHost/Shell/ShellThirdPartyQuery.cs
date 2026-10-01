@@ -60,7 +60,9 @@ internal static class ShellThirdPartyQuery
     // falhar (QI ausente, HRESULT de erro, exceção de handler de terceiro)
     // nunca quebra os demais nem a lista — só deixa a cascata como estava.
     // hwnd NULL/zero na primeira tentativa: estes handlers populam sem janela.
-    private static void TryPopulateLazyPopup(IContextMenu contextMenu, HMENU hSubMenu, uint position)
+    // Internal (não private): o invoke-by-label reusa o MESMO lazy-populate
+    // da listagem na sessão única (sem duplicar comportamento).
+    internal static void TryPopulateLazyPopup(IContextMenu contextMenu, HMENU hSubMenu, uint position)
     {
         var (wParam, lParam) = BuildInitMenuPopupParams(hSubMenu, position);
         try

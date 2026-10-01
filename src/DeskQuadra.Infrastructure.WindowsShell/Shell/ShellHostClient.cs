@@ -89,6 +89,53 @@ internal sealed class ShellHostClient
         return response.Ok;
     }
 
+    // FIX invoke-by-label (folhas sem verbo estável — Paint, destinos do
+    // SendTo): mesmo one-shot/timeout/kill do InvokeMenu, mas o pedido carrega
+    // os rótulos do caminho (o que o usuário VIU) em vez de verbo/offset. O
+    // host resolve e invoca NUMA query só (sem re-query, sem VALIDATEW). O log
+    // registra verb='(label:...)' (offset 0 — sem sentido neste caminho).
+    public bool InvokeMenuByLabel(
+        string path,
+        IReadOnlyList<string> labels,
+        bool extended,
+        long hwnd,
+        int? x,
+        int? y)
+    {
+        string labelVerb = ShellMenuLog.FormatLabelVerb(labels);
+        string request;
+        try
+        {
+            request = ShellHostProtocol.SerializeInvokeByLabelRequest(path, labels, extended, hwnd, x, y);
+        }
+        catch
+        {
+            return false;
+        }
+
+        string? line = RunHost(request, ShellHostProtocol.InvokeTimeoutMs);
+        if (line is null)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatHostInvoke(path, labelVerb, 0, "no-response"));
+            return false;
+        }
+
+        var response = ShellHostProtocol.ParseInvokeResponse(line);
+        if (response is null)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatHostInvoke(path, labelVerb, 0, "bad-response"));
+            return false;
+        }
+
+        if (!response.Ok)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatHostInvoke(
+                path, labelVerb, 0, string.IsNullOrEmpty(response.Error) ? "rejected" : response.Error));
+        }
+
+        return response.Ok;
+    }
+
     private string? RunHost(string requestLine, int timeoutMs)
     {
         IShellHostProcess? process = null;

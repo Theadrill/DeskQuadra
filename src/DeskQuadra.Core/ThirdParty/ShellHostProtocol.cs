@@ -33,6 +33,22 @@ public static class ShellHostProtocol
     public const string QueryOp = "query";
     public const string InvokeOp = "invoke";
 
+    // FIX folhas sem verbo estável (Paint, Fireworks, destinos do SendTo):
+    // folhas com GCS_VERBW vazio caíam no fallback por offset, mas handlers
+    // dinâmicos reordenam os offsets entre duas QueryContextMenu — o invoke
+    // fazia NOVA query onde os offsets mudaram → VALIDATEW reprovava (ou, pior,
+    // clicava o vizinho) → false silencioso. Novo pedido "invoke-by-label":
+    // (path, extended, lista de rótulos do caminho — ex. ["Abrir com","Paint"],
+    // hwnd, ponto). O host, NUMA query só, enumera (com o lazy-populate
+    // existente), caminha pelos rótulos e invoca o offset achado NA MESMA
+    // interface (sem re-query, sem VALIDATEW — a garantia é a sessão única).
+    // RÓTULO = O QUE O USUÁRIO VIU: match exato (Ordinal) após a mesma
+    // normalização de exibição usada na listagem (CleanLabelForDisplay — sem
+    // '&', sem sufixo '\t', trim; case-sensitive como o Header do WPF).
+    // O caminho-verbo (HasStableVerb) continua intacto — este pedido só é
+    // usado para folhas SEM verbo estável.
+    public const string InvokeByLabelOp = "invoke-by-label";
+
     // Orçamentos T5 (§ plano: query ~3s / invoke ~30s). Fonte única: o cliente
     // espera isso no processo e o engine usa o mesmo valor na STA interna.
     public const int QueryTimeoutMs = 3000;
@@ -71,6 +87,24 @@ public static class ShellHostProtocol
         int? y)
         => JsonSerializer.Serialize(
             new ShellHostInvokeRequest(InvokeOp, path, verb, offset, extended, hwnd, x, y),
+            JsonOptions);
+
+    public static string SerializeInvokeByLabelRequest(
+        string path,
+        IReadOnlyList<string> labels,
+        bool extended,
+        long hwnd,
+        int? x,
+        int? y)
+        => JsonSerializer.Serialize(
+            new ShellHostInvokeByLabelRequest(
+                InvokeByLabelOp,
+                path,
+                extended,
+                labels is List<string> list ? list : new List<string>(labels ?? Array.Empty<string>()),
+                hwnd,
+                x,
+                y),
             JsonOptions);
 
     // Lê o "op" sem desserializar tudo (o host despacha por ele).
@@ -151,6 +185,42 @@ public static class ShellHostProtocol
             if (!HasStableVerb(req.Verb) && !IsOffsetInRange(req.Offset))
             {
                 return null;
+            }
+
+            return req;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static ShellHostInvokeByLabelRequest? ParseInvokeByLabelRequest(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return null;
+        }
+
+        try
+        {
+            var req = JsonSerializer.Deserialize<ShellHostInvokeByLabelRequest>(line, JsonOptions);
+            if (req is null || req.Op != InvokeByLabelOp || string.IsNullOrWhiteSpace(req.Path))
+            {
+                return null;
+            }
+
+            if (req.Labels is null || req.Labels.Count == 0)
+            {
+                return null;
+            }
+
+            foreach (string label in req.Labels)
+            {
+                if (string.IsNullOrWhiteSpace(label))
+                {
+                    return null;
+                }
             }
 
             return req;
@@ -267,6 +337,19 @@ public sealed record ShellHostInvokeRequest(
     string Verb,
     uint Offset,
     bool Extended,
+    long Hwnd,
+    int? X,
+    int? Y);
+
+// FIX invoke-by-label (folhas sem verbo estável): Labels = rótulos do caminho
+// como o usuário VIU (já CleanLabelForDisplay na listagem — ex.
+// ["Abrir com","Paint"]). O host limpa de novo os dois lados com
+// CleanLabelForDisplay e compara exato (Ordinal) — sem contains, sem idioma.
+public sealed record ShellHostInvokeByLabelRequest(
+    string Op,
+    string Path,
+    bool Extended,
+    List<string> Labels,
     long Hwnd,
     int? X,
     int? Y);

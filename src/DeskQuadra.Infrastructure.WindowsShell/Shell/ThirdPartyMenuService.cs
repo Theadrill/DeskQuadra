@@ -14,9 +14,12 @@ namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
 // guardas de alça. Visual e chamada intactos (zero XAML/resx em T5).
 // CMF_EXTENDEDVERBS só com Shift pressionado (GetKeyState no momento da abertura).
 // Query + alça de invoke resolvidos JUNTOS: GetForPath registra o Shift usado
-// por caminho; CreateHandle captura (path, verb, offset, extended) e TryInvoke
-// reenvia os MESMOS parâmetros ao host (verbo estável, imune a reordenação
-// de offsets; VALIDATEW+offset só no fallback de verbo vazio, dentro do host).
+// por caminho; CreateHandle captura (path, verb, offset, extended, labelPath)
+// e TryInvoke reenvia os MESMOS parâmetros ao host (verbo estável, imune a
+// reordenação de offsets, quando há; invoke-by-label NUMA query só quando NÃO
+// há verbo estável; VALIDATEW+offset só no fallback legado sem rótulos,
+// dentro do host). O caminho-verbo (7-Zip etc.) segue intacto — este fix só
+// muda o destino das folhas SEM verbo estável (Paint, Fireworks, SendTo).
 // Tudo best-effort e silencioso: qualquer falha devolve lista vazia / false.
 public sealed class ThirdPartyMenuService : IThirdPartyMenuService
 {
@@ -64,7 +67,7 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         }
     }
 
-    public ThirdPartyInvokeHandle? CreateHandle(string? path, string? verb, uint commandOffset)
+    public ThirdPartyInvokeHandle? CreateHandle(string? path, string? verb, uint commandOffset, IReadOnlyList<string>? labelPath = null)
     {
         try
         {
@@ -75,6 +78,12 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
 
             // Caminho-verbo não exige offset válido (seleção é pelo verbo
             // estável); offset só é guardado como fallback p/ verbo vazio.
+            // Folha sem verbo estável continua DESABILITADA quando não há como
+            // invocar: sem rótulos (chamador antigo) exige offset válido como
+            // antes; COM rótulos (UI nova) também exige offset válido — o
+            // offset aqui é só sinal de "folha real" (o sintético 0xFFFF do
+            // complemento-vazio Transmitir segue nulo = desabilitado) e NÃO é
+            // usado no invoke-by-label (o host resolve o offset na mesma query).
             string stableVerb = verb ?? string.Empty;
             if (!ShellHostProtocol.HasStableVerb(stableVerb)
                 && !ShellHostProtocol.IsOffsetInRange(commandOffset))
@@ -82,10 +91,27 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
                 return null;
             }
 
+            IReadOnlyList<string>? keptLabels = null;
+            if (!ShellHostProtocol.HasStableVerb(stableVerb) && labelPath is not null && labelPath.Count > 0)
+            {
+                var cleaned = new List<string>(labelPath.Count);
+                foreach (string raw in labelPath)
+                {
+                    if (string.IsNullOrWhiteSpace(raw))
+                    {
+                        return null;
+                    }
+
+                    cleaned.Add(raw);
+                }
+
+                keptLabels = cleaned;
+            }
+
             bool extended = _extendedByPath.TryGetValue(path, out bool tracked)
                 ? tracked
                 : NativeMethods.IsShiftPressed();
-            return new ThirdPartyInvokeHandle(path, stableVerb, commandOffset, extended);
+            return new ThirdPartyInvokeHandle(path, stableVerb, commandOffset, extended, keptLabels);
         }
         catch
         {
@@ -103,8 +129,12 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
             }
 
             // Guarda barata antes de spawnar (mesma do engine T3): fallback por
-            // offset exige faixa válida quando não há verbo estável.
+            // offset exige faixa válida quando não há verbo estável. Com
+            // rótulos, o CreateHandle já barrou o sintético 0xFFFF
+            // (complemento-vazio = desabilitado); aqui só re-checa o legado
+            // sem rótulos.
             if (!ShellHostProtocol.HasStableVerb(handle.Verb)
+                && (handle.LabelPath is null || handle.LabelPath.Count == 0)
                 && !ShellHostProtocol.IsOffsetInRange(handle.CommandOffset))
             {
                 return false;
@@ -112,6 +142,20 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
 
             // HWND/ponto atravessam o IPC como números (handle é válido entre
             // processos; sem ponto = invoke sem PTINVOKE, best-effort).
+            // Folha SEM verbo estável + com rótulos = invoke-by-label (NUMA
+            // query só no host); verbo estável = caminho-verbo intacto.
+            if (!ShellHostProtocol.HasStableVerb(handle.Verb)
+                && handle.LabelPath is not null && handle.LabelPath.Count > 0)
+            {
+                return _host.InvokeMenuByLabel(
+                    handle.Path,
+                    handle.LabelPath,
+                    handle.IncludeExtendedVerbs,
+                    hwnd.ToInt64(),
+                    invokePoint?.X,
+                    invokePoint?.Y);
+            }
+
             return _host.InvokeMenu(
                 handle.Path,
                 handle.Verb,

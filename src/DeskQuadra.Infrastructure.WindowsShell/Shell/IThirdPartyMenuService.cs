@@ -16,8 +16,11 @@ public interface IThirdPartyMenuService
 
     // Alça resolvida junto com a query: captura verbo + Shift/EXTENDEDVERBS
     // usados na listagem daquele caminho (o Shift do clique pode já ter sido
-    // solto). Verbo vazio = fallback por offset.
-    ThirdPartyInvokeHandle? CreateHandle(string? path, string? verb, uint commandOffset);
+    // solto). Verbo vazio = fallback por rótulos (invoke-by-label) ou, sem
+    // rótulos, por offset (legado). labelPath = rótulos do caminho como o
+    // usuário VIU (entry.Label + ancestrais, já CleanLabelForDisplay) — a UI
+    // passa; o host compara exato após CleanLabelForDisplay nos dois lados.
+    ThirdPartyInvokeHandle? CreateHandle(string? path, string? verb, uint commandOffset, IReadOnlyList<string>? labelPath = null);
 
     // Executa fora da UI do WPF (STA dedicada + Join com timeout); hwnd =
     // dono das UIs do handler (diálogos), ponto = cursor no momento do clique.

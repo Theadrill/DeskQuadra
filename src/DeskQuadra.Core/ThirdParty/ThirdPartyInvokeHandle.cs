@@ -14,8 +14,18 @@ namespace DeskQuadra.Core.ThirdParty;
 // pipeline/flags na MESMA interface IContextMenu raiz (QueryContextMenu →
 // InvokeCommand) na STA dedicada — agora dentro do processo host.
 // Dado puro (sem COM, sem thread) — o COM vive só dentro do host.
+// DECISÃO DE ACOPLAMENTO (FIX invoke-by-label, documentada aqui): a alça
+// carrega os rótulos do caminho (LabelPath — ex. ["Abrir com","Paint"]) em vez
+// de o cliente/serviço re-resolver a árvore/cache. Motivo: a UI JÁ tem os
+// rótulos exibidos (entry.Label + ancestrais, todos CleanLabelForDisplay); o
+// serviço/cliente não guardam árvore — re-resolver exigiria cache de entradas
+// por caminho (estado novo, expiração, memória) ou re-query (justo o que o fix
+// elimina). LabelPath é o que o usuário VIU; o host limpa os dois lados com
+// CleanLabelForDisplay e compara exato. LabelPath vazio/nulo = sem rótulos
+// (chamadores antigos e caminho-verbo — que ignora rótulos — seguem intactos).
 public sealed record ThirdPartyInvokeHandle(
     string Path,
     string Verb,
     uint CommandOffset,
-    bool IncludeExtendedVerbs);
+    bool IncludeExtendedVerbs,
+    IReadOnlyList<string>? LabelPath = null);

@@ -62,6 +62,12 @@ public static class ShellMenuLog
     public static string FormatPopupPopulated(string label, int before, int after)
         => $"popup label='{label}' lazy-populated before={before} after={after}";
 
+    // FIX invoke-by-label (folhas sem verbo estável): o log registra
+    // verb='(label:A > B)' nesse caminho (pseudo-verbo, nunca verbo real).
+    // Rótulos já são o que o usuário VIU (CleanLabelForDisplay na listagem).
+    public static string FormatLabelVerb(IReadOnlyList<string>? labels)
+        => "(label:" + string.Join(" > ", labels ?? Array.Empty<string>()) + ")";
+
     // Linhas do cliente/supervisor T5 (host fora do ar, timeout/kill, spawn).
     public static string FormatHostQuery(string path, bool extended, string outcome)
         => $"host query path='{path}' extended={extended} outcome={outcome}";

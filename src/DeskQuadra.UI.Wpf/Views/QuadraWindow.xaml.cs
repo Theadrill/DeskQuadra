@@ -1325,11 +1325,32 @@ public partial class QuadraWindow : Window
     // Click invoca e o menu fecha sozinho (padrão WPF); cascata = habilitada
     // (precisa abrir o submenu) sem invoke. Nativo/canônico continua fora
     // (filtro T2 intacto, aplicado antes de chegar aqui).
-    private MenuItem CreateThirdPartyItem(ThirdPartyMenuEntry entry, string? targetPath)
+    // FIX folhas sem verbo estável: a folha SEM verbo (Paint, destinos do
+    // SendTo) leva os rótulos do caminho (ancestrais + próprio Header — o que
+    // o usuário VIU) na alça; o serviço manda invoke-by-label p/ elas e mantém
+    // o caminho-verbo p/ quem tem verbo estável (7-Zip etc., intacto).
+    // Cascata continua sem alça (só submenu); placeholder/filtro intactos.
+    private MenuItem CreateThirdPartyItem(
+        ThirdPartyMenuEntry entry,
+        string? targetPath,
+        IReadOnlyList<string>? ancestorLabels = null)
     {
         bool isLeaf = entry.Children.Count == 0;
+        IReadOnlyList<string>? labelPath = null;
+        if (isLeaf && !ShellHostProtocol.HasStableVerb(entry.Verb))
+        {
+            var path = new List<string>((ancestorLabels?.Count ?? 0) + 1);
+            if (ancestorLabels is not null)
+            {
+                path.AddRange(ancestorLabels);
+            }
+
+            path.Add(entry.Label);
+            labelPath = path;
+        }
+
         ThirdPartyInvokeHandle? handle = isLeaf
-            ? _thirdPartyMenuService.CreateHandle(targetPath, entry.Verb, entry.CommandOffset)
+            ? _thirdPartyMenuService.CreateHandle(targetPath, entry.Verb, entry.CommandOffset, labelPath)
             : null;
         var item = new MenuItem
         {
@@ -1342,9 +1363,19 @@ public partial class QuadraWindow : Window
             item.Click += ThirdPartyItem_Click;
         }
 
-        foreach (var child in entry.Children)
+        if (!isLeaf)
         {
-            item.Items.Add(CreateThirdPartyItem(child, targetPath));
+            var childAncestors = new List<string>((ancestorLabels?.Count ?? 0) + 1);
+            if (ancestorLabels is not null)
+            {
+                childAncestors.AddRange(ancestorLabels);
+            }
+
+            childAncestors.Add(entry.Label);
+            foreach (var child in entry.Children)
+            {
+                item.Items.Add(CreateThirdPartyItem(child, targetPath, childAncestors));
+            }
         }
 
         return item;

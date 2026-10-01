@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using DeskQuadra.Core.ThirdParty;
 using Vanara;
 using Vanara.PInvoke;
@@ -144,6 +145,48 @@ internal static class ShellThirdPartyInvoke
             path);
     }
 
+    // FIX folhas sem verbo estável (Paint, Fireworks, destinos do SendTo):
+    // UMA query só — enumera (com o lazy-populate existente), caminha pelos
+    // rótulos e invoca o offset achado NA MESMA interface (sem re-query, sem
+    // VALIDATEW — a garantia é a sessão única; o offset é resolvido e usado
+    // antes de qualquer outra query poder reordená-lo). Match exato (Ordinal)
+    // após CleanLabelForDisplay nos DOIS lados — o rótulo é o que o usuário
+    // VIU no menu (Header do WPF). Genérico, sem hardcoded: qualquer folha
+    // sem verbo (presente ou futura) resolve por aqui. O caminho-verbo e o
+    // fallback-offset antigos seguem intactos (VALIDATEW mantido só lá).
+    public static bool TryInvokeByLabel(
+        string path,
+        IReadOnlyList<string>? labels,
+        bool includeExtendedVerbs,
+        IntPtr hwnd,
+        POINT? invokePoint)
+    {
+        if (string.IsNullOrWhiteSpace(path) || labels is null || labels.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (string raw in labels)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return false;
+            }
+        }
+
+        if (labels.Count > MaxLabelDepth)
+        {
+            return false;
+        }
+
+        CMF flags = ShellThirdPartyQuery.BuildQueryFlags(includeExtendedVerbs);
+        return ShellStaRunner.TryRun(
+            () => InvokeByLabelOnStaThread(path, labels, flags, hwnd, invokePoint, includeExtendedVerbs),
+            ShellStaRunner.InvokeTimeoutMs,
+            "DeskQuadra.ShellInvokeByLabel",
+            path);
+    }
+
     private static bool InvokeOnStaThread(
         string path,
         string? verb,
@@ -283,6 +326,207 @@ internal static class ShellThirdPartyInvoke
         {
             pidl.Dispose();
         }
+    }
+
+    // Profundidade máxima do caminho de rótulos (mesmo teto da enumeração).
+    private const int MaxLabelDepth = 8;
+    private const int LabelCapacityChars = 512;
+
+    private static bool InvokeByLabelOnStaThread(
+        string path,
+        IReadOnlyList<string> labels,
+        CMF flags,
+        IntPtr hwnd,
+        POINT? invokePoint,
+        bool shiftDown)
+    {
+        string labelVerb = ShellMenuLog.FormatLabelVerb(labels);
+        var wanted = new List<string>(labels.Count);
+        foreach (string raw in labels)
+        {
+            string clean = ThirdPartyVerbFilter.CleanLabelForDisplay(raw);
+            if (clean.Length == 0)
+            {
+                ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, "n/a", "n/a", "n/a", "label-invalid"));
+                return false;
+            }
+
+            wanted.Add(clean);
+        }
+
+        // .lnk = invoke sobre o próprio link (SEM resolver o alvo antes, §1).
+        HRESULT hr = SHParseDisplayName(path, null, out PIDL pidl, 0, out _);
+        if (hr.Failed || pidl.IsNull)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "parse-failed"));
+            return false;
+        }
+
+        try
+        {
+            hr = SHBindToParent(pidl, typeof(IShellFolder).GUID, out object? folderObj, out IntPtr childRel);
+            if (hr.Failed || folderObj is not IShellFolder folder || childRel == IntPtr.Zero)
+            {
+                ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "bind-failed"));
+                return false;
+            }
+
+            try
+            {
+                Guid iidMenu = typeof(IContextMenu).GUID;
+                hr = folder.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidMenu, IntPtr.Zero, out object? menuObj);
+                if (hr.Failed || menuObj is not IContextMenu contextMenu)
+                {
+                    ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "menu-failed"));
+                    return false;
+                }
+
+                try
+                {
+                    using var hMenu = CreatePopupMenu();
+                    if (hMenu.IsInvalid)
+                    {
+                        ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, "n/a", "n/a", "n/a", "hmenu-invalid"));
+                        return false;
+                    }
+
+                    hr = contextMenu.QueryContextMenu(hMenu, 0, IdCmdFirst, IdCmdLast, flags);
+                    string queryHr = $"0x{(uint)hr:X8}";
+                    if (hr.Failed)
+                    {
+                        ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "query-failed"));
+                        return false;
+                    }
+
+                    HWND owner = hwnd != IntPtr.Zero ? (HWND)hwnd : GetForegroundWindow();
+                    HMENU current = hMenu;
+
+                    for (int level = 0; level < wanted.Count; level++)
+                    {
+                        bool isLast = level == wanted.Count - 1;
+                        int count = GetMenuItemCount(current);
+                        bool descended = false;
+
+                        for (uint pos = 0; pos < (uint)count; pos++)
+                        {
+                            var mii = new MENUITEMINFO
+                            {
+                                cbSize = (uint)Marshal.SizeOf<MENUITEMINFO>(),
+                                fMask = MenuItemInfoMask.MIIM_FTYPE | MenuItemInfoMask.MIIM_ID | MenuItemInfoMask.MIIM_SUBMENU,
+                            };
+                            if (!GetMenuItemInfo(current, pos, true, ref mii))
+                            {
+                                continue;
+                            }
+
+                            if (((uint)mii.fType & (uint)MenuItemType.MFT_SEPARATOR) != 0)
+                            {
+                                continue;
+                            }
+
+                            string cleaned = ThirdPartyVerbFilter.CleanLabelForDisplay(GetMenuLabel(current, pos));
+                            if (cleaned.Length == 0 || !string.Equals(cleaned, wanted[level], StringComparison.Ordinal))
+                            {
+                                continue;
+                            }
+
+                            if (!isLast)
+                            {
+                                if (mii.hSubMenu.IsNull)
+                                {
+                                    ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-dead-end"));
+                                    return false;
+                                }
+
+                                // Mesmo lazy-populate da listagem (SendTo/OpenWith
+                                // e qualquer cascata lazy): sem isso a cascata
+                                // vem vazia/errada e o rótulo não é achado.
+                                ShellThirdPartyQuery.TryPopulateLazyPopup(contextMenu, mii.hSubMenu, pos);
+                                current = mii.hSubMenu;
+                                descended = true;
+                                break;
+                            }
+
+                            // Folha: popup no fim do caminho nunca invoca (a UI
+                            // nunca cria alça p/ cascata — só submenu).
+                            if (!mii.hSubMenu.IsNull)
+                            {
+                                ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-is-popup"));
+                                return false;
+                            }
+
+                            if (mii.wID < IdCmdFirst)
+                            {
+                                ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-not-found"));
+                                return false;
+                            }
+
+                            // Offset achado NA MESMA interface: invoca direto,
+                            // SEM re-query e SEM VALIDATEW (a garantia é a
+                            // sessão única — o offset não teve como mudar).
+                            uint offset = mii.wID - IdCmdFirst;
+                            var info = BuildInvokeInfo(offset, owner, invokePoint, shiftDown);
+
+                            int size = Marshal.SizeOf<CMINVOKECOMMANDINFOEX>();
+                            IntPtr p = Marshal.AllocHGlobal(size);
+                            try
+                            {
+                                Marshal.StructureToPtr(info, p, fDeleteOld: false);
+                                HRESULT invokeHr = contextMenu.InvokeCommand(p);
+                                string invokeHrText = $"0x{(uint)invokeHr:X8}";
+                                bool ok = invokeHr.Succeeded;
+                                ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, offset, queryHr, "n/a", invokeHrText, ok ? "ok" : "invoke-failed"));
+                                return ok;
+                            }
+                            finally
+                            {
+                                Marshal.FreeHGlobal(p);
+                            }
+                        }
+
+                        if (!isLast && !descended)
+                        {
+                            ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-not-found"));
+                            return false;
+                        }
+
+                        if (isLast && !descended)
+                        {
+                            // Nenhuma folha bateu no último nível.
+                            ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-not-found"));
+                            return false;
+                        }
+                    }
+
+                    ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-not-found"));
+                    return false;
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(menuObj);
+                }
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(folder);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, "n/a", "n/a", "n/a", $"exception {ex.GetType().Name}"));
+            return false;
+        }
+        finally
+        {
+            pidl.Dispose();
+        }
+    }
+
+    private static string GetMenuLabel(HMENU hMenu, uint posByPosition)
+    {
+        var sb = new StringBuilder(LabelCapacityChars);
+        int len = GetMenuString(hMenu, posByPosition, sb, sb.Capacity, MenuFlags.MF_BYPOSITION);
+        return len > 0 ? sb.ToString() : string.Empty;
     }
 
     private static bool InvokeByVerb(
