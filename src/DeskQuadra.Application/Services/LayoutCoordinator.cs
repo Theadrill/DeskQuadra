@@ -26,6 +26,7 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
     public event EventHandler<Guid>? QuadraRemoved;
     public event EventHandler<Guid>? QuadraHidden;
     public event EventHandler<Guid>? QuadraRestored;
+    public event EventHandler<Guid>? DesktopItemsRescanned;
 
     public LayoutCoordinator(ILayoutRepository repository, IDesktopScannerService scannerService)
     {
@@ -165,6 +166,7 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
             targetQuadra.Items.Clear();
             targetQuadra.Items.AddRange(scanned);
             NotifyQuadraChanged(targetQuadra);
+            DesktopItemsRescanned?.Invoke(this, targetQuadra.Id);
         }
     }
 

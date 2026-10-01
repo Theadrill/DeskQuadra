@@ -8,4 +8,11 @@ namespace DeskQuadra.Core.Contracts;
 public interface IDesktopScannerService
 {
     IReadOnlyList<DesktopItem> ScanDesktopItems();
+
+    /// <summary>
+    /// Diretórios físicos observados pela varredura (Desktop do usuário via
+    /// KnownFolder — resolve OneDrive — + Desktop público + fallbacks).
+    /// Mesma lista que o live sync observa; sem duplicatas (case-insensitive).
+    /// </summary>
+    IReadOnlyList<string> GetWatchedDirectories();
 }

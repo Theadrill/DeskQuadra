@@ -87,6 +87,8 @@ public sealed class DesktopScannerService : IDesktopScannerService
         return items;
     }
 
+    public IReadOnlyList<string> GetWatchedDirectories() => GetDesktopDirectories();
+
     // D14: adiciona o caminho só se for único (ignora nulo/vazio, compara sem caixa alta).
     internal static void AddIfUnique(List<string> paths, string? candidate)
     {

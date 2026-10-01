@@ -41,6 +41,11 @@ public class LayoutCoordinatorTests
         {
             return ItemsToReturn;
         }
+
+        public IReadOnlyList<string> GetWatchedDirectories()
+        {
+            return Array.Empty<string>();
+        }
     }
 
     [Fact]
@@ -112,6 +117,71 @@ public class LayoutCoordinatorTests
         var quadra = coordinator.ActiveQuadras[0];
         Assert.Single(quadra.Items);
         Assert.Equal("Novo Item", quadra.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task RescanDesktopItems_FiresEventWithDefaultQuadraId()
+    {
+        // Arrange: first-run cria a TUDO/default via InitializeAsync
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+        scanner.ItemsToReturn.Add(new DesktopItem("Original", @"C:\Orig.lnk"));
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        await coordinator.InitializeAsync();
+        var tudoId = coordinator.ActiveQuadras[0].Id;
+
+        Guid? notifiedId = null;
+        coordinator.DesktopItemsRescanned += (s, id) => notifiedId = id;
+
+        scanner.ItemsToReturn.Clear();
+        scanner.ItemsToReturn.Add(new DesktopItem("Novo Item", @"C:\Novo.txt"));
+
+        // Act
+        coordinator.RescanDesktopItems();
+
+        // Assert: modelo atualizado + evento mira a janela certa (a default)
+        Assert.Equal(tudoId, notifiedId);
+        Assert.Single(coordinator.ActiveQuadras[0].Items);
+    }
+
+    [Fact]
+    public void RescanDesktopItems_WithoutDefault_FiresEventWithSingleQuadraId()
+    {
+        // Arrange: uma Quadra comum, sem default (cai no fallback "primeira")
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+        var only = coordinator.CreateNewQuadra("Q1", 0, 0);
+
+        Guid? notifiedId = null;
+        coordinator.DesktopItemsRescanned += (s, id) => notifiedId = id;
+
+        // Act
+        coordinator.RescanDesktopItems();
+
+        // Assert
+        Assert.Equal(only.Id, notifiedId);
+    }
+
+    [Fact]
+    public void RescanDesktopItems_WithoutQuadras_FiresNoEvent()
+    {
+        // Arrange: coordinator virgem, sem Initialize (lista vazia)
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+
+        bool fired = false;
+        coordinator.DesktopItemsRescanned += (s, id) => fired = true;
+
+        // Act (no-op, sem exceção)
+        coordinator.RescanDesktopItems();
+
+        // Assert
+        Assert.False(fired);
     }
 
     [Fact]

@@ -44,6 +44,8 @@ public partial class App : System.Windows.Application
     // Janelas abertas rastreadas por Id da Quadra (ciclo de vida Esconder/Restaurar/Excluir)
     private readonly Dictionary<Guid, QuadraWindow> _quadraWindows = new();
     private WinForms.NotifyIcon? _trayIcon;
+    // Live sync do Desktop (Fase 6): watcher + debounce 250ms; null se falhar.
+    private Services.DesktopLiveSync? _liveSync;
     // Trava de instância única (PO): segunda instância sai quieta, primeira intocada.
     // Guardado em campo até o fim do processo (nunca liberado).
     private Mutex? _singleInstanceMutex;
@@ -156,6 +158,27 @@ public partial class App : System.Windows.Application
         coordinator.QuadraRemoved += (s, id) =>
         {
             Dispatcher.Invoke(() => CloseQuadraWindow(id));
+        };
+
+        // Rescan (manual ou live sync): atualiza o modelo da Quadra padrão no
+        // coordinator; o clique pode ter partido de outra Quadra, então o
+        // refresh mira a janela CERTA pelo Id (sem XAML, sem timer novo).
+        coordinator.DesktopItemsRescanned += (s, id) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (_quadraWindows.TryGetValue(id, out var window))
+                {
+                    try
+                    {
+                        window.RefreshItemsFromModel();
+                    }
+                    catch
+                    {
+                        // Best-effort: persistência já ocorreu no coordinator.
+                    }
+                }
+            });
         };
 
         // 3b. Cria o ícone da bandeja do sistema (acesso às Quadras escondidas + Sair)
@@ -281,6 +304,19 @@ public partial class App : System.Windows.Application
             }
 
             OpenQuadraWindow(quadra);
+        }
+
+        // 6. Live sync do Desktop físico (Fase 6): Created/Renamed com debounce
+        // de 250ms via OneShotTimer existente → Rescan → evento refresca a
+        // janela certa. Best-effort: nunca derruba o startup.
+        try
+        {
+            var scanner = _serviceProvider.GetRequiredService<IDesktopScannerService>();
+            _liveSync = new Services.DesktopLiveSync(coordinator, scanner, Dispatcher);
+        }
+        catch
+        {
+            _liveSync = null;
         }
     }
 
@@ -830,6 +866,20 @@ public partial class App : System.Windows.Application
 
         if (_serviceProvider != null)
         {
+            // Para o live sync antes do save final (sem rescan no shutdown).
+            try
+            {
+                _liveSync?.Dispose();
+            }
+            catch
+            {
+                // Silencioso, padrão do projeto.
+            }
+            finally
+            {
+                _liveSync = null;
+            }
+
             _drawingService?.Stop();
             _selectionWindow?.Close();
             _settingsWindow?.Close();

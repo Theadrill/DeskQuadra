@@ -18,6 +18,11 @@ public interface ILayoutCoordinator : IDisposable
     event EventHandler<Guid>? QuadraHidden;
     event EventHandler<Guid>? QuadraRestored;
 
+    // Disparado após RescanDesktopItems atualizar a Quadra alvo (Id da Quadra
+    // padrão/TUDO, ou da primeira quando não há padrão). A UI assina para
+    // refrescar a janela certa — o clique pode ter partido de outra Quadra.
+    event EventHandler<Guid>? DesktopItemsRescanned;
+
     Task InitializeAsync(CancellationToken cancellationToken = default);
 
     Quadra CreateNewQuadra(string title, double left, double top, double width = 340, double height = 260);
