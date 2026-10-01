@@ -615,6 +615,11 @@ public partial class QuadraWindow : Window
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // Em edição de título: clique não arrasta nem recolhe (só o TextBox recebe).
+        if (_isRenaming)
+        {
+            return;
+        }
         // Quadra travada: sem arraste pela barra de título (scroll, cliques e menu seguem normais)
         // (o lock NÃO bloqueia recolher/expandir: o chevron e o duplo-clique continuam ativos)
         if (_viewModel.IsLocked)
@@ -2192,8 +2197,112 @@ public partial class QuadraWindow : Window
         RefreshLockState();
     }
 
+    // RENOMEAR (fatia título): edição inline na barra, sem diálogo/timer/cor nova.
+    // Enter confirma (vazio/só-espaços rejeita e mantém o anterior), ESC cancela,
+    // LostFocus confirma se válido (senão cancela). Persiste via NotifyQuadraChanged
+    // (caminho existente: debounce ~400ms -> quadras.json; fecha e reabre mantendo).
+    // Seguro p/ a TUDO: identidade da padrão é IsDefault (flag técnica), nunca o título.
+    private bool _isRenaming;
+    private string _renameOriginalTitle = string.Empty;
+
+    private void RenameQuadraMenu_Click(object sender, RoutedEventArgs e)
+    {
+        BeginRename();
+    }
+
+    private void BeginRename()
+    {
+        if (_isRenaming)
+        {
+            return;
+        }
+        // Resize armado troca o título pela instrução: desarma primeiro p/ não
+        // confundir o original guardado (restaura sem Notify, mesmo molde dos cancelas).
+        if (s_touchResize != null && s_touchResize.QuadraId == QuadraId)
+        {
+            CancelTouchResize();
+        }
+        _isRenaming = true;
+        _renameOriginalTitle = _viewModel.Title;
+        TitleTextBlock.Visibility = Visibility.Collapsed;
+        TitleEditBox.Text = _viewModel.Title;
+        TitleEditBox.Visibility = Visibility.Visible;
+        TitleEditBox.IsEnabled = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            TitleEditBox.Focus();
+            TitleEditBox.SelectAll();
+        }, DispatcherPriority.Input);
+    }
+
+    private void TitleEditBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_isRenaming)
+        {
+            return;
+        }
+        if (e.Key == Key.Enter)
+        {
+            CommitRename();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            CancelRename();
+            e.Handled = true;
+        }
+    }
+
+    private void TitleEditBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_isRenaming)
+        {
+            CommitRename();
+        }
+    }
+
+    private void CommitRename()
+    {
+        if (!_isRenaming)
+        {
+            return;
+        }
+        string candidate = TitleEditBox.Text;
+        if (QuadraTitleValidator.TryNormalize(candidate, out string normalized))
+        {
+            if (!string.Equals(normalized, _viewModel.Title, StringComparison.Ordinal))
+            {
+                _viewModel.Title = normalized;
+                _coordinator.NotifyQuadraChanged(_viewModel.Model);
+            }
+            EndRename();
+        }
+        else
+        {
+            // Vazio/só-espaços: rejeita e mantém o anterior.
+            CancelRename();
+        }
+    }
+
+    private void CancelRename()
+    {
+        if (!_isRenaming)
+        {
+            return;
+        }
+        EndRename();
+    }
+
+    private void EndRename()
+    {
+        _isRenaming = false;
+        TitleEditBox.Visibility = Visibility.Collapsed;
+        TitleTextBlock.Visibility = Visibility.Visible;
+    }
+
     protected override void OnClosed(EventArgs e)
     {
+        _isRenaming = false;
         _touchInertiaTimer?.Stop();
         // MOVER armado com origem aqui: fechar cancela sem mover (sem destaque/timeout/ESC órfãos)
         if (s_touchMove != null && s_touchMove.SourceQuadraId == QuadraId)

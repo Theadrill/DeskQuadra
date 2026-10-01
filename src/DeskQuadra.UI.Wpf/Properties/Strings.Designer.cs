@@ -104,6 +104,8 @@ namespace DeskQuadra.UI.Wpf.Properties
 
         public static string QuadraMenu_LockQuadra => ResourceManager.GetString("QuadraMenu_LockQuadra", resourceCulture);
 
+        public static string QuadraMenu_Rename => ResourceManager.GetString("QuadraMenu_Rename", resourceCulture);
+
         public static string QuadraMenu_CloseQuadra => ResourceManager.GetString("QuadraMenu_CloseQuadra", resourceCulture);
 
         public static string Quadra_LockedTooltip => ResourceManager.GetString("Quadra_LockedTooltip", resourceCulture);

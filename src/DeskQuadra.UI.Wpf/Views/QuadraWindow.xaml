@@ -117,6 +117,7 @@
                                 <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortManual}" Click="SortByManual_Click"/>
                             </MenuItem>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_NewQuadra}" Click="NewQuadraMenu_Click"/>
+                            <MenuItem Header="{x:Static properties:Strings.QuadraMenu_Rename}" Click="RenameQuadraMenu_Click"/>
                             <MenuItem x:Name="LockQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_LockQuadra}" IsCheckable="True" Click="LockQuadraMenu_Click"/>
                             <MenuItem x:Name="ResizeQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_ResizeQuadra}" Click="ResizeQuadraMenu_Click" Visibility="Collapsed"/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_CloseQuadra}" Click="CloseButton_Click"/>
@@ -132,7 +133,8 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Título com sombra para contraste em papéis de parede claros ou escuros -->
-                        <TextBlock Grid.Column="0"
+                        <TextBlock x:Name="TitleTextBlock"
+                                   Grid.Column="0"
                                    Text="{Binding Title}"
                                    Foreground="{DynamicResource Quadra.Title.Foreground}"
                                    FontSize="{DynamicResource Quadra.Title.FontSize}"
@@ -146,6 +148,20 @@
                                                   Color="{DynamicResource Quadra.Title.Shadow.Color}"/>
                             </TextBlock.Effect>
                         </TextBlock>
+
+                        <!-- Edição inline do título (fatia Renomear): REUSE tokens do tema, sem cor chapada -->
+                        <TextBox x:Name="TitleEditBox"
+                                 Grid.Column="0"
+                                 Visibility="Collapsed"
+                                 VerticalAlignment="Center"
+                                 FontSize="{DynamicResource Quadra.Title.FontSize}"
+                                 FontWeight="{DynamicResource Quadra.Title.FontWeight}"
+                                 Foreground="{DynamicResource Quadra.Title.Foreground}"
+                                 Background="{DynamicResource Quadra.Background}"
+                                 BorderBrush="{DynamicResource Quadra.Item.Selected.BorderBrush}"
+                                 BorderThickness="{DynamicResource Quadra.Item.BorderThickness}"
+                                 KeyDown="TitleEditBox_KeyDown"
+                                 LostFocus="TitleEditBox_LostFocus"/>
 
                         <!-- Cadeado discreto de Quadra travada -->
                         <TextBlock x:Name="LockIndicator"

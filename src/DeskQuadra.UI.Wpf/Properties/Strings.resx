@@ -120,6 +120,9 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="QuadraMenu_LockQuadra" xml:space="preserve">
     <value>Travar esta Quadra</value>
   </data>
+  <data name="QuadraMenu_Rename" xml:space="preserve">
+    <value>Renomear</value>
+  </data>
   <data name="QuadraMenu_CloseQuadra" xml:space="preserve">
     <value>Fechar Quadra</value>
   </data>
