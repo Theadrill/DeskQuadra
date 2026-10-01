@@ -54,7 +54,7 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
             // não poluem o cache normal e vice-versa).
             bool extended = NativeMethods.IsShiftPressed();
             TrackExtendedFlag(path, extended);
-            string key = GetCacheKey(path, isDirectory) + (extended ? "|ext" : string.Empty);
+            string key = GetCacheKey(path, isDirectory, extended);
             return _cache.GetOrAdd(key, _ => QueryUncached(path, extended));
         }
         catch
@@ -163,13 +163,25 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
 
     // Cache por extensão (§1 T2): ".ZIP"→".zip", sem extensão→"", pasta→"<folder>".
     // .lnk cai em ".lnk" (query sobre o próprio link, sem resolver alvo).
+    // T6 Shift: consulta com Shift (CMF_EXTENDEDVERBS) usa bucket separado
+    // ("|ext") — verbos estendidos nunca poluem o cache normal e vice-versa
+    // (sonda T6 provou: .txt extended lista Extrair/Testar do 7-Zip, normal
+    // não; .zip/pasta extended trazem opennewprocess, pasta traz Powershell).
     internal static string GetCacheKey(string path, bool isDirectory)
+        => GetCacheKey(path, isDirectory, extended: false);
+
+    internal static string GetCacheKey(string path, bool isDirectory, bool extended)
     {
+        string baseKey;
         if (isDirectory)
         {
-            return "<folder>";
+            baseKey = "<folder>";
+        }
+        else
+        {
+            baseKey = Path.GetExtension(path).ToLowerInvariant();
         }
 
-        return Path.GetExtension(path).ToLowerInvariant();
+        return extended ? baseKey + "|ext" : baseKey;
     }
 }

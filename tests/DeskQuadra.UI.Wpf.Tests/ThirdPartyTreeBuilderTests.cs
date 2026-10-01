@@ -35,14 +35,24 @@ public class ThirdPartyTreeBuilderTests
         Assert.Equal("Extract files...", zip.Children[1].Label);
     }
 
+    // COMPLEMENTOS (T6): "Enviar para" virou complemento (verbo implícito
+    // sendto — o popup real chega com Verb=null) e o filho com verbo sendto
+    // passa pela allowlist — a cascata SOBREVIVE (antes caía inteira).
     [Fact]
-    public void Build_CascataSóDeNativos_CaiInteira()
+    public void Build_CascataEnviarParaComplemento_MantémPaisEFilhos()
     {
         var raw = new[] { Popup("Enviar para", Leaf("Documentos", "sendto")) };
 
-        Assert.Empty(ThirdPartyTreeBuilder.Build(raw));
+        var result = ThirdPartyTreeBuilder.Build(raw);
+
+        var popup = Assert.Single(result);
+        Assert.Equal("Enviar para", popup.Label);
+        var child = Assert.Single(popup.Children);
+        Assert.Equal("sendto", child.Verb);
     }
 
+    // COMPLEMENTOS (T6): "Incluir na biblioteca" continua nativa (cai inteira);
+    // "Enviar para" virou complemento e SOBREVIVE sozinha no mesmo nível.
     [Fact]
     public void Build_CascataNativa_CaiInteiraPeloRótulo()
     {
@@ -54,7 +64,74 @@ public class ThirdPartyTreeBuilderTests
             Popup("Enviar para", Leaf("Documentos", "sendto")),
         };
 
-        Assert.Empty(ThirdPartyTreeBuilder.Build(raw));
+        var result = ThirdPartyTreeBuilder.Build(raw);
+
+        var popup = Assert.Single(result);
+        Assert.Equal("Enviar para", popup.Label);
+    }
+
+    // COMPLEMENTOS (T6, sonda .jpg): popup "Transmitir para Dispositivo" tem
+    // verbo VAZIO nos dois níveis — passa pela allowlist por LABEL (único
+    // sinal; a folha "casttodevice" com verbo passa pelo verbo). O filho sem
+    // verbo cai no fallback por offset já existente (risco documentado no
+    // TreeBuilder/engine: VALIDATEW não protege contra verbo trocado).
+    [Fact]
+    public void Build_CascataTransmitirComplemento_MantémPopupEFilhoSemVerbo()
+    {
+        var raw = new[]
+        {
+            Popup("Transmitir para Dispositivo",
+                Leaf("Transmitir para Dispositivo", string.Empty, 203)),
+            Leaf("Git Bash Here", "git.bash"),
+        };
+
+        var result = ThirdPartyTreeBuilder.Build(raw);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Transmitir para Dispositivo", result[0].Label);
+        Assert.Equal("Git Bash Here", result[1].Label);
+    }
+
+    // COMPLEMENTOS (T6): folhas wallpaper/rotate/openas viraram complemento e
+    // passam; vizinhas nativas (opennewprocess/powershell) continuam fora e a
+    // terceira de terceiro sobrevive no mesmo nível.
+    [Theory]
+    [InlineData("setdesktopwallpaper", "Definir como fundo da área de trabalho")]
+    [InlineData("rotate90", "Girar para a direita")]
+    [InlineData("rotate270", "Girar para a esquerda")]
+    [InlineData("openas", "Abrir com")]
+    [InlineData("sendto", "Enviar para")]
+    [InlineData("casttodevice", "Transmitir para Dispositivo")]
+    public void Build_FolhaComplemento_PassaTerceiroVizinnhoFica(string verb, string label)
+    {
+        var raw = new[]
+        {
+            Leaf(label, verb),
+            Leaf("Send with Tailscale...", "tailscale"),
+        };
+
+        var result = ThirdPartyTreeBuilder.Build(raw);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(label, result[0].Label);
+    }
+
+    // Vizinhos nativos da sonda T6 que CONTINUAM fora (não são complementos).
+    [Theory]
+    [InlineData("opennewprocess", "Abrir em novo processo")]
+    [InlineData("Powershell", "Abrir janela do PowerShell aqui")]
+    public void Build_FolhaNativaSondaT6_CaiTerceiroVizinnhoFica(string verb, string label)
+    {
+        var raw = new[]
+        {
+            Leaf(label, verb),
+            Leaf("Send with Tailscale...", "tailscale"),
+        };
+
+        var result = ThirdPartyTreeBuilder.Build(raw);
+
+        var single = Assert.Single(result);
+        Assert.Equal("Send with Tailscale...", single.Label);
     }
 
     [Fact]
@@ -79,6 +156,46 @@ public class ThirdPartyTreeBuilderTests
 
         var single = Assert.Single(result);
         Assert.Equal("Git Bash Here", single.Label);
+    }
+
+    // Cascata-complemento VAZIA/lazy (SendTo sem HandleMenuMsg): mantém o item
+    // mesmo assim — com verbo implícito estável (sendto/openas) o invoke usa o
+    // caminho-verbo existente; sem ele, offset fora da faixa = handle nulo =
+    // item desabilitado (nunca invoca offset errado).
+    [Fact]
+    public void Build_CascataEnviarVazia_MantémComVerboImplícito()
+    {
+        var raw = new[] { Popup("Enviar para") };
+
+        var result = ThirdPartyTreeBuilder.Build(raw);
+
+        var single = Assert.Single(result);
+        Assert.Equal("Enviar para", single.Label);
+        Assert.Equal("sendto", single.Verb);
+        Assert.Empty(single.Children);
+    }
+
+    [Fact]
+    public void Build_CascataTransmitirVazia_MantémDesabilitadaSegura()
+    {
+        var raw = new[] { Popup("Transmitir para Dispositivo") };
+
+        var result = ThirdPartyTreeBuilder.Build(raw);
+
+        var single = Assert.Single(result);
+        Assert.Equal("Transmitir para Dispositivo", single.Label);
+        Assert.Empty(single.Children);
+        // Offset fora da faixa => CreateHandle nulo => UI desabilita (seguro).
+        Assert.False(DeskQuadra.Core.ThirdParty.ShellHostProtocol.IsOffsetInRange(single.CommandOffset));
+    }
+
+    // Cascata nativa NÃO-complemento vazia continua caindo (sem item fantasma).
+    [Fact]
+    public void Build_CascataNativaVazia_Cai()
+    {
+        var raw = new[] { Popup("Incluir na biblioteca") };
+
+        Assert.Empty(ThirdPartyTreeBuilder.Build(raw));
     }
 
     [Fact]

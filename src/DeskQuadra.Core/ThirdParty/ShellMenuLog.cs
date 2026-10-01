@@ -56,6 +56,12 @@ public static class ShellMenuLog
         string outcome)
         => $"invoke path='{path}' verb='{verb ?? string.Empty}' offset={offset} query={queryHr} validate={validateHr} invoke={invokeHr} outcome={outcome}";
 
+    // Lazy-populate de cascata (WM_INITMENUPOPUP via IContextMenu2/3): quantos
+    // filhos o popup ganhou após o HandleMenuMsg (debug sem spam — o chamador
+    // só loga quando a contagem muda).
+    public static string FormatPopupPopulated(string label, int before, int after)
+        => $"popup label='{label}' lazy-populated before={before} after={after}";
+
     // Linhas do cliente/supervisor T5 (host fora do ar, timeout/kill, spawn).
     public static string FormatHostQuery(string path, bool extended, string outcome)
         => $"host query path='{path}' extended={extended} outcome={outcome}";

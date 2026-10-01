@@ -41,6 +41,71 @@ internal static class ShellThirdPartyQuery
     private const int LabelCapacityChars = 512;
     private const int VerbCapacityChars = 512;
 
+    // Cascatas lazy/delay-populated (SendTo/OpenWith e QUALQUER outra): o
+    // handler só preenche os filhos ao receber WM_INITMENUPOPUP (padrão
+    // Files.App). Valor == (uint)WindowMessage.WM_INITMENUPOPUP (0x0117);
+    // literal p/ não acoplar o engine ao enum do User32 além do já usado.
+    internal const uint WmInitMenuPopup = 0x0117;
+
+    // Parâmetros puros/testáveis do HandleMenuMsg(WM_INITMENUPOPUP):
+    // wParam = HMENU do submenu, lParam = posição (índice) do popup no menu
+    // pai. Sem HWND: a mensagem não carrega janela (muitos handlers populam
+    // sem janela; se algum exigir HWND real, cai no best-effort abaixo e a
+    // limitação segue reportada em ThirdPartyTreeBuilder).
+    internal static (IntPtr WParam, IntPtr LParam) BuildInitMenuPopupParams(HMENU hSubMenu, uint position)
+        => ((IntPtr)hSubMenu, (IntPtr)position);
+
+    // Best-effort por popup (genérico, sem hardcoded): tenta IContextMenu3::
+    // HandleMenuMsg2 primeiro e cai para IContextMenu2::HandleMenuMsg. Um que
+    // falhar (QI ausente, HRESULT de erro, exceção de handler de terceiro)
+    // nunca quebra os demais nem a lista — só deixa a cascata como estava.
+    // hwnd NULL/zero na primeira tentativa: estes handlers populam sem janela.
+    private static void TryPopulateLazyPopup(IContextMenu contextMenu, HMENU hSubMenu, uint position)
+    {
+        var (wParam, lParam) = BuildInitMenuPopupParams(hSubMenu, position);
+        try
+        {
+            if (contextMenu is IContextMenu3 contextMenu3)
+            {
+                try
+                {
+                    HRESULT hr3 = contextMenu3.HandleMenuMsg2(WmInitMenuPopup, wParam, lParam, out _);
+                    if (hr3.Succeeded)
+                    {
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Cai para IContextMenu2 abaixo (handler quebrou no v2).
+                }
+            }
+        }
+        catch
+        {
+            // QI p/ IContextMenu3 falhou — tenta IContextMenu2.
+        }
+
+        try
+        {
+            if (contextMenu is IContextMenu2 contextMenu2)
+            {
+                try
+                {
+                    contextMenu2.HandleMenuMsg(WmInitMenuPopup, wParam, lParam);
+                }
+                catch
+                {
+                    // Handler de terceiro quebrou — mantém a cascata como estava.
+                }
+            }
+        }
+        catch
+        {
+            // QI p/ IContextMenu2 falhou — sem lazy-populate neste popup.
+        }
+    }
+
     public static IReadOnlyList<ShellMenuNode> QueryForPath(string path, bool includeExtendedVerbs)
     {
         CMF flags = BuildQueryFlags(includeExtendedVerbs);
@@ -158,8 +223,20 @@ internal static class ShellThirdPartyQuery
 
             if (!mii.hSubMenu.IsNull)
             {
-                // MF_POPUP/cascata: recursão no submenu (ex.: 7-Zip).
+                // MF_POPUP/cascata: genérico, inclui lazy/delay-populated
+                // (SendTo/OpenWith/7-Zip/qualquer handler futuro). O handler só
+                // preenche os filhos no WM_INITMENUPOPUP — sem isso a cascata
+                // vem vazia/errada. Recursão com o limite MaxDepth existente.
+                int before = GetMenuItemCount(mii.hSubMenu);
+                TryPopulateLazyPopup(contextMenu, mii.hSubMenu, pos);
+                int afterEnumerate = GetMenuItemCount(mii.hSubMenu);
                 var children = EnumerateMenu(mii.hSubMenu, contextMenu, depth + 1);
+                if (afterEnumerate != before)
+                {
+                    // Só loga quando mudou (sem spam p/ cascatas estáticas).
+                    ShellMenuLog.Log(ShellMenuLog.FormatPopupPopulated(label, before, afterEnumerate));
+                }
+
                 nodes.Add(new ShellMenuNode(label, null, 0, IsSeparator: false, IsPopup: true, children));
                 continue;
             }
