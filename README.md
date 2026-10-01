@@ -10,6 +10,7 @@ O DeskQuadra redefine a experiência da área de trabalho do Windows, transforma
 - [x] **Ícone próprio:** aplicado (exe + janelas + tray, arte do PO).
 - [ ] **D11 — re-auditar fakes de teste** no final do projeto.
 - [ ] **Remover temporários no final:** `HangTestSwitch`, `ChordDiagLog`.
+- [ ] **Otimizar impacto na inicialização do Windows:** hoje o Gerenciador marca ALTO (scan + extração de todos os ícones + 1 janela pesada por Quadra + Guardian junto, tudo no login; autostart aponta p/ Debug) — aliviar em fatias futuras (ícones lazy/async, janelas sob demanda, Guardian atrasado, autostart no build final).
 
 ## Créditos (bibliotecas de terceiros)
 
