@@ -164,6 +164,11 @@ public partial class QuadraWindow : Window
         // Tunelamento passa aqui antes dos filhos; fora do armado retorna imediato (mouse intacto).
         PreviewMouseLeftButtonDown += Quadra_TouchMoveDestinationDown;
 
+        // TYPE-AHEAD estilo Explorer: letra/dígito com a Quadra focada seleciona o
+        // item que casa (tunelamento; os guards dentro recusam edição/menu/diálogo).
+        // Sem XAML: assinatura aqui, sem resx (sem texto visível novo).
+        PreviewTextInput += Quadra_TypeAheadTextInput;
+
         // Hover-peek do roll-up (seção 10): entrada arma expansão temporária, saída recolhe com debounce
         MouseEnter += Quadra_PeekMouseEnter;
         MouseLeave += Quadra_PeekMouseLeave;
@@ -2373,6 +2378,11 @@ public partial class QuadraWindow : Window
     private bool _isRenaming;
     private string _renameOriginalTitle = string.Empty;
 
+    // TYPE-AHEAD estilo Explorer (fatia única): estado de prefixo por Quadra +
+    // slot one-shot via OneShotTimer existente (SEM timer novo; expira em ~1s).
+    private readonly QuadraTypeAhead _typeAhead = new();
+    private DispatcherTimer? _typeAheadTimer;
+
     private void RenameQuadraMenu_Click(object sender, RoutedEventArgs e)
     {
         BeginRename();
@@ -2468,6 +2478,116 @@ public partial class QuadraWindow : Window
         TitleTextBlock.Visibility = Visibility.Visible;
     }
 
+    // TYPE-AHEAD estilo Explorer: com a Quadra focada, letra/dígito seleciona o
+    // item que começa com a tecla (visível via BringIntoView); mesma letra em
+    // sequência rápida cicla; letras diferentes acumulam prefixo; pausa reinicia.
+    // Escape não gera TextInput: sem-operação por construção (nada a fazer aqui).
+    private void Quadra_TypeAheadTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.Text))
+        {
+            return;
+        }
+        // Não rouba tecla: Ctrl/Alt (atalhos), edição inline do título / qualquer
+        // TextBox focado, menu de item ou da barra aberto, diálogo modal com dono.
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0)
+        {
+            return;
+        }
+        if (_isRenaming || TitleEditBox.IsVisible || Keyboard.FocusedElement is TextBoxBase)
+        {
+            return;
+        }
+        if (IsItemMenuOpen() || (TitleBarBorder?.ContextMenu?.IsOpen == true))
+        {
+            return;
+        }
+        if (IsOwnedDialogOpen())
+        {
+            return;
+        }
+
+        var items = _viewModel.Items;
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        List<string?> names = new(items.Count);
+        int selectedIndex = -1;
+        for (int i = 0; i < items.Count; i++)
+        {
+            names.Add(items[i].Name);
+            if (selectedIndex < 0 && items[i].IsSelected)
+            {
+                selectedIndex = i;
+            }
+        }
+
+        DateTime now = DateTime.UtcNow;
+        int? target = null;
+        bool consumed = false;
+        foreach (char ch in e.Text)
+        {
+            if (QuadraTypeAhead.NormalizeChar(ch).Length == 0)
+            {
+                continue;
+            }
+            consumed = true;
+            int? hit = _typeAhead.Advance(names, target ?? selectedIndex, ch, now);
+            if (hit.HasValue)
+            {
+                target = hit;
+                selectedIndex = hit.Value;
+            }
+        }
+        if (!consumed)
+        {
+            return;
+        }
+
+        // Rearma a janela do prefixo (~1s): REUSE OneShotTimer, sem timer novo.
+        OneShotTimer.Arm(ref _typeAheadTimer, QuadraTypeAhead.TimeoutMilliseconds, TypeAheadTimeout_Tick);
+
+        if (target.HasValue)
+        {
+            DesktopItemViewModel match = items[target.Value];
+            // REUSE o caminho de seleção existente (IsSelected via evento global).
+            GlobalItemSelected?.Invoke(match);
+            Dispatcher.BeginInvoke(() => ScrollTypeAheadIntoView(match), DispatcherPriority.Loaded);
+        }
+        e.Handled = true;
+    }
+
+    private void TypeAheadTimeout_Tick(object? sender, EventArgs e)
+    {
+        OneShotTimer.Cancel(ref _typeAheadTimer, TypeAheadTimeout_Tick);
+        _typeAhead.Reset();
+    }
+
+    private bool IsOwnedDialogOpen()
+    {
+        foreach (Window owned in OwnedWindows)
+        {
+            if (owned.IsVisible)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Traz o item para a área visível do ScrollViewer existente (sem scroll novo).
+    private void ScrollTypeAheadIntoView(DesktopItemViewModel item)
+    {
+        try
+        {
+            var container = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item) as FrameworkElement;
+            container?.BringIntoView();
+        }
+        catch { /* silencioso, padrão do projeto */ }
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _isRenaming = false;
@@ -2484,6 +2604,8 @@ public partial class QuadraWindow : Window
         }
         // Janela fechando: mesmo trio de transitórios do recolher (inércia fica acima, fora do helper).
         CancelTransientTimers();
+        OneShotTimer.Cancel(ref _typeAheadTimer, TypeAheadTimeout_Tick);
+        PreviewTextInput -= Quadra_TypeAheadTextInput;
         MouseEnter -= Quadra_PeekMouseEnter;
         MouseLeave -= Quadra_PeekMouseLeave;
         PreviewMouseLeftButtonDown -= Quadra_TouchMoveDestinationDown;

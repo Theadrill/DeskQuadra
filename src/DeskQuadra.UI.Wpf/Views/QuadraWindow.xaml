@@ -239,7 +239,7 @@
                                   Background="Transparent"
                                   PreviewMouseRightButtonDown="ItemsEmpty_PreviewMouseRightButtonDown"
                                   Focusable="False">
-                        <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl x:Name="ItemsGrid" ItemsSource="{Binding Items}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel Orientation="Horizontal" ItemWidth="78" ItemHeight="96"/>
