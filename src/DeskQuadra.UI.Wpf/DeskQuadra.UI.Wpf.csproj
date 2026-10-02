@@ -35,6 +35,16 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <!-- Portátil 1.0: no `dotnet publish -r win-x64` o Guardian fresco sai em
+       bin\$(Configuration)\net8.0-windows\win-x64\ (com RID); o alvo acima lê o
+       caminho sem RID e o publish ficava sem Guardian (ou com binário velho).
+       Este alvo leva exe+dll+pdb+deps.json+runtimeconfig frescos para $(PublishDir). -->
+  <Target Name="CopyGuardianToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.Guardian.exe;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.Guardian.dll;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.Guardian.pdb;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.Guardian.deps.json;..\DeskQuadra.Guardian\bin\$(Configuration)\net8.0-windows\win-x64\DeskQuadra.Guardian.runtimeconfig.json"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="false" />
+  </Target>
+
   <!-- T5 isolamento (MESMO molde do Guardian acima, sem quebrar o dele):
        o ShellHost anda ao lado da UI (exe+dll+pdb+deps.json+runtimeconfig —
        o código gerenciado vive na DLL; só o exe é o apphost nativo).
@@ -56,6 +66,11 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- Release 1.0: carimbo único de versão do portátil (FileVersion 1.0.0 no smoke). -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
