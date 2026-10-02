@@ -384,3 +384,52 @@ Projeto `tests/DeskQuadra.TestDoubles/`.
 ### Status inicial
 
 - Tudo pendente: E1/E3/E4-infra, E1–E4-UI, E2/E5/E6/E7-infra, E5–E16-UI.
+
+---
+
+## 3ª Auditoria (2026-10-02, terceiros T1–T6 + fix invoke-by-label)
+
+**Veredito:** 1 MÉDIA + 2 BAIXAs reais + 2 observar + 6 sem-ação. Testes na auditoria: 409 aprovados (49 Application + 106 Core + 254 UI.Wpf). Escopo: `Core/ThirdParty/*`, `Infrastructure/Shell/*`, `ShellHost/*`, `UI/.../QuadraWindow` (terceiros).
+
+### F1 — Preâmbulo COM 3x (MÉDIA)
+
+| Campo | Detalhe |
+|-------|---------|
+| **Onde** | `ShellHost/Shell/ShellThirdPartyQuery.cs` (query) ≡ `ShellHost/Shell/ShellThirdPartyInvoke.cs` `InvokeOnStaThread` ≡ `InvokeByLabelOnStaThread` (`SHParseDisplayName → SHBindToParent → GetUIObjectOf` + `finally ReleaseComObject/pidl.Dispose`) |
+| **Problema** | Mesmo abre-porta copiado 3x; bug ali = conserto 3x (regra da 2ª repetição já estourou). |
+| **Unificação** | `ShellBindHelper.BindContextMenu(path)` com logs no chamador (logs divergem: `FormatQueryFailed` vs `FormatInvoke`). COM exige STA real — validar manual + `shell-menu.log`. |
+
+### F2 — `IdCmdFirst/Last` 3x (BAIXA)
+
+| Campo | Detalhe |
+|-------|---------|
+| **Onde** | `Core/ThirdParty/ShellHostProtocol.cs` (private) ≡ `ShellHost/.../ShellThirdPartyQuery.cs` ≡ `ShellHost/.../ShellThirdPartyInvoke.cs` (`1` / `0x7FFF`) |
+| **Problema** | Dois números mágicos escritos à mão em 3 arquivos. |
+| **Unificação** | Expor no protocolo (já é fonte única de `IsOffsetInRange/HasStableVerb/timeouts`). |
+
+### F3 — Leitura de HMENU 2x (BAIXA)
+
+| Campo | Detalhe |
+|-------|---------|
+| **Onde** | `ShellThirdPartyQuery.cs: GetItemLabel` ≡ `ShellThirdPartyInvoke.cs: GetMenuLabel` (ambos `StringBuilder(512)` + `GetMenuString MF_BYPOSITION`) + `LabelCapacityChars 512` 2x + init `MENUITEMINFO` 2x |
+| **Problema** | Mesmo jeito de ler texto do menu copiado na listagem e na execução. |
+| **Unificação** | `ShellMenuNative.GetLabel()` + `BuildItemInfo()` no ShellHost. |
+
+### F4/F5 — Observar (não extrair agora)
+
+- **F4:** `ShellHost/Program.cs` (`RunInvoke` ≡ `RunInvokeByLabel`, X/Y→POINT, 3 linhas, só 2x) — extrair `ToPoint()` se 3º call site surgir.
+- **F5:** `Core/ThirdParty/ThirdPartyVerbFilter.cs` (`NormalizeLabel` vs `CleanLabelForDisplay` dividem tab-cut/`&`/trim, diferem só `ToLower`) — propósitos distintos (comparar vs mostrar); extrair `StripLabel()` privado se 3º uso surgir.
+
+### Sem-ação (com motivo)
+
+- **S1:** `JsonOptions` protocolo vs `JsonStorageDefaults.SerializerOptions` — comportamento diferente (sem indent vs indented); regra proíbe unificar.
+- **S2:** `ShellMenuLog` AppData/append best-effort — exceção logs já carimbada (`E10-infra`).
+- **S3:** `ShellHostClient.LocateHostExe` vs `App.SpawnGuardianProcess` — watchdog standalone, não acoplar (extensão do `E8-infra`).
+- **S4:** `Serialize/Parse Query/Invoke/InvokeByLabel` — DTOs distintos, não é repetição.
+- **S5:** Fakes `FakeProcess/FakeLauncher` (`ShellHostClientTests`) — interfaces distintas, zero duplicação; `D11` segue válido (5 fakes, sem projeto `TestDoubles`).
+- **S6:** `IsShiftPressed` — definição única (`NativeMethods`), sem duplicação; UI §2 intacta (sem `Style` inline, sem timer novo).
+
+### Status 3ª auditoria
+
+- Pendente correção (agentes delegados após push deste doc; push dos fixes SÓ após validação do PO no app): F1, F2, F3.
+- Observar: F4, F5. Sem-ação: S1–S6.
