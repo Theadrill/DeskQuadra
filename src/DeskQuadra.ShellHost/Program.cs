@@ -99,9 +99,10 @@ internal static class Program
 
         // Engine T2/T3 movido p/ cá sem mudar regra: query STA + enumeração
         // recursiva + filtro §1. Falha interna = lista vazia (o engine já loga
-        // o motivo no shell-menu.log e nunca lança).
-        var raw = ShellThirdPartyQuery.QueryForPath(req.Path, req.Extended);
-        var entries = ThirdPartyTreeBuilder.Build(raw);
+        // o motivo no shell-menu.log e nunca lança). Fundo = IContextMenu da
+        // própria pasta (CreateViewObject); item = GetUIObjectOf (intacto).
+        var raw = ShellThirdPartyQuery.QueryForPath(req.Path, req.Extended, req.Background);
+        var entries = ThirdPartyTreeBuilder.Build(raw, req.Background);
         WriteLine(stdout, ShellHostProtocol.SerializeQueryResponse(entries));
         return 0;
     }
@@ -120,14 +121,16 @@ internal static class Program
             : null;
 
         // Engine T3 movido p/ cá sem mudar regra: verbo estável preferido,
-        // offset + VALIDATEW de fallback, Unicode sempre, mesma interface raiz.
+        // offset + VALIDATEW de fallback, Unicode sempre, mesma interface raiz
+        // (de fundo quando o pedido é de fundo — query+invoke no mesmo bind).
         bool ok = ShellThirdPartyInvoke.TryInvoke(
             req.Path,
             req.Verb,
             req.Offset,
             req.Extended,
             new IntPtr(req.Hwnd),
-            point);
+            point,
+            req.Background);
         WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(ok, ok ? null : "invoke-failed"));
         return 0;
     }
@@ -153,7 +156,8 @@ internal static class Program
             req.Labels,
             req.Extended,
             new IntPtr(req.Hwnd),
-            point);
+            point,
+            req.Background);
         WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(ok, ok ? null : "invoke-failed"));
         return 0;
     }

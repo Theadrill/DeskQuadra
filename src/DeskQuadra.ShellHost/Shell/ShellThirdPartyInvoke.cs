@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 using DeskQuadra.Core.ThirdParty;
 using Vanara;
 using Vanara.PInvoke;
@@ -36,9 +35,6 @@ namespace DeskQuadra.ShellHost.Shell;
 // (fonte única: cliente valida ANTES de spawnar, host revalida aqui).
 internal static class ShellThirdPartyInvoke
 {
-    private const uint IdCmdFirst = 1;
-    private const uint IdCmdLast = 0x7FFF;
-
     // Guarda VALIDATEW exige buffer VÁLIDO: o contrato diz que VALIDATE não
     // precisa de buffer, mas handlers reais (7-Zip incluído) escrevem sem
     // checar nulo → AV em NULL (AccessViolation em IContextMenu.GetCommandString).
@@ -123,7 +119,8 @@ internal static class ShellThirdPartyInvoke
         uint commandOffset,
         bool includeExtendedVerbs,
         IntPtr hwnd,
-        POINT? invokePoint)
+        POINT? invokePoint,
+        bool background = false)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -139,7 +136,7 @@ internal static class ShellThirdPartyInvoke
 
         CMF flags = ShellThirdPartyQuery.BuildQueryFlags(includeExtendedVerbs);
         return ShellStaRunner.TryRun(
-            () => InvokeOnStaThread(path, verb, commandOffset, flags, hwnd, invokePoint, includeExtendedVerbs),
+            () => InvokeOnStaThread(path, verb, commandOffset, flags, hwnd, invokePoint, includeExtendedVerbs, background),
             ShellStaRunner.InvokeTimeoutMs,
             "DeskQuadra.ShellInvoke",
             path);
@@ -159,7 +156,8 @@ internal static class ShellThirdPartyInvoke
         IReadOnlyList<string>? labels,
         bool includeExtendedVerbs,
         IntPtr hwnd,
-        POINT? invokePoint)
+        POINT? invokePoint,
+        bool background = false)
     {
         if (string.IsNullOrWhiteSpace(path) || labels is null || labels.Count == 0)
         {
@@ -181,7 +179,7 @@ internal static class ShellThirdPartyInvoke
 
         CMF flags = ShellThirdPartyQuery.BuildQueryFlags(includeExtendedVerbs);
         return ShellStaRunner.TryRun(
-            () => InvokeByLabelOnStaThread(path, labels, flags, hwnd, invokePoint, includeExtendedVerbs),
+            () => InvokeByLabelOnStaThread(path, labels, flags, hwnd, invokePoint, includeExtendedVerbs, background),
             ShellStaRunner.InvokeTimeoutMs,
             "DeskQuadra.ShellInvokeByLabel",
             path);
@@ -194,38 +192,36 @@ internal static class ShellThirdPartyInvoke
         CMF flags,
         IntPtr hwnd,
         POINT? invokePoint,
-        bool shiftDown)
+        bool shiftDown,
+        bool background)
     {
         bool byVerb = ShellHostProtocol.HasStableVerb(verb);
         // .lnk = invoke sobre o próprio link (SEM resolver o alvo antes, §1).
-        HRESULT hr = SHParseDisplayName(path, null, out PIDL pidl, 0, out _);
-        if (hr.Failed || pidl.IsNull)
-        {
-            ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, verb, commandOffset, $"0x{(uint)hr:X8}", "n/a", "n/a", $"parse-failed"));
-            return false;
-        }
-
+        // Fundo = query+invoke na MESMA interface de fundo (CreateViewObject).
         try
         {
-            hr = SHBindToParent(pidl, typeof(IShellFolder).GUID, out object? folderObj, out IntPtr childRel);
-            if (hr.Failed || folderObj is not IShellFolder folder || childRel == IntPtr.Zero)
+            ShellBindStage stage = ShellBindHelper.BindFor(path, background, out ShellBindScope bind, out HRESULT hr);
+            using (bind)
             {
-                ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, verb, commandOffset, $"0x{(uint)hr:X8}", "n/a", "n/a", "bind-failed"));
-                return false;
-            }
+                if (stage == ShellBindStage.ParseFailed)
+                {
+                    ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, verb, commandOffset, $"0x{(uint)hr:X8}", "n/a", "n/a", "parse-failed"));
+                    return false;
+                }
 
-            try
-            {
-                Guid iidMenu = typeof(IContextMenu).GUID;
-                hr = folder.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidMenu, IntPtr.Zero, out object? menuObj);
-                if (hr.Failed || menuObj is not IContextMenu contextMenu)
+                if (stage == ShellBindStage.BindFailed)
+                {
+                    ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, verb, commandOffset, $"0x{(uint)hr:X8}", "n/a", "n/a", "bind-failed"));
+                    return false;
+                }
+
+                if (stage == ShellBindStage.MenuFailed || bind.ContextMenu is null)
                 {
                     ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, verb, commandOffset, $"0x{(uint)hr:X8}", "n/a", "n/a", "menu-failed"));
                     return false;
                 }
 
-                try
-                {
+                IContextMenu contextMenu = bind.ContextMenu;
                     // A query inicializa os handlers — o invoke exige o mesmo
                     // pipeline/flags da listagem, na MESMA interface raiz. A
                     // seleção agora é pelo VERBO estável (imune a reordenação
@@ -237,7 +233,7 @@ internal static class ShellThirdPartyInvoke
                         return false;
                     }
 
-                    hr = contextMenu.QueryContextMenu(hMenu, 0, IdCmdFirst, IdCmdLast, flags);
+                    hr = contextMenu.QueryContextMenu(hMenu, 0, ShellHostProtocol.IdCmdFirst, ShellHostProtocol.IdCmdLast, flags);
                     string queryHr = $"0x{(uint)hr:X8}";
                     if (hr.Failed)
                     {
@@ -306,15 +302,6 @@ internal static class ShellThirdPartyInvoke
                     {
                         Marshal.FreeHGlobal(p);
                     }
-                }
-                finally
-                {
-                    Marshal.ReleaseComObject(menuObj);
-                }
-            }
-            finally
-            {
-                Marshal.ReleaseComObject(folder);
             }
         }
         catch (Exception ex)
@@ -322,15 +309,10 @@ internal static class ShellThirdPartyInvoke
             ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, verb, commandOffset, "n/a", "n/a", "n/a", $"exception {ex.GetType().Name}"));
             return false;
         }
-        finally
-        {
-            pidl.Dispose();
-        }
     }
 
     // Profundidade máxima do caminho de rótulos (mesmo teto da enumeração).
     private const int MaxLabelDepth = 8;
-    private const int LabelCapacityChars = 512;
 
     private static bool InvokeByLabelOnStaThread(
         string path,
@@ -338,7 +320,8 @@ internal static class ShellThirdPartyInvoke
         CMF flags,
         IntPtr hwnd,
         POINT? invokePoint,
-        bool shiftDown)
+        bool shiftDown,
+        bool background)
     {
         string labelVerb = ShellMenuLog.FormatLabelVerb(labels);
         var wanted = new List<string>(labels.Count);
@@ -355,34 +338,31 @@ internal static class ShellThirdPartyInvoke
         }
 
         // .lnk = invoke sobre o próprio link (SEM resolver o alvo antes, §1).
-        HRESULT hr = SHParseDisplayName(path, null, out PIDL pidl, 0, out _);
-        if (hr.Failed || pidl.IsNull)
-        {
-            ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "parse-failed"));
-            return false;
-        }
-
+        // Fundo = resolve o rótulo e invoca na MESMA interface de fundo.
         try
         {
-            hr = SHBindToParent(pidl, typeof(IShellFolder).GUID, out object? folderObj, out IntPtr childRel);
-            if (hr.Failed || folderObj is not IShellFolder folder || childRel == IntPtr.Zero)
+            ShellBindStage stage = ShellBindHelper.BindFor(path, background, out ShellBindScope bind, out HRESULT hr);
+            using (bind)
             {
-                ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "bind-failed"));
-                return false;
-            }
+                if (stage == ShellBindStage.ParseFailed)
+                {
+                    ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "parse-failed"));
+                    return false;
+                }
 
-            try
-            {
-                Guid iidMenu = typeof(IContextMenu).GUID;
-                hr = folder.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidMenu, IntPtr.Zero, out object? menuObj);
-                if (hr.Failed || menuObj is not IContextMenu contextMenu)
+                if (stage == ShellBindStage.BindFailed)
+                {
+                    ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "bind-failed"));
+                    return false;
+                }
+
+                if (stage == ShellBindStage.MenuFailed || bind.ContextMenu is null)
                 {
                     ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, $"0x{(uint)hr:X8}", "n/a", "n/a", "menu-failed"));
                     return false;
                 }
 
-                try
-                {
+                IContextMenu contextMenu = bind.ContextMenu;
                     using var hMenu = CreatePopupMenu();
                     if (hMenu.IsInvalid)
                     {
@@ -390,7 +370,7 @@ internal static class ShellThirdPartyInvoke
                         return false;
                     }
 
-                    hr = contextMenu.QueryContextMenu(hMenu, 0, IdCmdFirst, IdCmdLast, flags);
+                    hr = contextMenu.QueryContextMenu(hMenu, 0, ShellHostProtocol.IdCmdFirst, ShellHostProtocol.IdCmdLast, flags);
                     string queryHr = $"0x{(uint)hr:X8}";
                     if (hr.Failed)
                     {
@@ -409,11 +389,7 @@ internal static class ShellThirdPartyInvoke
 
                         for (uint pos = 0; pos < (uint)count; pos++)
                         {
-                            var mii = new MENUITEMINFO
-                            {
-                                cbSize = (uint)Marshal.SizeOf<MENUITEMINFO>(),
-                                fMask = MenuItemInfoMask.MIIM_FTYPE | MenuItemInfoMask.MIIM_ID | MenuItemInfoMask.MIIM_SUBMENU,
-                            };
+                            var mii = ShellMenuNative.BuildItemInfo();
                             if (!GetMenuItemInfo(current, pos, true, ref mii))
                             {
                                 continue;
@@ -424,7 +400,7 @@ internal static class ShellThirdPartyInvoke
                                 continue;
                             }
 
-                            string cleaned = ThirdPartyVerbFilter.CleanLabelForDisplay(GetMenuLabel(current, pos));
+                            string cleaned = ThirdPartyVerbFilter.CleanLabelForDisplay(ShellMenuNative.GetLabel(current, pos));
                             if (cleaned.Length == 0 || !string.Equals(cleaned, wanted[level], StringComparison.Ordinal))
                             {
                                 continue;
@@ -455,7 +431,7 @@ internal static class ShellThirdPartyInvoke
                                 return false;
                             }
 
-                            if (mii.wID < IdCmdFirst)
+                            if (mii.wID < ShellHostProtocol.IdCmdFirst)
                             {
                                 ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-not-found"));
                                 return false;
@@ -464,7 +440,7 @@ internal static class ShellThirdPartyInvoke
                             // Offset achado NA MESMA interface: invoca direto,
                             // SEM re-query e SEM VALIDATEW (a garantia é a
                             // sessão única — o offset não teve como mudar).
-                            uint offset = mii.wID - IdCmdFirst;
+                            uint offset = mii.wID - ShellHostProtocol.IdCmdFirst;
                             var info = BuildInvokeInfo(offset, owner, invokePoint, shiftDown);
 
                             int size = Marshal.SizeOf<CMINVOKECOMMANDINFOEX>();
@@ -500,15 +476,6 @@ internal static class ShellThirdPartyInvoke
 
                     ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, queryHr, "n/a", "n/a", "label-not-found"));
                     return false;
-                }
-                finally
-                {
-                    Marshal.ReleaseComObject(menuObj);
-                }
-            }
-            finally
-            {
-                Marshal.ReleaseComObject(folder);
             }
         }
         catch (Exception ex)
@@ -516,17 +483,6 @@ internal static class ShellThirdPartyInvoke
             ShellMenuLog.Log(ShellMenuLog.FormatInvoke(path, labelVerb, 0, "n/a", "n/a", "n/a", $"exception {ex.GetType().Name}"));
             return false;
         }
-        finally
-        {
-            pidl.Dispose();
-        }
-    }
-
-    private static string GetMenuLabel(HMENU hMenu, uint posByPosition)
-    {
-        var sb = new StringBuilder(LabelCapacityChars);
-        int len = GetMenuString(hMenu, posByPosition, sb, sb.Capacity, MenuFlags.MF_BYPOSITION);
-        return len > 0 ? sb.ToString() : string.Empty;
     }
 
     private static bool InvokeByVerb(

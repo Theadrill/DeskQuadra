@@ -168,4 +168,40 @@ public class ShellHostClientTests
 
         Assert.False(new ShellHostClient(bad).InvokeMenu(@"C:\a\doc.zip", "SevenZipAdd", 3, false, 0, null, null));
     }
+
+    // FIX fundo: o flag Background atravessa o fio (query/invoke) e o default
+    // é item (pedido antigo sem fundo não muda).
+    [Fact]
+    public void Query_Fundo_SerializaBackgroundNoPedido()
+    {
+        var (client, _, process) = Create();
+        process.Output = QueryResponseLine();
+
+        client.QueryMenu(@"C:\a\pasta", extended: false, background: true);
+
+        Assert.Contains("\"Background\":true", process.WrittenLine ?? string.Empty);
+    }
+
+    [Fact]
+    public void Query_Item_NãoMarcaBackground()
+    {
+        var (client, _, process) = Create();
+        process.Output = QueryResponseLine();
+
+        client.QueryMenu(@"C:\a\doc.zip", extended: false);
+
+        Assert.DoesNotContain("\"Background\":true", process.WrittenLine ?? string.Empty);
+    }
+
+    [Fact]
+    public void Invoke_Fundo_SerializaBackgroundNoPedido()
+    {
+        var (client, _, process) = Create();
+        process.Output = ShellHostProtocol.SerializeInvokeResponse(true);
+
+        bool ok = client.InvokeMenu(@"C:\a\pasta", "DesktopBackgroundVerb", 0, false, hwnd: 0, x: null, y: null, background: true);
+
+        Assert.True(ok);
+        Assert.Contains("\"Background\":true", process.WrittenLine ?? string.Empty);
+    }
 }

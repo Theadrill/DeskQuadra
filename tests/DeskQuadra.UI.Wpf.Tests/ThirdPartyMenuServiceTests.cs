@@ -43,6 +43,40 @@ public class ThirdPartyMenuServiceTests
         Assert.Equal("<folder>", ThirdPartyMenuService.GetCacheKey(@"C:\a\pasta", isDirectory: true, extended: false));
     }
 
+    // FIX fundo (espaço vazio/barra): bucket próprio "<background>" — o menu
+    // de fundo da pasta NUNCA compartilha com o de item de pasta ("<folder>")
+    // nem com extensão de arquivo. Item intacto (default false).
+    [Theory]
+    [InlineData(false, "<background>")]
+    [InlineData(true, "<background>|ext")]
+    public void GetCacheKey_Fundo_BucketPróprioNuncaFolder(bool extended, string expected)
+    {
+        Assert.Equal(expected, ThirdPartyMenuService.GetCacheKey(@"C:\a\pasta", isDirectory: true, extended, background: true));
+        Assert.Equal(expected, ThirdPartyMenuService.GetCacheKey(@"C:\a\doc.zip", isDirectory: false, extended, background: true));
+    }
+
+    [Fact]
+    public void GetCacheKey_Item_NuncaCaiNoBucketDeFundo()
+    {
+        Assert.NotEqual("<background>", ThirdPartyMenuService.GetCacheKey(@"C:\a\pasta", isDirectory: true));
+        Assert.NotEqual("<background>|ext", ThirdPartyMenuService.GetCacheKey(@"C:\a\pasta", isDirectory: true, extended: true));
+        Assert.Equal("<folder>", ThirdPartyMenuService.GetCacheKey(@"C:\a\pasta", isDirectory: true));
+    }
+
+    [Fact]
+    public void CreateHandle_Fundo_CarregaBackground()
+    {
+        var service = new ThirdPartyMenuService();
+
+        var bg = service.CreateHandle(@"C:\a\pasta", "DesktopBackgroundVerb", 0, background: true);
+        var item = service.CreateHandle(@"C:\a\pasta", "DesktopBackgroundVerb", 0, background: false);
+
+        Assert.NotNull(bg);
+        Assert.True(bg.Background);
+        Assert.NotNull(item);
+        Assert.False(item.Background);
+    }
+
     [Fact]
     public void BuildQueryFlags_BaseTravada_SemExtendedPorPadrão()
     {

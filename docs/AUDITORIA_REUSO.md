@@ -431,5 +431,5 @@ Projeto `tests/DeskQuadra.TestDoubles/`.
 
 ### Status 3ª auditoria
 
-- Pendente correção (agentes delegados após push deste doc; push dos fixes SÓ após validação do PO no app): F1, F2, F3.
+- Corrigido, validado pelo PO no app e pushado junto: F1, F2, F3 + fundo real no vazio + supressão de complementos no fundo + denylist "conceder acesso a".
 - Observar: F4, F5. Sem-ação: S1–S6.

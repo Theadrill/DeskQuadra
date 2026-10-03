@@ -31,9 +31,9 @@ internal sealed class ShellHostClient
         _launcher = launcher;
     }
 
-    public IReadOnlyList<ThirdPartyMenuEntry>? QueryMenu(string path, bool extended)
+    public IReadOnlyList<ThirdPartyMenuEntry>? QueryMenu(string path, bool extended, bool background = false)
     {
-        string request = ShellHostProtocol.SerializeQueryRequest(path, extended);
+        string request = ShellHostProtocol.SerializeQueryRequest(path, extended, background);
         string? line = RunHost(request, ShellHostProtocol.QueryTimeoutMs);
         if (line is null)
         {
@@ -63,9 +63,10 @@ internal sealed class ShellHostClient
         bool extended,
         long hwnd,
         int? x,
-        int? y)
+        int? y,
+        bool background = false)
     {
-        string request = ShellHostProtocol.SerializeInvokeRequest(path, verb, offset, extended, hwnd, x, y);
+        string request = ShellHostProtocol.SerializeInvokeRequest(path, verb, offset, extended, hwnd, x, y, background);
         string? line = RunHost(request, ShellHostProtocol.InvokeTimeoutMs);
         if (line is null)
         {
@@ -100,13 +101,14 @@ internal sealed class ShellHostClient
         bool extended,
         long hwnd,
         int? x,
-        int? y)
+        int? y,
+        bool background = false)
     {
         string labelVerb = ShellMenuLog.FormatLabelVerb(labels);
         string request;
         try
         {
-            request = ShellHostProtocol.SerializeInvokeByLabelRequest(path, labels, extended, hwnd, x, y);
+            request = ShellHostProtocol.SerializeInvokeByLabelRequest(path, labels, extended, hwnd, x, y, background);
         }
         catch
         {

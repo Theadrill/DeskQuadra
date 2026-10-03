@@ -102,6 +102,10 @@ public static class ThirdPartyVerbFilter
         "adicionar aos favoritos", "add to favorites",
         "fixar em iniciar", "pin to start screen",
         "incluir na biblioteca", "include in library",
+        // FUNDO (espaço vazio/barra): "Conceder acesso a"/"Give access to"
+        // (nativo Give-access-to, verbo vazio/folha ou popup) — cai INTEIRO
+        // pelo rótulo, como "incluir na biblioteca" (igualdade exata).
+        "conceder acesso a", "give access to",
         // SONDA T6 + COMPLEMENTOS (PO pediu de volta): o popup "Transmitir para
         // Dispositivo" (.jpg, verbo VAZIO no popup E no filho — GCS_VERBW
         // vazio/null nos dois níveis) continua NA denylist por compatibilidade,
@@ -265,7 +269,9 @@ public static class ThirdPartyVerbFilter
     // Decisão §1 + COMPLEMENTOS: separador nunca é terceiro (nem complemento);
     // COMPLEMENTO vence ANTES da denylist (IsNativeComplement primeiro);
     // verbo OU label nativo bloqueia; resto (inclusive verbo vazio) = terceiro.
-    public static bool IsThirdParty(string? verb, string? label, bool isSeparator)
+    // FUNDO (espaço vazio/barra): complemento NÃO autoriza (background: true) —
+    // só verbo genuinamente terceiro passa; ITEM intacto (default false).
+    public static bool IsThirdParty(string? verb, string? label, bool isSeparator, bool background = false)
     {
         if (isSeparator)
         {
@@ -274,7 +280,7 @@ public static class ThirdPartyVerbFilter
 
         if (IsNativeComplement(verb, label))
         {
-            return true;
+            return !background;
         }
 
         return !IsBlockedVerb(verb) && !IsNativeLabel(label);

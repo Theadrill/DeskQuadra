@@ -158,4 +158,38 @@ public class ThirdPartyVerbFilterTests
         Assert.Equal("7-Zip", ThirdPartyVerbFilter.CleanLabelForDisplay("7-Zip"));
         Assert.Equal(string.Empty, ThirdPartyVerbFilter.CleanLabelForDisplay(null));
     }
+
+    // FUNDO: complemento nativo NÃO autoriza — só terceiro genuíno passa.
+    // ITEM intacto (background default false): complemento segue passando.
+    [Theory]
+    [InlineData("openas", "Abrir com")]
+    [InlineData("sendto", "Enviar para")]
+    [InlineData("sendto", "Send to")]
+    [InlineData("setdesktopwallpaper", "Definir como fundo da área de trabalho")]
+    [InlineData("rotate90", "Girar para a direita")]
+    [InlineData("rotate270", "Girar para a esquerda")]
+    [InlineData("casttodevice", "Transmitir para Dispositivo")]
+    [InlineData("", "Enviar para")]
+    [InlineData("", "Abrir com")]
+    [InlineData("", "Transmitir para Dispositivo")]
+    [InlineData("", "Cast to device")]
+    [InlineData(null, "Enviar para")]
+    public void IsThirdParty_Fundo_Complemento_NãoAutoriza_ItemPassa(string? verb, string label)
+    {
+        Assert.False(ThirdPartyVerbFilter.IsThirdParty(verb, label, isSeparator: false, background: true));
+        Assert.True(ThirdPartyVerbFilter.IsThirdParty(verb, label, isSeparator: false, background: false));
+    }
+
+    // Denylist "Conceder acesso a"/"Give access to": folha e popup caem
+    // (igualdade exata, padrão dos demais) — item e fundo.
+    [Theory]
+    [InlineData("Conceder acesso a")]
+    [InlineData("Give access to")]
+    [InlineData("CONCEDER ACESSO A")]
+    public void IsThirdParty_ConcederAcesso_Bloqueado_ItemEFundo(string label)
+    {
+        Assert.False(ThirdPartyVerbFilter.IsThirdParty(string.Empty, label, isSeparator: false));
+        Assert.False(ThirdPartyVerbFilter.IsThirdParty(string.Empty, label, isSeparator: false, background: true));
+        Assert.True(ThirdPartyVerbFilter.IsNativeLabel(label));
+    }
 }

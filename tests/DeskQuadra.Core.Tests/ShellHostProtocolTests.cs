@@ -194,4 +194,79 @@ public class ShellHostProtocolTests
         Assert.False(failed.Ok);
         Assert.Equal("invoke-failed", failed.Error);
     }
+
+    // FIX fundo (espaço vazio/barra): o flag Background atravessa o protocolo
+    // nos 3 pedidos (query/invoke/invoke-by-label). Default false = item.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void QueryRequest_RoundTrip_PreservaBackground(bool background)
+    {
+        string line = ShellHostProtocol.SerializeQueryRequest(@"C:\a\pasta", extended: false, background: background);
+
+        var req = ShellHostProtocol.ParseQueryRequest(line);
+
+        Assert.NotNull(req);
+        Assert.Equal(background, req.Background);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void InvokeRequest_RoundTrip_PreservaBackground(bool background)
+    {
+        string line = ShellHostProtocol.SerializeInvokeRequest(
+            @"C:\a\pasta", "DesktopBackgroundVerb", 0, extended: false, hwnd: 0, x: null, y: null, background: background);
+
+        var req = ShellHostProtocol.ParseInvokeRequest(line);
+
+        Assert.NotNull(req);
+        Assert.Equal(background, req.Background);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void InvokeByLabelRequest_RoundTrip_PreservaBackground(bool background)
+    {
+        string line = ShellHostProtocol.SerializeInvokeByLabelRequest(
+            @"C:\a\pasta", new List<string> { "Exibir", "Ícones grandes" }, extended: true, hwnd: 0, x: null, y: null, background: background);
+
+        var req = ShellHostProtocol.ParseInvokeByLabelRequest(line);
+
+        Assert.NotNull(req);
+        Assert.Equal(background, req.Background);
+        Assert.True(req.Extended);
+    }
+
+    [Fact]
+    public void Background_DefaultFalse_ItemIntacto()
+    {
+        // Chamador que não passa o flag continua pedindo item (fundo opt-in).
+        Assert.False(ShellHostProtocol.ParseQueryRequest(
+            ShellHostProtocol.SerializeQueryRequest(@"C:\a\pasta", false))?.Background ?? true);
+        Assert.False(ShellHostProtocol.ParseInvokeRequest(
+            ShellHostProtocol.SerializeInvokeRequest(@"C:\a\pasta", "v", 0, false, 0, null, null))?.Background ?? true);
+        Assert.False(ShellHostProtocol.ParseInvokeByLabelRequest(
+            ShellHostProtocol.SerializeInvokeByLabelRequest(@"C:\a\pasta", new List<string> { "A" }, false, 0, null, null))?.Background ?? true);
+    }
+
+    [Fact]
+    public void Background_JsonAntigoSemCampo_AssumeItem()
+    {
+        // Compat: JSON de host/cliente anterior (sem "Background") = item.
+        var query = ShellHostProtocol.ParseQueryRequest(
+            """{"Op":"query","Path":"C:\\a\\pasta","Extended":false}""");
+        var invoke = ShellHostProtocol.ParseInvokeRequest(
+            """{"Op":"invoke","Path":"C:\\a\\pasta","Verb":"v","Offset":1,"Extended":false,"Hwnd":0,"X":null,"Y":null}""");
+        var byLabel = ShellHostProtocol.ParseInvokeByLabelRequest(
+            """{"Op":"invoke-by-label","Path":"C:\\a\\pasta","Extended":false,"Labels":["A"],"Hwnd":0,"X":null,"Y":null}""");
+
+        Assert.NotNull(query);
+        Assert.False(query.Background);
+        Assert.NotNull(invoke);
+        Assert.False(invoke.Background);
+        Assert.NotNull(byLabel);
+        Assert.False(byLabel.Background);
+    }
 }

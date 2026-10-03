@@ -38,7 +38,7 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
 
     private readonly ShellHostClient _host = new();
 
-    public IReadOnlyList<ThirdPartyMenuEntry> GetForPath(string? path)
+    public IReadOnlyList<ThirdPartyMenuEntry> GetForPath(string? path, bool background = false)
     {
         try
         {
@@ -54,11 +54,12 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
             }
 
             // Shift no momento da abertura: consulta separada (verbos estendidos
-            // não poluem o cache normal e vice-versa).
+            // não poluem o cache normal e vice-versa). Fundo tem bucket e
+            // registro próprios (nunca mistura com item de pasta).
             bool extended = NativeMethods.IsShiftPressed();
-            TrackExtendedFlag(path, extended);
-            string key = GetCacheKey(path, isDirectory, extended);
-            return _cache.GetOrAdd(key, _ => QueryUncached(path, extended));
+            TrackExtendedFlag(path, extended, background);
+            string key = GetCacheKey(path, isDirectory, extended, background);
+            return _cache.GetOrAdd(key, _ => QueryUncached(path, extended, background));
         }
         catch
         {
@@ -67,7 +68,7 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         }
     }
 
-    public ThirdPartyInvokeHandle? CreateHandle(string? path, string? verb, uint commandOffset, IReadOnlyList<string>? labelPath = null)
+    public ThirdPartyInvokeHandle? CreateHandle(string? path, string? verb, uint commandOffset, IReadOnlyList<string>? labelPath = null, bool background = false)
     {
         try
         {
@@ -108,10 +109,10 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
                 keptLabels = cleaned;
             }
 
-            bool extended = _extendedByPath.TryGetValue(path, out bool tracked)
+            bool extended = _extendedByPath.TryGetValue(ExtendedKey(path, background), out bool tracked)
                 ? tracked
                 : NativeMethods.IsShiftPressed();
-            return new ThirdPartyInvokeHandle(path, stableVerb, commandOffset, extended, keptLabels);
+            return new ThirdPartyInvokeHandle(path, stableVerb, commandOffset, extended, keptLabels, background);
         }
         catch
         {
@@ -153,7 +154,8 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
                     handle.IncludeExtendedVerbs,
                     hwnd.ToInt64(),
                     invokePoint?.X,
-                    invokePoint?.Y);
+                    invokePoint?.Y,
+                    handle.Background);
             }
 
             return _host.InvokeMenu(
@@ -163,7 +165,8 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
                 handle.IncludeExtendedVerbs,
                 hwnd.ToInt64(),
                 invokePoint?.X,
-                invokePoint?.Y);
+                invokePoint?.Y,
+                handle.Background);
         }
         catch
         {
@@ -172,7 +175,7 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         }
     }
 
-    private void TrackExtendedFlag(string path, bool extended)
+    private void TrackExtendedFlag(string path, bool extended, bool background)
     {
         try
         {
@@ -181,7 +184,7 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
                 _extendedByPath.Clear();
             }
 
-            _extendedByPath[path] = extended;
+            _extendedByPath[ExtendedKey(path, background)] = extended;
         }
         catch
         {
@@ -189,7 +192,13 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         }
     }
 
-    private IReadOnlyList<ThirdPartyMenuEntry> QueryUncached(string path, bool extended)
+    // Registro de Shift separado por fundo/item: o Shift do clique pode já ter
+    // sido solto no invoke, e fundo nunca pode herdar o flag do item (e
+    // vice-versa). '\u001F' é ilegal em caminho Windows — sem colisão.
+    private static string ExtendedKey(string path, bool background)
+        => background ? path + "|\u001Fbg" : path;
+
+    private IReadOnlyList<ThirdPartyMenuEntry> QueryUncached(string path, bool extended, bool background)
     {
         try
         {
@@ -197,7 +206,7 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
             // (silencioso, padrão do projeto). O host já filtra (§1); a UI só
             // espelha. Cache negativo continua valendo (não respawna o host à
             // toa a cada abertura do menu).
-            return _host.QueryMenu(path, extended) ?? Empty;
+            return _host.QueryMenu(path, extended, background) ?? Empty;
         }
         catch
         {
@@ -207,6 +216,9 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
 
     // Cache por extensão (§1 T2): ".ZIP"→".zip", sem extensão→"", pasta→"<folder>".
     // .lnk cai em ".lnk" (query sobre o próprio link, sem resolver alvo).
+    // Fundo (espaço vazio/barra) tem bucket próprio "<background>": o menu de
+    // fundo da pasta NUNCA compartilha com o de item de pasta (era o bug —
+    // "<folder>" servia verbos de item no vazio). Item intacto.
     // T6 Shift: consulta com Shift (CMF_EXTENDEDVERBS) usa bucket separado
     // ("|ext") — verbos estendidos nunca poluem o cache normal e vice-versa
     // (sonda T6 provou: .txt extended lista Extrair/Testar do 7-Zip, normal
@@ -215,9 +227,16 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         => GetCacheKey(path, isDirectory, extended: false);
 
     internal static string GetCacheKey(string path, bool isDirectory, bool extended)
+        => GetCacheKey(path, isDirectory, extended, background: false);
+
+    internal static string GetCacheKey(string path, bool isDirectory, bool extended, bool background)
     {
         string baseKey;
-        if (isDirectory)
+        if (background)
+        {
+            baseKey = "<background>";
+        }
+        else if (isDirectory)
         {
             baseKey = "<folder>";
         }

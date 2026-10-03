@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 using DeskQuadra.Core.ThirdParty;
 using Vanara;
 using Vanara.PInvoke;
@@ -35,10 +34,7 @@ internal static class ShellThirdPartyQuery
         return flags;
     }
 
-    private const uint IdCmdFirst = 1;
-    private const uint IdCmdLast = 0x7FFF;
     private const int MaxDepth = 8;
-    private const int LabelCapacityChars = 512;
     private const int VerbCapacityChars = 512;
 
     // Cascatas lazy/delay-populated (SendTo/OpenWith e QUALQUER outra): o
@@ -108,13 +104,13 @@ internal static class ShellThirdPartyQuery
         }
     }
 
-    public static IReadOnlyList<ShellMenuNode> QueryForPath(string path, bool includeExtendedVerbs)
+    public static IReadOnlyList<ShellMenuNode> QueryForPath(string path, bool includeExtendedVerbs, bool background = false)
     {
         CMF flags = BuildQueryFlags(includeExtendedVerbs);
         try
         {
             var nodes = ShellStaRunner.Run(
-                () => QueryOnStaThread(path, flags),
+                () => QueryOnStaThread(path, flags, background),
                 ShellStaRunner.QueryTimeoutMs,
                 "DeskQuadra.ShellQuery");
             ShellMenuLog.Log(ShellMenuLog.FormatQuery(path, flags.ToString(), nodes.Count));
@@ -130,37 +126,33 @@ internal static class ShellThirdPartyQuery
         }
     }
 
-    private static IReadOnlyList<ShellMenuNode> QueryOnStaThread(string path, CMF flags)
+    private static IReadOnlyList<ShellMenuNode> QueryOnStaThread(string path, CMF flags, bool background)
     {
         // .lnk = query sobre o próprio link (SEM resolver o alvo antes).
-        HRESULT hr = SHParseDisplayName(path, null, out PIDL pidl, 0, out _);
-        if (hr.Failed || pidl.IsNull)
+        // Fundo = IContextMenu da própria pasta (CreateViewObject); item =
+        // GetUIObjectOf de antes (intacto).
+        ShellBindStage stage = ShellBindHelper.BindFor(path, background, out ShellBindScope bind, out HRESULT hr);
+        using (bind)
         {
-            ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"parse 0x{(uint)hr:X8}"));
-            return Array.Empty<ShellMenuNode>();
-        }
+            if (stage == ShellBindStage.ParseFailed)
+            {
+                ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"parse 0x{(uint)hr:X8}"));
+                return Array.Empty<ShellMenuNode>();
+            }
 
-        try
-        {
-            hr = SHBindToParent(pidl, typeof(IShellFolder).GUID, out object? folderObj, out IntPtr childRel);
-            if (hr.Failed || folderObj is not IShellFolder folder || childRel == IntPtr.Zero)
+            if (stage == ShellBindStage.BindFailed)
             {
                 ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"bind 0x{(uint)hr:X8}"));
                 return Array.Empty<ShellMenuNode>();
             }
 
-            try
+            if (stage == ShellBindStage.MenuFailed || bind.ContextMenu is null)
             {
-                Guid iidMenu = typeof(IContextMenu).GUID;
-                hr = folder.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidMenu, IntPtr.Zero, out object? menuObj);
-                if (hr.Failed || menuObj is not IContextMenu contextMenu)
-                {
-                    ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"menu 0x{(uint)hr:X8}"));
-                    return Array.Empty<ShellMenuNode>();
-                }
+                ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"menu 0x{(uint)hr:X8}"));
+                return Array.Empty<ShellMenuNode>();
+            }
 
-                try
-                {
+            IContextMenu contextMenu = bind.ContextMenu;
                     using var hMenu = CreatePopupMenu();
                     if (hMenu.IsInvalid)
                     {
@@ -168,7 +160,7 @@ internal static class ShellThirdPartyQuery
                         return Array.Empty<ShellMenuNode>();
                     }
 
-                    hr = contextMenu.QueryContextMenu(hMenu, 0, IdCmdFirst, IdCmdLast, flags);
+                    hr = contextMenu.QueryContextMenu(hMenu, 0, ShellHostProtocol.IdCmdFirst, ShellHostProtocol.IdCmdLast, flags);
                     if (hr.Failed)
                     {
                         ShellMenuLog.Log(ShellMenuLog.FormatQueryFailed(path, flags.ToString(), $"query 0x{(uint)hr:X8}"));
@@ -176,20 +168,6 @@ internal static class ShellThirdPartyQuery
                     }
 
                     return EnumerateMenu(hMenu, contextMenu, depth: 0);
-                }
-                finally
-                {
-                    Marshal.ReleaseComObject(menuObj);
-                }
-            }
-            finally
-            {
-                Marshal.ReleaseComObject(folder);
-            }
-        }
-        finally
-        {
-            pidl.Dispose();
         }
     }
 
@@ -204,11 +182,7 @@ internal static class ShellThirdPartyQuery
         int count = GetMenuItemCount(hMenu);
         for (uint pos = 0; pos < (uint)count; pos++)
         {
-            var mii = new MENUITEMINFO
-            {
-                cbSize = (uint)Marshal.SizeOf<MENUITEMINFO>(),
-                fMask = MenuItemInfoMask.MIIM_FTYPE | MenuItemInfoMask.MIIM_ID | MenuItemInfoMask.MIIM_SUBMENU,
-            };
+            var mii = ShellMenuNative.BuildItemInfo();
             if (!GetMenuItemInfo(hMenu, pos, true, ref mii))
             {
                 continue;
@@ -221,7 +195,7 @@ internal static class ShellThirdPartyQuery
                 continue;
             }
 
-            string label = GetItemLabel(hMenu, pos);
+            string label = ShellMenuNative.GetLabel(hMenu, pos);
 
             if (!mii.hSubMenu.IsNull)
             {
@@ -243,25 +217,18 @@ internal static class ShellThirdPartyQuery
                 continue;
             }
 
-            if (mii.wID < IdCmdFirst)
+            if (mii.wID < ShellHostProtocol.IdCmdFirst)
             {
                 continue;
             }
 
-            uint offset = mii.wID - IdCmdFirst;
+            uint offset = mii.wID - ShellHostProtocol.IdCmdFirst;
             // GCS_VERBW por offset (§1); verbo vazio ≠ descarte (label decide).
             string? verb = GetVerbW(contextMenu, offset);
             nodes.Add(new ShellMenuNode(label, verb, offset, IsSeparator: false, IsPopup: false, Array.Empty<ShellMenuNode>()));
         }
 
         return nodes;
-    }
-
-    private static string GetItemLabel(HMENU hMenu, uint posByPosition)
-    {
-        var sb = new StringBuilder(LabelCapacityChars);
-        int len = GetMenuString(hMenu, posByPosition, sb, sb.Capacity, MenuFlags.MF_BYPOSITION);
-        return len > 0 ? sb.ToString() : string.Empty;
     }
 
     private static string? GetVerbW(IContextMenu contextMenu, uint offset)

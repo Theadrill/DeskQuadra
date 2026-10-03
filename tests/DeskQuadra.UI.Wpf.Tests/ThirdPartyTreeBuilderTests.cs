@@ -203,4 +203,106 @@ public class ThirdPartyTreeBuilderTests
     {
         Assert.Empty(ThirdPartyTreeBuilder.Build(null));
     }
+
+    // FUNDO (espaço vazio/barra): complementos nativos NÃO passam — mesmo
+    // CHEIOS caem inteiros; só terceiro genuíno (Git/7-Zip) sobrevive.
+    [Fact]
+    public void Build_Fundo_ComplementosCheios_Caem_TerceiroFica()
+    {
+        var raw = new[]
+        {
+            Popup("Enviar para", Leaf("Documentos", "sendto")),
+            Popup("Abrir com", Leaf("Bloco de Notas", "openas")),
+            Popup("Transmitir para Dispositivo",
+                Leaf("Transmitir para Dispositivo", string.Empty, 203)),
+            Leaf("Definir como fundo da área de trabalho", "setdesktopwallpaper"),
+            Leaf("Girar para a direita", "rotate90"),
+            Leaf("Girar para a esquerda", "rotate270"),
+            Leaf("Transmitir para Dispositivo", "casttodevice"),
+            Leaf("Enviar para", "sendto"),
+            Leaf("Abrir com", "openas"),
+            Leaf("Git Bash Here", "git.bash"),
+            Popup("7-Zip", Leaf("Open archive", "7z.open", 1)),
+        };
+
+        var result = ThirdPartyTreeBuilder.Build(raw, background: true);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Git Bash Here", result[0].Label);
+        Assert.Equal("7-Zip", result[1].Label);
+    }
+
+    // FUNDO: cascata-complemento VAZIA/lazy também cai (sem item fantasma —
+    // o fallback "mantém vazia" vale SÓ p/ item, decisão T6 intacta).
+    [Theory]
+    [InlineData("Enviar para")]
+    [InlineData("Abrir com")]
+    [InlineData("Transmitir para Dispositivo")]
+    public void Build_Fundo_ComplementoVazio_Cai(string label)
+    {
+        var raw = new[] { Popup(label) };
+
+        Assert.Empty(ThirdPartyTreeBuilder.Build(raw, background: true));
+    }
+
+    // Denylist "Conceder acesso a"/"Give access to": folha e popup caem
+    // INTEIROS (como "incluir na biblioteca") — no ITEM e no FUNDO.
+    [Theory]
+    [InlineData("Conceder acesso a")]
+    [InlineData("Give access to")]
+    public void Build_ConcederAcesso_Folha_Cai_ItemEFundo(string label)
+    {
+        var raw = new[]
+        {
+            Leaf(label, string.Empty),
+            Leaf("Git Bash Here", "git.bash"),
+        };
+
+        var item = ThirdPartyTreeBuilder.Build(raw);
+        var fundo = ThirdPartyTreeBuilder.Build(raw, background: true);
+
+        var singleItem = Assert.Single(item);
+        Assert.Equal("Git Bash Here", singleItem.Label);
+        var singleFundo = Assert.Single(fundo);
+        Assert.Equal("Git Bash Here", singleFundo.Label);
+    }
+
+    [Theory]
+    [InlineData("Conceder acesso a")]
+    [InlineData("Give access to")]
+    public void Build_ConcederAcesso_Popup_CaiInteiro_ItemEFundo(string label)
+    {
+        var raw = new[]
+        {
+            Popup(label,
+                Leaf("Pessoa 1", string.Empty, 11),
+                Leaf("Pessoa 2", string.Empty, 12)),
+            Leaf("Git Bash Here", "git.bash"),
+        };
+
+        var item = ThirdPartyTreeBuilder.Build(raw);
+        var fundo = ThirdPartyTreeBuilder.Build(raw, background: true);
+
+        var singleItem = Assert.Single(item);
+        Assert.Equal("Git Bash Here", singleItem.Label);
+        var singleFundo = Assert.Single(fundo);
+        Assert.Equal("Git Bash Here", singleFundo.Label);
+    }
+
+    // ITEM intacto (T6): complementos seguem passando no menu de arquivo.
+    [Fact]
+    public void Build_Item_Complementos_ContinuamPassando()
+    {
+        var raw = new[]
+        {
+            Popup("Enviar para", Leaf("Documentos", "sendto")),
+            Popup("Enviar para"),
+            Leaf("Abrir com", "openas"),
+            Leaf("Git Bash Here", "git.bash"),
+        };
+
+        var result = ThirdPartyTreeBuilder.Build(raw, background: false);
+
+        Assert.Equal(4, result.Count);
+    }
 }

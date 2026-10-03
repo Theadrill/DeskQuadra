@@ -27,7 +27,9 @@ namespace DeskQuadra.Core.ThirdParty;
 // vai no retorno ao PO.
 public static class ThirdPartyTreeBuilder
 {
-    public static IReadOnlyList<ThirdPartyMenuEntry> Build(IReadOnlyList<ShellMenuNode>? nodes)
+    // background = menu de FUNDO da pasta (espaço vazio/barra): complementos
+    // nativos NÃO passam (só terceiro genuíno); ITEM intacto (default false).
+    public static IReadOnlyList<ThirdPartyMenuEntry> Build(IReadOnlyList<ShellMenuNode>? nodes, bool background = false)
     {
         var result = new List<ThirdPartyMenuEntry>();
         if (nodes is null)
@@ -37,7 +39,7 @@ public static class ThirdPartyTreeBuilder
 
         foreach (var node in nodes)
         {
-            var entry = BuildOne(node);
+            var entry = BuildOne(node, background);
             if (entry is not null)
             {
                 result.Add(entry);
@@ -47,7 +49,7 @@ public static class ThirdPartyTreeBuilder
         return result;
     }
 
-    private static ThirdPartyMenuEntry? BuildOne(ShellMenuNode node)
+    private static ThirdPartyMenuEntry? BuildOne(ShellMenuNode node, bool background = false)
     {
         if (node.IsSeparator)
         {
@@ -70,7 +72,14 @@ public static class ThirdPartyTreeBuilder
                     : popupVerb,
                 node.Label))
             {
-                var kept = Build(node.Children);
+                // FUNDO: complemento nativo NÃO autoriza — cai inteiro (mesmo
+                // cheio); só terceiro genuíno passa (via caminho abaixo).
+                if (background)
+                {
+                    return null;
+                }
+
+                var kept = Build(node.Children, background);
                 string complementLabel =
                     ThirdPartyVerbFilter.CleanLabelForDisplay(node.Label);
                 if (complementLabel.Length == 0)
@@ -112,7 +121,7 @@ public static class ThirdPartyTreeBuilder
                 return null;
             }
 
-            var children = Build(node.Children);
+            var children = Build(node.Children, background);
             if (children.Count == 0)
             {
                 return null;
@@ -134,7 +143,7 @@ public static class ThirdPartyTreeBuilder
         }
 
         string verb = node.Verb ?? string.Empty;
-        if (!ThirdPartyVerbFilter.IsThirdParty(verb, node.Label, isSeparator: false))
+        if (!ThirdPartyVerbFilter.IsThirdParty(verb, node.Label, isSeparator: false, background: background))
         {
             return null;
         }

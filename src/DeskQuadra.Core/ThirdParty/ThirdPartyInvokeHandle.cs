@@ -23,9 +23,13 @@ namespace DeskQuadra.Core.ThirdParty;
 // elimina). LabelPath é o que o usuário VIU; o host limpa os dois lados com
 // CleanLabelForDisplay e compara exato. LabelPath vazio/nulo = sem rótulos
 // (chamadores antigos e caminho-verbo — que ignora rótulos — seguem intactos).
+// Background = alça de FUNDO da pasta (espaço vazio/barra): query e invoke
+// usam o IContextMenu da própria pasta (CreateViewObject), nunca misturado
+// com o de item (default false = item, intacto).
 public sealed record ThirdPartyInvokeHandle(
     string Path,
     string Verb,
     uint CommandOffset,
     bool IncludeExtendedVerbs,
-    IReadOnlyList<string>? LabelPath = null);
+    IReadOnlyList<string>? LabelPath = null,
+    bool Background = false);

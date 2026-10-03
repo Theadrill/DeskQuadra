@@ -57,8 +57,10 @@ public static class ShellHostProtocol
     // Faixa válida de offset (id - idCmdFirst) p/ o HMENU fantasma (movido do
     // engine T3 p/ cá: guarda pura, usada pelo cliente ANTES de spawnar e pelo
     // host — sem Vanara, sem COM, testável sem Shell).
-    private const uint IdCmdFirst = 1;
-    private const uint IdCmdLast = 0x7FFF;
+    // F2 (fonte única): Query/Invoke no ShellHost usam estas consts direto
+    // nos QueryContextMenu e no cálculo id - IdCmdFirst (valores intactos).
+    public const uint IdCmdFirst = 1;
+    public const uint IdCmdLast = 0x7FFF;
 
     public static bool IsOffsetInRange(uint commandOffset)
         => commandOffset <= (IdCmdLast - IdCmdFirst);
@@ -74,8 +76,8 @@ public static class ShellHostProtocol
         PropertyNameCaseInsensitive = true,
     };
 
-    public static string SerializeQueryRequest(string path, bool extended)
-        => JsonSerializer.Serialize(new ShellHostQueryRequest(QueryOp, path, extended), JsonOptions);
+    public static string SerializeQueryRequest(string path, bool extended, bool background = false)
+        => JsonSerializer.Serialize(new ShellHostQueryRequest(QueryOp, path, extended, background), JsonOptions);
 
     public static string SerializeInvokeRequest(
         string path,
@@ -84,9 +86,10 @@ public static class ShellHostProtocol
         bool extended,
         long hwnd,
         int? x,
-        int? y)
+        int? y,
+        bool background = false)
         => JsonSerializer.Serialize(
-            new ShellHostInvokeRequest(InvokeOp, path, verb, offset, extended, hwnd, x, y),
+            new ShellHostInvokeRequest(InvokeOp, path, verb, offset, extended, hwnd, x, y, background),
             JsonOptions);
 
     public static string SerializeInvokeByLabelRequest(
@@ -95,7 +98,8 @@ public static class ShellHostProtocol
         bool extended,
         long hwnd,
         int? x,
-        int? y)
+        int? y,
+        bool background = false)
         => JsonSerializer.Serialize(
             new ShellHostInvokeByLabelRequest(
                 InvokeByLabelOp,
@@ -104,7 +108,8 @@ public static class ShellHostProtocol
                 labels is List<string> list ? list : new List<string>(labels ?? Array.Empty<string>()),
                 hwnd,
                 x,
-                y),
+                y,
+                background),
             JsonOptions);
 
     // Lê o "op" sem desserializar tudo (o host despacha por ele).
@@ -329,7 +334,11 @@ public static class ShellHostProtocol
 // Pedidos (1 linha no stdin do host). HWND atravessa como long (handle é
 // válido entre processos); ponto do cursor como X/Y anuláveis (sem ponto =
 // invoke sem PTINVOKE, best-effort, mesmo molde T3).
-public sealed record ShellHostQueryRequest(string Op, string Path, bool Extended);
+// Background = menu de FUNDO da pasta (espaço vazio/barra): o host binda o
+// IContextMenu da própria pasta via CreateViewObject em vez do GetUIObjectOf
+// de item. Default false (JSON antigo sem o campo desserializa como false —
+// System.Text.Json usa o default do parâmetro — item intacto, compatível).
+public sealed record ShellHostQueryRequest(string Op, string Path, bool Extended, bool Background = false);
 
 public sealed record ShellHostInvokeRequest(
     string Op,
@@ -339,7 +348,8 @@ public sealed record ShellHostInvokeRequest(
     bool Extended,
     long Hwnd,
     int? X,
-    int? Y);
+    int? Y,
+    bool Background = false);
 
 // FIX invoke-by-label (folhas sem verbo estável): Labels = rótulos do caminho
 // como o usuário VIU (já CleanLabelForDisplay na listagem — ex.
@@ -352,7 +362,8 @@ public sealed record ShellHostInvokeByLabelRequest(
     List<string> Labels,
     long Hwnd,
     int? X,
-    int? Y);
+    int? Y,
+    bool Background = false);
 
 // Respostas (1 linha no stdout do host). Query SEMPRE devolve Entries
 // (vazia em falha — a UI mantém o placeholder T1); Error é diagnóstico p/
