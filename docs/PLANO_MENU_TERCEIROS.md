@@ -98,3 +98,12 @@ Histórico: toda mexida no menu quebrava densidade touch/normal e cores. Isso N�
 
 - Comandos exclusivos do menu novo Win11 (`IExplorerCommand`); "Mais opções ≫" (só se o menu lotar no futuro);
   host elevado/UAC; desabilitar handler por CLSID (futuro, com `Blocked`); ícones dos terceiros no nosso menu.
+
+## 5. T8 — Lazy + TTL + refresh manual (validado pelo PO, pushado)
+
+- **T8a lazy:** seção de terceiros abre com `Carregando...` (resx `ThirdParty_Loading`) e preenche em background
+  (`Task` + `Dispatcher`), com token de geração por menu (resultado velho descartado) e reaplicação de densidade
+  no swap (§2). Falha/timeout volta ao placeholder T1.
+- **T8b TTL assimétrico:** negativo (vazio/falha) 60s, positivo 5 min; expirado refaz a query (em background via lazy).
+- **T8c tray:** `Atualizar ações de terceiros` (`ClearCache`) antes do Sair.
+- Testes: 458 verdes no push. Host persistente fica como ideia futura (one-shot mantido).

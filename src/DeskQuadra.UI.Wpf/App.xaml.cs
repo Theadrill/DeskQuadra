@@ -408,23 +408,38 @@ public partial class App : System.Windows.Application
             CheckOnClick = false
         };
         var settings = new WinForms.ToolStripMenuItem(UiStrings.TraySettings);
+        // T8c refresh manual de terceiros: antes do Sair (Sair é sempre o último).
+        var refreshThirdParty = new WinForms.ToolStripMenuItem(UiStrings.TrayRefreshThirdParty);
         var exit = new WinForms.ToolStripMenuItem(UiStrings.TrayExit);
 
         ApplyTouchDensity(hiddenRoot);
         ApplyTouchDensity(showAll);
         ApplyTouchDensity(lockAll);
         ApplyTouchDensity(settings);
+        ApplyTouchDensity(refreshThirdParty);
         ApplyTouchDensity(exit);
 
         showAll.Click += (s, e) => RestoreAllHiddenQuadras();
         lockAll.Click += (s, e) => ToggleLockAll(lockAll);
         settings.Click += (s, e) => OpenSettings();
+        refreshThirdParty.Click += (s, e) =>
+        {
+            try
+            {
+                _serviceProvider?.GetService<IThirdPartyMenuService>()?.ClearCache();
+            }
+            catch
+            {
+                // Best-effort silencioso, padrão do projeto.
+            }
+        };
         exit.Click += (s, e) => Shutdown();
 
         menu.Items.Add(hiddenRoot);
         menu.Items.Add(showAll);
         menu.Items.Add(lockAll);
         menu.Items.Add(settings);
+        menu.Items.Add(refreshThirdParty);
 
         // HangTestSwitch (TESTE DE FOGO, temporário): item que congela a UI de verdade.
         // Remover junto com Services/HangTestSwitch.cs somente no final do projeto.

@@ -132,6 +132,8 @@ namespace DeskQuadra.UI.Wpf.Properties
 
         public static string ThirdParty_NoActions => ResourceManager.GetString("ThirdParty_NoActions", resourceCulture);
 
+        public static string ThirdParty_Loading => ResourceManager.GetString("ThirdParty_Loading", resourceCulture);
+
         public static string Dialog_CloseTitle => ResourceManager.GetString("Dialog_CloseTitle", resourceCulture);
 
         public static string Dialog_CloseMessageFormat => ResourceManager.GetString("Dialog_CloseMessageFormat", resourceCulture);
@@ -167,6 +169,8 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string Selection_NewQuadra => ResourceManager.GetString("Selection_NewQuadra", resourceCulture);
 
         public static string TraySettings => ResourceManager.GetString("TraySettings", resourceCulture);
+
+        public static string TrayRefreshThirdParty => ResourceManager.GetString("TrayRefreshThirdParty", resourceCulture);
 
         public static string SettingsTitle => ResourceManager.GetString("SettingsTitle", resourceCulture);
 

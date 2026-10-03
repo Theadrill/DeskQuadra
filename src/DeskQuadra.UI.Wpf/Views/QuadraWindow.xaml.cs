@@ -961,7 +961,8 @@ public partial class QuadraWindow : Window
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
         bool isTouch = ResolveEffectiveIsTouch(e);
         // T2 terceiros no vazio (IContextMenu de FUNDO da pasta Desktop) antes da densidade (§2).
-        PopulateThirdPartySection(menu, GetEmptySpaceFolderPath(), background: true);
+        // T8a lazy: isTouch capturado NA ABERTURA e repassado (o callback reaplica a densidade).
+        PopulateThirdPartySection(menu, GetEmptySpaceFolderPath(), background: true, isTouch: isTouch);
         ApplyMenuDensity(menu, isTouch: isTouch);
         // Visibilidade só por gesto real (sem preferência): mouse nunca vê Redimensionar.
         bool touchGesture = InputDeviceDetector.IsTouchInteraction(e);
@@ -1232,16 +1233,18 @@ public partial class QuadraWindow : Window
         // esquerdo e movimento cancela o hold no próprio SO.
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
+            // T8a lazy: isTouch capturado NA ABERTURA (antes do Populate; o callback
+            // reaplica a densidade sem recalcular). T3 terceiros antes da densidade (§2).
+            bool isTouch = ResolveEffectiveIsTouch(e);
             // T3 terceiros: rótulos reais habilitados do próprio item
             // (.lnk = o próprio link). Antes da densidade (§2).
             if (fe.DataContext is DesktopItemViewModel item)
             {
-                PopulateThirdPartySection(fe.ContextMenu, item.FilePath, background: false);
+                PopulateThirdPartySection(fe.ContextMenu, item.FilePath, background: false, isTouch: isTouch);
             }
             // Toque usa itens de 46px; mouse segue compacto (~26px).
             // Híbrido preservado: toque real abre menu grande mesmo em modo Normal
             // (gesto OU preferência, mesmo padrão do App.ResolveEffectiveIsTouch).
-            bool isTouch = ResolveEffectiveIsTouch(e);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
             // MOVER só por gesto real (sem preferência): sem gesto no args, vale o estado
             // de gesto (mensagem atual + flag, já resetada no mouse real).
@@ -1271,15 +1274,46 @@ public partial class QuadraWindow : Window
         public ThirdPartyInvokeHandle? Handle;
     }
 
-    // T3 terceiros (habilita + invoca): troca o placeholder T1 pelos rótulos
-    // reais do Shell, HABILITADOS (folha invoca no clique; cascata abre o
-    // submenu). Chamar ANTES do ApplyMenuDensity (itens novos sem Style
-    // explícito herdam a densidade na abertura, §2). Falha/vazio = mostra o
-    // placeholder T1 (silencioso, padrão do projeto). Sem timers.
+    // T8a lazy load: geração por instância de ContextMenu (as instâncias são
+    // reutilizadas entre aberturas — o dicionário limita-se a elas, sem leak).
+    private readonly Dictionary<ContextMenu, long> _thirdPartyGenerations = new();
+    private readonly object _thirdPartyGenerationsLock = new();
+
+    private long NextThirdPartyGeneration(ContextMenu menu)
+    {
+        lock (_thirdPartyGenerationsLock)
+        {
+            long next = _thirdPartyGenerations.TryGetValue(menu, out long current) ? current + 1 : 1;
+            _thirdPartyGenerations[menu] = next;
+            return next;
+        }
+    }
+
+    private bool IsThirdPartyGenerationCurrent(ContextMenu menu, long generation)
+    {
+        lock (_thirdPartyGenerationsLock)
+        {
+            return _thirdPartyGenerations.TryGetValue(menu, out long current)
+                && ThirdPartyLazyLoadGuard.ShouldApply(generation, current);
+        }
+    }
+
+    // T3 terceiros (habilita + invoca) com lazy load T8a: a parte síncrona SÓ
+    // prepara (limpa os inseridos anteriores, mostra o placeholder com
+    // "Carregando..." e incrementa o token de geração do menu) e dispara a
+    // query COM em Task.Run (spawn do ShellHost + query saem da thread da UI —
+    // a abertura do menu não trava na primeira vez de cada tipo). A
+    // continuação roda no Dispatcher e aplica SOMENTE se o token ainda for o
+    // atual (abertura mais nova invalida a anterior) e o menu ainda fizer
+    // sentido (IsOpen); monta os itens via CreateThirdPartyItem (sem Style
+    // explícito, herdam a densidade em §2) e reaplica ApplyMenuDensity com o
+    // isTouch capturado NA ABERTURA (sem recalcular no callback). Vazio/falha
+    // = placeholder visível com NoActions (Header restaurado ao final).
+    // Exceção = silenciosa, placeholder NoActions. Sem timers.
     // Idempotente: o placeholder NUNCA é removido (só Collapsed/Visible) e os
     // inseridos anteriormente são removidos no início (a instância do ContextMenu
     // persiste entre aberturas — barra/vazio compartilham UMA).
-    private void PopulateThirdPartySection(ContextMenu menu, string? targetPath, bool background)
+    private void PopulateThirdPartySection(ContextMenu menu, string? targetPath, bool background, bool isTouch)
     {
         var placeholder = menu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Name == "ThirdPartyPlaceholderItem");
         if (placeholder is null)
@@ -1295,29 +1329,88 @@ public partial class QuadraWindow : Window
             }
         }
 
-        IReadOnlyList<ThirdPartyMenuEntry> entries;
-        try
-        {
-            entries = _thirdPartyMenuService.GetForPath(targetPath, background);
-        }
-        catch
-        {
-            placeholder.Visibility = Visibility.Visible;
-            return;
-        }
+        placeholder.Header = Strings.ThirdParty_Loading;
+        placeholder.Visibility = Visibility.Visible;
 
-        if (entries.Count == 0)
+        long generation = NextThirdPartyGeneration(menu);
+        IThirdPartyMenuService service = _thirdPartyMenuService;
+        Task.Run(() =>
         {
-            placeholder.Visibility = Visibility.Visible;
-            return;
-        }
+            IReadOnlyList<ThirdPartyMenuEntry>? entries;
+            try
+            {
+                entries = service.GetForPath(targetPath, background);
+            }
+            catch
+            {
+                entries = null;
+            }
 
-        placeholder.Visibility = Visibility.Collapsed;
-        int index = menu.Items.IndexOf(placeholder);
-        foreach (var entry in entries)
-        {
-            menu.Items.Insert(++index, CreateThirdPartyItem(entry, targetPath, background));
-        }
+            Dispatcher.BeginInvoke(() =>
+            {
+                try
+                {
+                    if (!IsThirdPartyGenerationCurrent(menu, generation))
+                    {
+                        return;
+                    }
+
+                    var ph = menu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Name == "ThirdPartyPlaceholderItem");
+                    if (ph is null)
+                    {
+                        return;
+                    }
+
+                    if (!menu.IsOpen)
+                    {
+                        ph.Header = Strings.ThirdParty_NoActions;
+                        ph.Visibility = Visibility.Visible;
+                        return;
+                    }
+
+                    if (entries is null || entries.Count == 0)
+                    {
+                        ph.Header = Strings.ThirdParty_NoActions;
+                        ph.Visibility = Visibility.Visible;
+                        return;
+                    }
+
+                    for (int i = menu.Items.Count - 1; i >= 0; i--)
+                    {
+                        if (menu.Items[i] is MenuItem item && item.Tag is ThirdPartyMenuTag)
+                        {
+                            menu.Items.RemoveAt(i);
+                        }
+                    }
+
+                    ph.Header = Strings.ThirdParty_NoActions;
+                    ph.Visibility = Visibility.Collapsed;
+                    int index = menu.Items.IndexOf(ph);
+                    foreach (var entry in entries)
+                    {
+                        menu.Items.Insert(++index, CreateThirdPartyItem(entry, targetPath, background));
+                    }
+
+                    ApplyMenuDensity(menu, isTouch: isTouch);
+                }
+                catch
+                {
+                    try
+                    {
+                        var ph = menu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Name == "ThirdPartyPlaceholderItem");
+                        if (ph is not null && IsThirdPartyGenerationCurrent(menu, generation))
+                        {
+                            ph.Header = Strings.ThirdParty_NoActions;
+                            ph.Visibility = Visibility.Visible;
+                        }
+                    }
+                    catch
+                    {
+                        // Silencioso, padrão do projeto.
+                    }
+                }
+            });
+        });
     }
 
     // Item novo SEMPRE sem Style/Height/cor (§2: ApplyStyleRecursively aplica a
@@ -2217,9 +2310,10 @@ public partial class QuadraWindow : Window
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
-        // T3 terceiros no vazio (IContextMenu de FUNDO da pasta Desktop) antes da densidade (§2).
-            PopulateThirdPartySection(fe.ContextMenu, GetEmptySpaceFolderPath(), background: true);
+            // T3 terceiros no vazio (IContextMenu de FUNDO da pasta Desktop) antes da densidade (§2).
+            // T8a lazy: isTouch capturado NA ABERTURA e repassado (o callback reaplica a densidade).
             bool isTouch = ResolveEffectiveIsTouch(e);
+            PopulateThirdPartySection(fe.ContextMenu, GetEmptySpaceFolderPath(), background: true, isTouch: isTouch);
             ApplyMenuDensity(fe.ContextMenu, isTouch: isTouch);
             // Visibilidade só por gesto real (sem preferência): mouse nunca vê Redimensionar.
             bool touchGesture = InputDeviceDetector.IsEventFromTouch(e);

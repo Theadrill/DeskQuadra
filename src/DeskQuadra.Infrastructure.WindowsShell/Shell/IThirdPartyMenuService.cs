@@ -29,4 +29,8 @@ public interface IThirdPartyMenuService
     // dono das UIs do handler (diálogos), ponto = cursor no momento do clique.
     // Retorna false em qualquer falha (silencioso, padrão do projeto).
     bool TryInvoke(ThirdPartyInvokeHandle? handle, IntPtr hwnd, POINT? invokePoint);
+
+    // T8c refresh manual do tray: limpa buckets item/fundo/extended; próxima
+    // abertura refaz query.
+    void ClearCache();
 }

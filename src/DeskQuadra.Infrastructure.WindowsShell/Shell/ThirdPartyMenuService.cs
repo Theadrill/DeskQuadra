@@ -10,7 +10,8 @@ namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
 // rodam no DeskQuadra.ShellHost (outro processo) via ShellHostClient
 // (one-shot stdin/stdout JSON, timeout/kill, host morto = vazio silencioso).
 // Mantidos aqui (UI-side, sem COM): cache por extensão (positivo E negativo;
-// sem expiração, sem timers) + registro do Shift/EXTENDEDVERBS por caminho +
+// com expiração assimétrica T8b — negativo 60s, positivo 300s — sem timers)
+// + registro do Shift/EXTENDEDVERBS por caminho +
 // guardas de alça. Visual e chamada intactos (zero XAML/resx em T5).
 // CMF_EXTENDEDVERBS só com Shift pressionado (GetKeyState no momento da abertura).
 // Query + alça de invoke resolvidos JUNTOS: GetForPath registra o Shift usado
@@ -26,8 +27,18 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
     private static readonly IReadOnlyList<ThirdPartyMenuEntry> Empty =
         Array.Empty<ThirdPartyMenuEntry>();
 
-    private readonly ConcurrentDictionary<string, IReadOnlyList<ThirdPartyMenuEntry>> _cache =
+    private readonly ConcurrentDictionary<string, CacheEntry> _cache =
         new(StringComparer.OrdinalIgnoreCase);
+
+    // T8b TTL assimétrico: instalar app novo aparece sem restart. Entrada =
+    // (entries, timestampUtc); negativo (lista vazia, inclui falha que resulte
+    // em vazio) expira rápido, positivo dura mais. Sem timers (expiração
+    // preguiçosa: só re-consulta no próximo GetForPath após o TTL).
+    internal const int NegativeTtlSeconds = 60;
+    internal const int PositiveTtlSeconds = 300;
+
+    private readonly record struct CacheEntry(
+        IReadOnlyList<ThirdPartyMenuEntry> Entries, DateTime TimestampUtc);
 
     // Shift usado na query, por caminho (o Shift do clique pode já ter sido
     // solto — o invoke precisa das MESMAS flags da listagem). Limitado: é
@@ -36,7 +47,26 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         new(StringComparer.OrdinalIgnoreCase);
     private const int MaxTrackedPaths = 1024;
 
-    private readonly ShellHostClient _host = new();
+    private readonly ShellHostClient _host;
+    private readonly Func<DateTime> _utcNow;
+
+    public ThirdPartyMenuService()
+        : this(new ShellHostClient(), static () => DateTime.UtcNow)
+    {
+    }
+
+    // Injeção p/ xUnit (fake launcher + relógio controlável). Não muda o
+    // comportamento público além do ClearCache (T8c refresh manual do tray).
+    internal ThirdPartyMenuService(IShellHostLauncher launcher, Func<DateTime>? utcNow = null)
+        : this(new ShellHostClient(launcher), utcNow)
+    {
+    }
+
+    internal ThirdPartyMenuService(ShellHostClient host, Func<DateTime>? utcNow = null)
+    {
+        _host = host;
+        _utcNow = utcNow ?? (static () => DateTime.UtcNow);
+    }
 
     public IReadOnlyList<ThirdPartyMenuEntry> GetForPath(string? path, bool background = false)
     {
@@ -59,7 +89,21 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
             bool extended = NativeMethods.IsShiftPressed();
             TrackExtendedFlag(path, extended, background);
             string key = GetCacheKey(path, isDirectory, extended, background);
-            return _cache.GetOrAdd(key, _ => QueryUncached(path, extended, background));
+
+            // Hit fresco → devolve; hit expirado ou miss → QueryUncached de
+            // novo e regrava com DateTime.UtcNow (via _utcNow, mockável).
+            if (_cache.TryGetValue(key, out CacheEntry cached))
+            {
+                int ttlSeconds = cached.Entries.Count == 0 ? NegativeTtlSeconds : PositiveTtlSeconds;
+                if (_utcNow() - cached.TimestampUtc < TimeSpan.FromSeconds(ttlSeconds))
+                {
+                    return cached.Entries;
+                }
+            }
+
+            IReadOnlyList<ThirdPartyMenuEntry> fresh = QueryUncached(path, extended, background);
+            _cache[key] = new CacheEntry(fresh, _utcNow());
+            return fresh;
         }
         catch
         {
@@ -172,6 +216,23 @@ public sealed class ThirdPartyMenuService : IThirdPartyMenuService
         {
             // Silencioso, padrão do projeto.
             return false;
+        }
+    }
+
+    // T8c refresh manual do tray: esvazia _cache (buckets item/fundo/extended)
+    // e _extendedByPath; próxima abertura refaz query. Limpar o extended é
+    // seguro: o invoke-by-label resolve rótulos na hora e o CreateHandle
+    // recai no Shift atual quando não há flag registrada (fallback intacto).
+    public void ClearCache()
+    {
+        try
+        {
+            _cache.Clear();
+            _extendedByPath.Clear();
+        }
+        catch
+        {
+            // Best-effort silencioso, padrão do projeto.
         }
     }
 
