@@ -286,6 +286,10 @@
                                                         <Setter Property="Background" Value="{DynamicResource Quadra.Item.Selected.Background}"/>
                                                         <Setter Property="BorderBrush" Value="{DynamicResource Quadra.Item.Selected.BorderBrush}"/>
                                                     </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource Quadra.Item.Hover.Background}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource Quadra.Item.Selected.BorderBrush}"/>
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>

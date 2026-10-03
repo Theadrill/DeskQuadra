@@ -46,6 +46,13 @@ public sealed class DesktopItemViewModel : ViewModelBase
         set => SetProperty(ref _editName, value);
     }
 
+    private bool _isDropTarget;
+    public bool IsDropTarget
+    {
+        get => _isDropTarget;
+        set => SetProperty(ref _isDropTarget, value);
+    }
+
     public ImageSource Icon
     {
         get

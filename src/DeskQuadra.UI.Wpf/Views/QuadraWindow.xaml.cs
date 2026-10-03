@@ -15,6 +15,7 @@ using DeskQuadra.Core;
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.FileDeletion;
 using DeskQuadra.Core.FileDuplication;
+using DeskQuadra.Core.FileSystem;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Core.ThirdParty;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
@@ -48,6 +49,7 @@ public partial class QuadraWindow : Window
     private Point _itemDragStartPos;
     private DesktopItemViewModel? _draggedItemCandidate;
     private bool _isItemDragging;
+    private DesktopItemViewModel? _currentDropTargetItem;
 
     // MOVER-via-touch (Fatia 1, sem overview): armado compartilhado entre Quadras.
     // Destaque REUSE o IsSelected (visual de seleção existente, sem cor/tema novo).
@@ -1612,13 +1614,24 @@ public partial class QuadraWindow : Window
         try
         {
             _isItemDragging = true;
-            var payload = new QuadraDragPayload(_viewModel.Id, item);
+            var selectedItems = _viewModel.Items.Where(i => i.IsSelected).ToList();
+            if (!selectedItems.Contains(item))
+            {
+                selectedItems = new List<DesktopItemViewModel> { item };
+            }
+
+            var payload = new QuadraDragPayload(_viewModel.Id, selectedItems);
             var dataObject = new DataObject();
             dataObject.SetData(typeof(QuadraDragPayload), payload);
 
-            if (File.Exists(item.FilePath) || Directory.Exists(item.FilePath))
+            var existingPaths = selectedItems
+                .Select(i => i.FilePath)
+                .Where(p => File.Exists(p) || Directory.Exists(p))
+                .ToArray();
+
+            if (existingPaths.Length > 0)
             {
-                dataObject.SetData(DataFormats.FileDrop, new[] { item.FilePath });
+                dataObject.SetData(DataFormats.FileDrop, existingPaths);
             }
 
             Mouse.Capture(null);
@@ -1635,7 +1648,10 @@ public partial class QuadraWindow : Window
 
             if (payload.WasHandledAsMove)
             {
-                _viewModel.RemoveItem(payload.Item);
+                foreach (var movedItem in payload.Items)
+                {
+                    _viewModel.RemoveItem(movedItem);
+                }
                 _coordinator.NotifyQuadraChanged(_viewModel.Model);
             }
         }
@@ -2126,8 +2142,119 @@ public partial class QuadraWindow : Window
             || (NativeMethods.GetKeyState(NativeMethods.VK_CONTROL) & 0x8000) != 0;
     }
 
+    private DesktopItemViewModel? FindItemUnderDragEvent(DragEventArgs e)
+    {
+        var dep = e.OriginalSource as DependencyObject;
+        while (dep != null && dep != this)
+        {
+            if (dep is FrameworkElement fe && fe.DataContext is DesktopItemViewModel vm)
+            {
+                return vm;
+            }
+            dep = VisualTreeHelper.GetParent(dep);
+        }
+
+        Point pt = e.GetPosition(this);
+        DesktopItemViewModel? found = null;
+        VisualTreeHelper.HitTest(this, null, result =>
+        {
+            var cur = result.VisualHit;
+            while (cur != null && cur != this)
+            {
+                if (cur is FrameworkElement fe && fe.DataContext is DesktopItemViewModel vm)
+                {
+                    found = vm;
+                    return HitTestResultBehavior.Stop;
+                }
+                cur = VisualTreeHelper.GetParent(cur);
+            }
+            return HitTestResultBehavior.Continue;
+        }, new PointHitTestParameters(pt));
+
+        return found;
+    }
+
+    private static string? ResolveTargetFolderPath(DesktopItemViewModel? item)
+    {
+        if (item == null)
+        {
+            return null;
+        }
+
+        if (item.IsDirectory && Directory.Exists(item.FilePath))
+        {
+            return item.FilePath;
+        }
+
+        if (Directory.Exists(item.FilePath))
+        {
+            return item.FilePath;
+        }
+
+        if (item.FilePath.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+        {
+            string? target = NativeMethods.TryResolveShortcutTarget(item.FilePath);
+            if (!string.IsNullOrWhiteSpace(target) && Directory.Exists(target))
+            {
+                return target;
+            }
+        }
+
+        return null;
+    }
+
     private void Quadra_DragOver(object sender, DragEventArgs e)
     {
+        var candidateItem = FindItemUnderDragEvent(e);
+        string? targetFolder = ResolveTargetFolderPath(candidateItem);
+
+        bool isValidFolderDrop = false;
+        if (!string.IsNullOrEmpty(targetFolder) && candidateItem != null)
+        {
+            if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
+            {
+                var payload = e.Data.GetData(typeof(QuadraDragPayload)) as QuadraDragPayload;
+                if (payload != null && payload.Items.Count > 0)
+                {
+                    isValidFolderDrop = payload.Items.All(i => DesktopItemMover.CanMoveInto(i.FilePath, targetFolder));
+                }
+            }
+            else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null && files.Length > 0)
+                {
+                    isValidFolderDrop = files.All(f => DesktopItemMover.CanMoveInto(f, targetFolder));
+                }
+            }
+        }
+
+        if (isValidFolderDrop && candidateItem != null)
+        {
+            if (_currentDropTargetItem != candidateItem)
+            {
+                if (_currentDropTargetItem != null)
+                {
+                    _currentDropTargetItem.IsDropTarget = false;
+                }
+                _currentDropTargetItem = candidateItem;
+                _currentDropTargetItem.IsDropTarget = true;
+            }
+
+            bool isControlPressed = IsCopyRequested(e);
+            e.Effects = isControlPressed ? DragDropEffects.Copy : DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
+        else
+        {
+            if (_currentDropTargetItem != null)
+            {
+                _currentDropTargetItem.IsDropTarget = false;
+                _currentDropTargetItem = null;
+            }
+        }
+
         if (e.Data.GetDataPresent(typeof(QuadraDragPayload)) || e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             bool isControlPressed = IsCopyRequested(e);
@@ -2171,6 +2298,12 @@ public partial class QuadraWindow : Window
 
     private void Quadra_DragLeave(object sender, DragEventArgs e)
     {
+        if (_currentDropTargetItem != null)
+        {
+            _currentDropTargetItem.IsDropTarget = false;
+            _currentDropTargetItem = null;
+        }
+
         CancelSpringTimer();
         // Saiu sem soltar: recolhe de novo sem persistir o estado temporário
         if (_springExpanded)
@@ -2222,6 +2355,22 @@ public partial class QuadraWindow : Window
 
     private void Quadra_Drop(object sender, DragEventArgs e)
     {
+        var targetFolderItem = _currentDropTargetItem;
+        if (_currentDropTargetItem != null)
+        {
+            _currentDropTargetItem.IsDropTarget = false;
+            _currentDropTargetItem = null;
+        }
+
+        if (targetFolderItem == null)
+        {
+            var candidate = FindItemUnderDragEvent(e);
+            if (candidate != null && !string.IsNullOrEmpty(ResolveTargetFolderPath(candidate)))
+            {
+                targetFolderItem = candidate;
+            }
+        }
+
         CancelSpringTimer();
         bool wasSpringExpanded = _springExpanded;
         _springExpanded = false;
@@ -2242,6 +2391,87 @@ public partial class QuadraWindow : Window
         }
 
         bool isCopy = IsCopyRequested(e);
+
+        if (targetFolderItem != null)
+        {
+            string? targetFolder = ResolveTargetFolderPath(targetFolderItem);
+            if (!string.IsNullOrEmpty(targetFolder))
+            {
+                if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
+                {
+                    var payload = e.Data.GetData(typeof(QuadraDragPayload)) as QuadraDragPayload;
+                    if (payload != null && payload.Items.Count > 0)
+                    {
+                        bool anyMoved = false;
+                        foreach (var item in payload.Items)
+                        {
+                            if (DesktopItemMover.CanMoveInto(item.FilePath, targetFolder))
+                            {
+                                try
+                                {
+                                    if (isCopy)
+                                    {
+                                        DesktopItemMover.Copy(item.FilePath, targetFolder);
+                                    }
+                                    else
+                                    {
+                                        DesktopItemMover.Move(item.FilePath, targetFolder);
+                                        anyMoved = true;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"[DropOnFolder] Falha ao mover {item.FilePath}: {ex.Message}");
+                                }
+                            }
+                        }
+
+                        if (anyMoved)
+                        {
+                            payload.WasHandledAsMove = true;
+                        }
+
+                        e.Effects = isCopy ? DragDropEffects.Copy : DragDropEffects.Move;
+                        e.Handled = true;
+                        FinishDrop(armPostDrop);
+                        return;
+                    }
+                }
+                else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                    if (files != null && files.Length > 0)
+                    {
+                        foreach (var file in files)
+                        {
+                            if (DesktopItemMover.CanMoveInto(file, targetFolder))
+                            {
+                                try
+                                {
+                                    if (isCopy)
+                                    {
+                                        DesktopItemMover.Copy(file, targetFolder);
+                                    }
+                                    else
+                                    {
+                                        DesktopItemMover.Move(file, targetFolder);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"[DropOnFolder] Falha ao mover {file}: {ex.Message}");
+                                }
+                            }
+                        }
+
+                        e.Effects = isCopy ? DragDropEffects.Copy : DragDropEffects.Move;
+                        e.Handled = true;
+                        FinishDrop(armPostDrop);
+                        return;
+                    }
+                }
+            }
+        }
 
         if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
         {
@@ -2264,15 +2494,21 @@ public partial class QuadraWindow : Window
                 if (isCopy)
                 {
                     // Duplicação física no disco (Ctrl + Drag), tanto na mesma Quadra quanto entre Quadras
-                    string duplicatedPath = DuplicateWithStandardSuffix(payload.Item.FilePath);
-                    _viewModel.AddItem(duplicatedPath);
+                    foreach (var itemToCopy in payload.Items)
+                    {
+                        string duplicatedPath = DuplicateWithStandardSuffix(itemToCopy.FilePath);
+                        _viewModel.AddItem(duplicatedPath);
+                    }
                     e.Effects = DragDropEffects.Copy;
                 }
                 else
                 {
                     // Mover item entre Quadras distintas
                     payload.WasHandledAsMove = true;
-                    _viewModel.AddItem(payload.Item.Model);
+                    foreach (var itemToMove in payload.Items)
+                    {
+                        _viewModel.AddItem(itemToMove.Model);
+                    }
                     e.Effects = DragDropEffects.Move;
                 }
 
