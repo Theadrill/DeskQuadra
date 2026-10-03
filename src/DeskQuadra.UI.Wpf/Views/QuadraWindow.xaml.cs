@@ -168,6 +168,7 @@ public partial class QuadraWindow : Window
         // item que casa (tunelamento; os guards dentro recusam edição/menu/diálogo).
         // Sem XAML: assinatura aqui, sem resx (sem texto visível novo).
         PreviewTextInput += Quadra_TypeAheadTextInput;
+        PreviewKeyDown += Quadra_PreviewKeyDown;
 
         // Hover-peek do roll-up (seção 10): entrada arma expansão temporária, saída recolhe com debounce
         MouseEnter += Quadra_PeekMouseEnter;
@@ -496,6 +497,10 @@ public partial class QuadraWindow : Window
     // Sincroniza a grade de itens com o modelo (usado quando outra Quadra move itens para cá)
     public void RefreshItemsFromModel()
     {
+        if (_viewModel.Items.Any(i => i.IsRenaming))
+        {
+            return;
+        }
         _viewModel.RefreshItems();
     }
 
@@ -1204,6 +1209,10 @@ public partial class QuadraWindow : Window
     private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         StopTouchInertia(); // qualquer novo Down/interação cancela a inércia
+        if (e.OriginalSource is TextBox || (sender is FrameworkElement feDown && feDown.DataContext is DesktopItemViewModel itemDown && itemDown.IsRenaming))
+        {
+            return;
+        }
         bool isTouch = InputDeviceDetector.IsTouchInteraction(e);
 
         if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
@@ -1581,7 +1590,7 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        if (_isItemDragging || _draggedItemCandidate == null || e.LeftButton != MouseButtonState.Pressed)
+        if (_isItemDragging || _draggedItemCandidate == null || _draggedItemCandidate.IsRenaming || e.LeftButton != MouseButtonState.Pressed)
         {
             return;
         }
@@ -1682,6 +1691,14 @@ public partial class QuadraWindow : Window
             {
                 // Silencioso
             }
+        }
+    }
+
+    private void ItemMenuRename_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
+        {
+            BeginItemRename(item);
         }
     }
 
@@ -2293,6 +2310,40 @@ public partial class QuadraWindow : Window
         _viewModel.RefreshItems();
     }
 
+    private void NewFolderMenu_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string targetDir = GetEmptySpaceFolderPath() ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (!Directory.Exists(targetDir))
+            {
+                Directory.CreateDirectory(targetDir);
+            }
+
+            string newPath = NewFolderCreator.GetUniqueFolderPath(
+                targetDir,
+                Strings.NewFolder_DefaultName,
+                Strings.NewFolder_IndexedFormat);
+
+            Directory.CreateDirectory(newPath);
+
+            var itemVm = _viewModel.AddItem(newPath);
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
+
+            if (itemVm != null)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    BeginItemRename(itemVm);
+                }, DispatcherPriority.Background);
+            }
+        }
+        catch
+        {
+            // Silencioso, padrão do projeto
+        }
+    }
+
     private void NewQuadraMenu_Click(object sender, RoutedEventArgs e)
     {
         _coordinator.CreateNewQuadra(
@@ -2602,6 +2653,143 @@ public partial class QuadraWindow : Window
         _isRenaming = false;
         TitleEditBox.Visibility = Visibility.Collapsed;
         TitleTextBlock.Visibility = Visibility.Visible;
+    }
+
+    private void Quadra_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F2)
+        {
+            if (!_isRenaming && !_viewModel.Items.Any(i => i.IsRenaming))
+            {
+                var selected = _viewModel.Items.FirstOrDefault(i => i.IsSelected);
+                if (selected != null)
+                {
+                    BeginItemRename(selected);
+                    e.Handled = true;
+                }
+            }
+        }
+    }
+
+    public void BeginItemRename(DesktopItemViewModel item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        foreach (var other in _viewModel.Items)
+        {
+            if (other != item && other.IsRenaming)
+            {
+                other.IsRenaming = false;
+            }
+        }
+
+        item.EditName = item.Name;
+        item.IsRenaming = true;
+        item.IsSelected = true;
+    }
+
+    private void ItemEditBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.Visibility == Visibility.Visible)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+            }, DispatcherPriority.Input);
+        }
+    }
+
+    private void ItemEditBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is DesktopItemViewModel item)
+        {
+            if (e.Key == Key.Enter)
+            {
+                CommitItemRename(item, textBox.Text);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelItemRename(item);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void ItemEditBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is DesktopItemViewModel item && item.IsRenaming)
+        {
+            CommitItemRename(item, textBox.Text);
+        }
+    }
+
+    private static void CancelItemRename(DesktopItemViewModel item)
+    {
+        item.IsRenaming = false;
+        item.EditName = item.Name;
+    }
+
+    private void CommitItemRename(DesktopItemViewModel item, string candidateText)
+    {
+        if (!item.IsRenaming)
+        {
+            return;
+        }
+
+        if (!DesktopItemRenameValidator.TryNormalize(candidateText, out string normalized))
+        {
+            CancelItemRename(item);
+            return;
+        }
+
+        string newFileName = DesktopItemRenameValidator.GetTargetFileName(item.FilePath, normalized);
+        string parentDir = Path.GetDirectoryName(item.FilePath) ?? string.Empty;
+        string newFilePath = Path.Combine(parentDir, newFileName);
+
+        if (string.Equals(newFilePath, item.FilePath, StringComparison.Ordinal))
+        {
+            CancelItemRename(item);
+            return;
+        }
+
+        bool isCaseOnly = string.Equals(newFilePath, item.FilePath, StringComparison.OrdinalIgnoreCase);
+        if (!isCaseOnly && (File.Exists(newFilePath) || Directory.Exists(newFilePath)))
+        {
+            CancelItemRename(item);
+            DarkDialog.ShowOptions(
+                Strings.Dialog_RenameConflictTitle,
+                string.Format(Strings.Dialog_RenameConflictMessage, newFileName),
+                this,
+                330,
+                (Strings.Dialog_Ok, true));
+            return;
+        }
+
+        try
+        {
+            if (item.IsDirectory)
+            {
+                Directory.Move(item.FilePath, newFilePath);
+            }
+            else
+            {
+                File.Move(item.FilePath, newFilePath);
+            }
+
+            string newDisplayName = DesktopItemNames.GetDisplayName(newFilePath);
+            item.UpdateNameAndPath(newDisplayName, newFilePath);
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        }
+        catch
+        {
+            // Resiliente a falhas temporárias de I/O
+        }
+        finally
+        {
+            item.IsRenaming = false;
+        }
     }
 
     // TYPE-AHEAD estilo Explorer: com a Quadra focada, letra/dígito seleciona o

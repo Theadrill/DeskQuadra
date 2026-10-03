@@ -32,6 +32,20 @@ public sealed class DesktopItemViewModel : ViewModelBase
         set => SetProperty(ref _isSelected, value);
     }
 
+    private bool _isRenaming;
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set => SetProperty(ref _isRenaming, value);
+    }
+
+    private string _editName = string.Empty;
+    public string EditName
+    {
+        get => _editName;
+        set => SetProperty(ref _editName, value);
+    }
+
     public ImageSource Icon
     {
         get
@@ -42,6 +56,17 @@ public sealed class DesktopItemViewModel : ViewModelBase
             }
             return _icon;
         }
+    }
+
+    public void UpdateNameAndPath(string newName, string newFilePath)
+    {
+        _item.Name = newName;
+        _item.FilePath = newFilePath;
+        _item.TargetPath = newFilePath;
+        _icon = null;
+        OnPropertyChanged(nameof(Name));
+        OnPropertyChanged(nameof(FilePath));
+        OnPropertyChanged(nameof(Icon));
     }
 
     public DesktopItemViewModel(DesktopItem item, IIconExtractorService iconExtractor)

@@ -197,5 +197,12 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string QuadraMenu_ResizeQuadra => ResourceManager.GetString("QuadraMenu_ResizeQuadra", resourceCulture);
 
         public static string TouchResizeArmedHint => ResourceManager.GetString("TouchResizeArmedHint", resourceCulture);
+        public static string QuadraMenu_NewFolder => ResourceManager.GetString("QuadraMenu_NewFolder", resourceCulture);
+        public static string NewFolder_DefaultName => ResourceManager.GetString("NewFolder_DefaultName", resourceCulture);
+        public static string NewFolder_IndexedFormat => ResourceManager.GetString("NewFolder_IndexedFormat", resourceCulture);
+        public static string ItemMenu_Rename => ResourceManager.GetString("ItemMenu_Rename", resourceCulture);
+        public static string Dialog_RenameConflictTitle => ResourceManager.GetString("Dialog_RenameConflictTitle", resourceCulture);
+        public static string Dialog_RenameConflictMessage => ResourceManager.GetString("Dialog_RenameConflictMessage", resourceCulture);
+        public static string Dialog_Ok => ResourceManager.GetString("Dialog_Ok", resourceCulture);
     }
 }

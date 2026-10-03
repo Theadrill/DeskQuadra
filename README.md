@@ -12,6 +12,9 @@ O DeskQuadra redefine a experiência da área de trabalho do Windows, transforma
 - [ ] **D11 — re-auditar fakes de teste** no final do projeto.
 - [ ] **Remover temporários no final:** `HangTestSwitch`, `ChordDiagLog`.
 - [ ] **Otimizar impacto na inicialização do Windows:** hoje o Gerenciador marca ALTO (scan + extração de todos os ícones + 1 janela pesada por Quadra + Guardian junto, tudo no login; autostart aponta p/ Debug) — aliviar em fatias futuras (ícones lazy/async, janelas sob demanda, Guardian atrasado, autostart no build final).
+- [ ] **Seleção múltipla de itens:** Retângulo de seleção com mouse (marquee selection), `Ctrl + clique` (aditivo/alternado) e `Shift + clique` (intervalo contínuo).
+- [ ] **Tooltip/Hover customizado estilo Menu Fluent:** Popover escuro posicionado no mouse com fonte branca, exibindo apenas o nome completo do item (sem caminho completo), sumindo ao sair.
+- [ ] **Drop em arquivos container (.zip, etc.):** Suporte a arrastar e soltar itens sobre arquivos compactados/containers (.zip e afins) para inclusão direta no arquivo.
 
 ## Créditos (bibliotecas de terceiros)
 

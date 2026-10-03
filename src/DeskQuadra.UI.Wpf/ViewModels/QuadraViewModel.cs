@@ -147,11 +147,11 @@ public sealed class QuadraViewModel : ViewModelBase
         RebuildItemViewModels();
     }
 
-    public void AddItem(string filePath)
+    public DesktopItemViewModel? AddItem(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            return;
+            return null;
         }
 
         string displayName = DesktopItemNames.GetDisplayName(filePath);
@@ -170,7 +170,8 @@ public sealed class QuadraViewModel : ViewModelBase
             lastModified: lastModified);
 
         _quadra.Items.Add(newItem);
-        Items.Add(new DesktopItemViewModel(newItem, _iconExtractor));
+        var viewModel = new DesktopItemViewModel(newItem, _iconExtractor);
+        Items.Add(viewModel);
 
         if (SortMode != SortMode.Manual)
         {
@@ -178,14 +179,16 @@ public sealed class QuadraViewModel : ViewModelBase
         }
 
         NotifyItemsChanged();
+        return viewModel;
     }
 
-    public void AddItem(DesktopItem item)
+    public DesktopItemViewModel AddItem(DesktopItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
         item.OrderIndex = _quadra.Items.Count;
         _quadra.Items.Add(item);
-        Items.Add(new DesktopItemViewModel(item, _iconExtractor));
+        var viewModel = new DesktopItemViewModel(item, _iconExtractor);
+        Items.Add(viewModel);
 
         if (SortMode != SortMode.Manual)
         {
@@ -193,6 +196,7 @@ public sealed class QuadraViewModel : ViewModelBase
         }
 
         NotifyItemsChanged();
+        return viewModel;
     }
 
     public bool RemoveItem(DesktopItemViewModel item)

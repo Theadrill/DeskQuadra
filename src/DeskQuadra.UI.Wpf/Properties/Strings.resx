@@ -261,4 +261,25 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="TouchResizeArmedHint" xml:space="preserve">
     <value>↔ Arraste as bordas para redimensionar</value>
   </data>
+  <data name="QuadraMenu_NewFolder" xml:space="preserve">
+    <value>Nova pasta</value>
+  </data>
+  <data name="NewFolder_DefaultName" xml:space="preserve">
+    <value>Nova pasta</value>
+  </data>
+  <data name="NewFolder_IndexedFormat" xml:space="preserve">
+    <value>Nova pasta ({0})</value>
+  </data>
+  <data name="ItemMenu_Rename" xml:space="preserve">
+    <value>Renomear</value>
+  </data>
+  <data name="Dialog_RenameConflictTitle" xml:space="preserve">
+    <value>Já existe um item com esse nome</value>
+  </data>
+  <data name="Dialog_RenameConflictMessage" xml:space="preserve">
+    <value>Já existe um arquivo ou pasta com o nome "{0}" neste local.</value>
+  </data>
+  <data name="Dialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
 </root>

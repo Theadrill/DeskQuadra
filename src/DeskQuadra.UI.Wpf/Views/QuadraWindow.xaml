@@ -116,6 +116,7 @@
                                 <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortDate}" Click="SortByDate_Click"/>
                                 <MenuItem Header="{x:Static properties:Strings.QuadraMenu_SortManual}" Click="SortByManual_Click"/>
                             </MenuItem>
+                            <MenuItem Header="{x:Static properties:Strings.QuadraMenu_NewFolder}" Click="NewFolderMenu_Click"/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_NewQuadra}" Click="NewQuadraMenu_Click"/>
                             <MenuItem Header="{x:Static properties:Strings.QuadraMenu_Rename}" Click="RenameQuadraMenu_Click"/>
                             <MenuItem x:Name="LockQuadraMenuItem" Header="{x:Static properties:Strings.QuadraMenu_LockQuadra}" IsCheckable="True" Click="LockQuadraMenu_Click"/>
@@ -261,6 +262,7 @@
                                             <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Open}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_OpenLocation}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>
+                                                <MenuItem Header="{x:Static properties:Strings.ItemMenu_Rename}" Click="ItemMenuRename_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Remove}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuRemove_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Delete}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuDelete_Click"/>
                                                 <MenuItem x:Name="ItemMenuMoveItem" Header="{x:Static properties:Strings.ItemMenu_Move}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuMove_Click" Visibility="Collapsed"/>
@@ -320,7 +322,45 @@
                                                                       Opacity="{DynamicResource Quadra.Item.Shadow.Opacity}"
                                                                       Color="{DynamicResource Quadra.Item.Shadow.Color}"/>
                                                 </TextBlock.Effect>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
                                             </TextBlock>
+
+                                            <!-- Edição inline do item (fatia Renomear): REUSE tokens do tema, sem cor chapada -->
+                                            <TextBox Grid.Row="1"
+                                                     Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontSize="{DynamicResource Quadra.Item.FontSize}"
+                                                     Foreground="{DynamicResource Quadra.Item.Foreground}"
+                                                     Background="{DynamicResource Quadra.Background}"
+                                                     BorderBrush="{DynamicResource Quadra.Item.Selected.BorderBrush}"
+                                                     BorderThickness="{DynamicResource Quadra.Item.BorderThickness}"
+                                                     TextAlignment="Center"
+                                                     TextWrapping="Wrap"
+                                                     MaxHeight="48"
+                                                     Margin="0,1,0,0"
+                                                     Padding="2,1"
+                                                     IsVisibleChanged="ItemEditBox_IsVisibleChanged"
+                                                     KeyDown="ItemEditBox_KeyDown"
+                                                     LostFocus="ItemEditBox_LostFocus">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
