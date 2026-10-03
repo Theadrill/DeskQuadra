@@ -8,6 +8,7 @@ O DeskQuadra redefine a experiência da área de trabalho do Windows, transforma
 - [ ] **Review geral do sistema de toques:** dismiss do menu dual validado como "bom o suficiente" (perfeito dentro das Quadras, inconstante no desktop vazio) — aprimorar no futuro.
 - [x] **REDIMENSIONAR touch:** pronto (menu touch, modo armado, bordas grossas + alças, snap corrigido, fonte +25%, botões ocultos no modo).
 - [x] **Ícone próprio:** aplicado (exe + janelas + tray, arte do PO).
+- [x] **Menu de terceiros (T1–T8):** pronto e validado (seção direta no menu do ícone e do vazio, ShellHost isolado, fundo real, lazy + TTL + refresh no tray; detalhe em `docs/PLANO_MENU_TERCEIROS.md`).
 - [ ] **D11 — re-auditar fakes de teste** no final do projeto.
 - [ ] **Remover temporários no final:** `HangTestSwitch`, `ChordDiagLog`.
 - [ ] **Otimizar impacto na inicialização do Windows:** hoje o Gerenciador marca ALTO (scan + extração de todos os ícones + 1 janela pesada por Quadra + Guardian junto, tudo no login; autostart aponta p/ Debug) — aliviar em fatias futuras (ícones lazy/async, janelas sob demanda, Guardian atrasado, autostart no build final).

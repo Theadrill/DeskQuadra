@@ -243,3 +243,8 @@ Conforme estabelecido na Sessão 1 do [BRAINSTORMING.md](BRAINSTORMING.md), a ex
 ### 2026-09-30 — Dismiss do menu dual com toque
 * **Entregue:** dismiss fora do menu via hook único (`DualDismissWatcher`). **Validado pelo PO como "bom o suficiente por enquanto": perfeito dentro das Quadras, meio inconstante fora no desktop vazio.**
 * **Pendente:** review geral no sistema de toques do app para aprimorar isso no futuro.
+
+### 2026-10-03 — Menu de terceiros, fases T1–T8 (fonte da verdade: `PLANO_MENU_TERCEIROS.md`)
+* **Entregue e validado pelo PO no Windows:** seção de terceiros direto no menu (sem "Mais opções"), cobrindo ícone e vazio/barra; query `CMF_NORMAL|ITEMMENU|SYNCCASCADEMENU` (+`EXTENDEDVERBS` com Shift) em STA, `CMINVOKECOMMANDINFOEX` Unicode, `.lnk` sobre o próprio link; isolamento `DeskQuadra.ShellHost.exe` one-shot com timeout/kill; fundo real no vazio via `CreateViewObject` (cache separado, complementos suprimidos no fundo); lazy (`Carregando...` + token de geração) + TTL assimétrico (negativo 60s / positivo 5min) + refresh manual no tray.
+* **Decisões que valem reuso futuro:** Vanara só como declarações P/Invoke, lógica de enumeração/invoke nossa; protocolo JSON-lines como definição única (`ShellHostProtocol`); invoke prefere verbo canônico estável, com fallback `invoke-by-label` em sessão única p/ folhas sem verbo; denylist refinada com dados da máquina do PO.
+* **Auditoria:** 3ª auditoria em `AUDITORIA_REUSO.md` (F1–F3 corrigidos; F4/F5 em observar; S1–S6 sem-ação com motivo). Host persistente registrado como ideia futura.
