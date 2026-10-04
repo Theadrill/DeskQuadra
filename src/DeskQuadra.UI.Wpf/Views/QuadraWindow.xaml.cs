@@ -20,6 +20,7 @@ using DeskQuadra.Core.FileSystem;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Core.ThirdParty;
 using DeskQuadra.Infrastructure.WindowsShell.Native;
+using DeskQuadra.Infrastructure.WindowsShell.Services;
 using DeskQuadra.Infrastructure.WindowsShell.Shell;
 using DeskQuadra.UI.Wpf.Models;
 using DeskQuadra.UI.Wpf.Properties;
@@ -981,6 +982,12 @@ public partial class QuadraWindow : Window
         if (changed)
         {
             _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        }
+
+        var helper = new WindowInteropHelper(this);
+        if (helper.Handle != IntPtr.Zero)
+        {
+            WindowVisualEffectService.ApplyRoundedWindowRegion(helper.Handle, 8);
         }
     }
 

@@ -42,6 +42,17 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
 
         try
         {
+            // No Windows 11 (Build 22000+), ativa cantos arredondados nativos no HWND
+            if (_capabilityService.WindowsBuildNumber >= WindowsVisualCapabilityService.Windows11RtmBuild)
+            {
+                int cornerPref = (int)NativeMethods.DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND;
+                NativeMethods.DwmSetWindowAttribute(
+                    windowHandle,
+                    NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE,
+                    ref cornerPref,
+                    sizeof(int));
+            }
+
             bool isLayered = IsLayeredWindow(windowHandle);
 
             // 1. Janelas não-camadas (ex: janelas padrão de diálogo) no Windows 11 Build 22621+ usam DWM Backdrop oficial
@@ -53,9 +64,15 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
                 }
             }
 
-            // 2. Janelas com transparência/camada (ex: QuadraWindow, Popups/Menus com AllowsTransparency)
-            // ou sistemas Windows 10/11 anteriores: usam AccentPolicy com alfa calibrado (sem escurecer ou conflitar com o DWM frame)
-            return ApplyClassicAccentPolicy(windowHandle, accentColor);
+            // 2. Janelas com transparência/camada (ex: QuadraWindow, Popups/Menus com AllowsTransparency):
+            // usam AccentPolicy com alfa calibrado e recorte preciso de região arredondada (SetWindowRgn)
+            // para eliminar qualquer pixel de sobra ou triângulo nas pontas curvas.
+            bool result = ApplyClassicAccentPolicy(windowHandle, accentColor);
+            if (result)
+            {
+                ApplyRoundedWindowRegion(windowHandle, 8);
+            }
+            return result;
         }
         catch
         {
@@ -107,6 +124,7 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
                 };
 
                 NativeMethods.SetWindowCompositionAttribute(windowHandle, ref data);
+                NativeMethods.SetWindowRgn(windowHandle, IntPtr.Zero, true);
                 return true;
             }
             finally
@@ -204,6 +222,53 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
         finally
         {
             Marshal.FreeHGlobal(policyPtr);
+        }
+    }
+
+    /// <summary>
+    /// Aplica recorte de região arredondada (SetWindowRgn) no HWND com precisão de DPI,
+    /// eliminando o triângulo de pixels nos 4 cantos da janela causados pela curvatura do XAML.
+    /// </summary>
+    public static void ApplyRoundedWindowRegion(IntPtr windowHandle, int cornerRadius = 8)
+    {
+        if (windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!NativeMethods.GetWindowRect(windowHandle, out var rect))
+            {
+                return;
+            }
+
+            int width = rect.Right - rect.Left;
+            int height = rect.Bottom - rect.Top;
+
+            if (width <= 0 || height <= 0)
+            {
+                return;
+            }
+
+            uint dpi = NativeMethods.GetDpiForWindow(windowHandle);
+            if (dpi == 0)
+            {
+                dpi = 96;
+            }
+
+            int physicalRadius = (int)Math.Round(cornerRadius * (dpi / 96.0));
+            int ellipse = physicalRadius * 2;
+
+            IntPtr rgn = NativeMethods.CreateRoundRectRgn(0, 0, width + 1, height + 1, ellipse, ellipse);
+            if (rgn != IntPtr.Zero)
+            {
+                NativeMethods.SetWindowRgn(windowHandle, rgn, true);
+            }
+        }
+        catch
+        {
+            // Silencioso: fallback gracioso
         }
     }
 }
