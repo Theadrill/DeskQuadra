@@ -321,4 +321,60 @@ public class LayoutCoordinatorTests
         coordinator.NotifyQuadraChanged(quadra);
         coordinator.Dispose();
     }
+
+    [Fact]
+    public void RescanDesktopItems_WhenItemExistsInAnotherQuadra_DoesNotAddToDefaultQuadra()
+    {
+        // Arrange
+        var repo = new FakeRepository();
+        var scanner = new FakeScanner();
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+
+        var defaultQuadra = coordinator.CreateNewQuadra("TUDO", 0, 0);
+        defaultQuadra.IsDefault = true;
+
+        var customQuadra = coordinator.CreateNewQuadra("Steam Tools", 100, 100);
+        customQuadra.Items.Add(new DesktopItem("Steam", @"C:\Desktop\Steam.lnk"));
+
+        scanner.ItemsToReturn.Add(new DesktopItem("Steam", @"C:\Desktop\Steam.lnk"));
+        scanner.ItemsToReturn.Add(new DesktopItem("Outro", @"C:\Desktop\Outro.txt"));
+
+        // Act
+        coordinator.RescanDesktopItems();
+
+        // Assert: "Steam.lnk" já pertence à customQuadra, então NÃO deve ser adicionado à defaultQuadra
+        Assert.Single(defaultQuadra.Items);
+        Assert.Equal("Outro", defaultQuadra.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_WhenDuplicatesExistInDefaultQuadra_RemovesDuplicatesFromDefaultQuadra()
+    {
+        // Arrange
+        var repo = new FakeRepository();
+        var defaultQuadra = new Quadra("TUDO", 0, 0, isDefault: true);
+        defaultQuadra.Items.Add(new DesktopItem("Duplicado", @"C:\Desktop\App.lnk"));
+        defaultQuadra.Items.Add(new DesktopItem("Unico", @"C:\Desktop\Unico.txt"));
+
+        var customQuadra = new Quadra("Steam Tools", 100, 100, isDefault: false);
+        customQuadra.Items.Add(new DesktopItem("Duplicado", @"C:\Desktop\App.lnk"));
+
+        repo.StoredQuadras.Add(defaultQuadra);
+        repo.StoredQuadras.Add(customQuadra);
+
+        var scanner = new FakeScanner();
+        using var coordinator = new LayoutCoordinator(repo, scanner);
+
+        // Act
+        await coordinator.InitializeAsync();
+
+        // Assert: Duplicado foi limpo da defaultQuadra, permanecendo na customQuadra
+        var loadedDefault = coordinator.ActiveQuadras.First(q => q.IsDefault);
+        Assert.Single(loadedDefault.Items);
+        Assert.Equal("Unico", loadedDefault.Items[0].Name);
+
+        var loadedCustom = coordinator.ActiveQuadras.First(q => !q.IsDefault);
+        Assert.Single(loadedCustom.Items);
+        Assert.Equal("Duplicado", loadedCustom.Items[0].Name);
+    }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.IO;
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.Models;
 
@@ -45,6 +46,27 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
             foreach (var q in loaded)
             {
                 _activeQuadras[q.Id] = q;
+            }
+
+            // Remove itens da Quadra padrão ("TUDO") que já estão organizados em Quadras customizadas
+            var defaultQuadra = _activeQuadras.Values.FirstOrDefault(q => q.IsDefault);
+            if (defaultQuadra != null)
+            {
+                var otherPaths = _activeQuadras.Values
+                    .Where(q => q.Id != defaultQuadra.Id)
+                    .SelectMany(q => q.Items)
+                    .Select(i => NormalizePath(i.FilePath))
+                    .Where(p => !string.IsNullOrEmpty(p))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                if (otherPaths.Count > 0)
+                {
+                    int removed = defaultQuadra.Items.RemoveAll(i => otherPaths.Contains(NormalizePath(i.FilePath)));
+                    if (removed > 0)
+                    {
+                        await _repository.SaveLayoutAsync(_activeQuadras.Values, cancellationToken).ConfigureAwait(false);
+                    }
+                }
             }
 
             // Se nenhuma Quadra possuir itens (ex: transição da Fase 2 para Fase 3),
@@ -157,14 +179,41 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
         }
     }
 
+    private static string NormalizePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return string.Empty;
+        }
+        try
+        {
+            return Path.GetFullPath(path).TrimEnd('\\', '/');
+        }
+        catch
+        {
+            return path.Trim().TrimEnd('\\', '/');
+        }
+    }
+
     public void RescanDesktopItems()
     {
         var scanned = _scannerService.ScanDesktopItems();
         var targetQuadra = _activeQuadras.Values.FirstOrDefault(q => q.IsDefault) ?? _activeQuadras.Values.FirstOrDefault();
         if (targetQuadra != null)
         {
+            var otherQuadrasItems = _activeQuadras.Values
+                .Where(q => q.Id != targetQuadra.Id)
+                .SelectMany(q => q.Items)
+                .Select(i => NormalizePath(i.FilePath))
+                .Where(p => !string.IsNullOrEmpty(p))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var unassignedItems = scanned
+                .Where(i => !otherQuadrasItems.Contains(NormalizePath(i.FilePath)))
+                .ToList();
+
             targetQuadra.Items.Clear();
-            targetQuadra.Items.AddRange(scanned);
+            targetQuadra.Items.AddRange(unassignedItems);
             NotifyQuadraChanged(targetQuadra);
             DesktopItemsRescanned?.Invoke(this, targetQuadra.Id);
         }

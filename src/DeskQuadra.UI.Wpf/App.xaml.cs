@@ -160,14 +160,16 @@ public partial class App : System.Windows.Application
             Dispatcher.Invoke(() => CloseQuadraWindow(id));
         };
 
-        // Rescan (manual ou live sync): atualiza o modelo da Quadra padrão no
-        // coordinator; o clique pode ter partido de outra Quadra, então o
-        // refresh mira a janela CERTA pelo Id (sem XAML, sem timer novo).
+        // Rescan (manual ou live sync): limpa cache de ícones (recuperando itens recém-restaurados da Lixeira)
+        // e atualiza os modelos de todas as janelas ativas (removendo duplicatas e sincronizando).
         coordinator.DesktopItemsRescanned += (s, id) =>
         {
             Dispatcher.Invoke(() =>
             {
-                if (_quadraWindows.TryGetValue(id, out var window))
+                var iconExtractor = _serviceProvider.GetService<IIconExtractorService>();
+                iconExtractor?.ClearCache();
+
+                foreach (var window in _quadraWindows.Values)
                 {
                     try
                     {

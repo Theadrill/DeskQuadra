@@ -8,4 +8,5 @@ namespace DeskQuadra.Infrastructure.WindowsShell.Contracts;
 public interface IIconExtractorService
 {
     ImageSource GetIcon(string filePath, bool large = true);
+    void ClearCache() { }
 }

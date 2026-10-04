@@ -19,6 +19,8 @@ public sealed class IconExtractorService : IIconExtractorService
 {
     private readonly ConcurrentDictionary<string, ImageSource> _cache = new(StringComparer.OrdinalIgnoreCase);
 
+    public void ClearCache() => _cache.Clear();
+
     public ImageSource GetIcon(string filePath, bool large = true)
     {
         if (string.IsNullOrWhiteSpace(filePath))
