@@ -297,6 +297,40 @@
   - O Tech Lead traduz essas ideias para os padrões idiomáticos de **C# / .NET 8** (Clean Architecture, tipos fortemente tipados, LINQ, Task Parallel Library e padrões MVVM/WPF).
   - **Diretriz de Conduta do Tech Lead:** O Tech Lead atua com **estrita tecnicidade, honestidade intelectual e pragmatismo**, sem bajulação ou foco em agradar. Riscos, complexidades desnecessárias e falhas de arquitetura devem ser apontados diretamente e sem rodeios.
 
+---
+
+## [Sessão 26] Identidade Visual Windows 11 Fluent & Comandos Rápidos de Contexto
+
+### 1. Diretriz de Compatibilidade e Verificação em Camadas
+- **Detecção Confiável:** A leitura da versão e build do sistema deve consultar a chave de registro `CurrentBuildNumber` do Windows NT, nunca dependendo de manifestos enganosos de aplicativo.
+- **Detecção de Capacidade de Hardware (GPU / Drivers Básicos):**
+  - O aplicativo deve checar ativamente o nível de aceleração gráfica por hardware (`RenderCapability.Tier >> 16 >= 2`) e se a Composição do DWM está habilitada (`DwmIsCompositionEnabled`).
+  - Em ambientes sem aceleração adequada (drivers genéricos *Microsoft Basic Display Adapter*, sessões de Área de Trabalho Remota/RDP ou GPU legada), os efeitos pesados de desfoque/backdrop são bloqueados automaticamente para preservar a fluidez do sistema operacional e evitar travamentos.
+- **Hierarquia de Execução & Fallback:**
+  1. *Windows 11 Build 22621+ com aceleração Tier 2*: Aplicação do método mais moderno nativo do DWM (`DWMWA_SYSTEMBACKDROP_TYPE` Acrylic/Mica).
+  2. *Windows 10 / Windows 11 21H2 com aceleração Tier 2*: Aplicação do método clássico do compositor (`SetWindowCompositionAttribute` com `AccentPolicy`).
+  3. *Incompatibilidade, erro ou drivers básicos*: Fallback imediato e suave para o tema translúcido existente sem qualquer exceção ou falha de tela.
+- **Ordem de Implementação Mandatória (Decisão Estratégica do PO):**
+  - Implementar e validar exaustivamente primeiro o **método clássico** (`SetWindowCompositionAttribute`). Com ele estável e homologado na máquina de testes, avança-se para o **método moderno**.
+
+### 2. Configurações do Aplicativo (`SettingsWindow`)
+- O switch/toggle de efeitos visuais de transparência e desfoque só deve ser visível na interface de configurações se a máquina do usuário possuir SO e hardware compatíveis. Caso contrário, a opção permanece oculta para não gerar expectativas ou erros.
+- A preferência do usuário é persistida em `settings.json` com comportamento best-effort.
+
+### 3. Ações Rápidas e Ícones no Menu de Contexto
+- **Barra Superior de Ações Rápidas:**
+  - Posicionada no topo do menu de contexto de atalhos e itens.
+  - Inicialmente contempla: **Recortar**, **Copiar**, **Colar**, **Renomear** e **Excluir**.
+  - A construção do layout deve preceder a estilização dos ícones, e os ícones devem preceder a lógica individual de cada operação.
+- **Identidade Visual e Respeito Estrito à Densidade Dual:**
+  - **Modo Mouse:** Ações compactas (~28-30px), foco na agilidade e proximidade com o cursor.
+  - **Modo Touch:** Alvos de toque generosos respeitando a norma de acessibilidade (mínimo de 44x44px), espaçamento para evitar toques acidentais.
+  - Ícones vetoriais monocromáticos renderizados via geometrias XAML (`Path`) compartilhadas no dicionário de temas para garantir nitidez cristalina em qualquer escala de DPI e tema.
+- **Checklist e Execução por Fases:**
+  - Documentação viva e detalhada em `docs/PLANO_VISUAL_WIN11_E_ACOES_RAPIDAS.md`.
+  - Commits locais a cada passo concluído; envio (`push`) apenas após homologação direta pelo PO.
+
+
 
 
 
