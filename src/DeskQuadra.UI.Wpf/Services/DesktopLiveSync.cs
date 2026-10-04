@@ -48,12 +48,18 @@ internal sealed class DesktopLiveSync : IDisposable
 
                 var watcher = new FileSystemWatcher(dir)
                 {
-                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
+                    NotifyFilter = NotifyFilters.FileName |
+                                   NotifyFilters.DirectoryName |
+                                   NotifyFilters.LastWrite |
+                                   NotifyFilters.Size |
+                                   NotifyFilters.Attributes |
+                                   NotifyFilters.CreationTime,
                     IncludeSubdirectories = false,
                     EnableRaisingEvents = true,
                 };
                 watcher.Created += OnFsEvent;
                 watcher.Deleted += OnFsEvent;
+                watcher.Changed += OnFsEvent;
                 watcher.Renamed += OnFsEvent;
                 watcher.Error += OnFsError;
                 _watchers.Add(watcher);
@@ -116,6 +122,7 @@ internal sealed class DesktopLiveSync : IDisposable
                 watcher.EnableRaisingEvents = false;
                 watcher.Created -= OnFsEvent;
                 watcher.Deleted -= OnFsEvent;
+                watcher.Changed -= OnFsEvent;
                 watcher.Renamed -= OnFsEvent;
                 watcher.Error -= OnFsError;
                 watcher.Dispose();

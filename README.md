@@ -15,7 +15,7 @@ O DeskQuadra redefine a experiência da área de trabalho do Windows, transforma
 - [x] **Seleção múltipla de itens:** Retângulo de seleção com mouse (marquee selection), `Ctrl + clique` (aditivo/alternado), `Shift + clique` (intervalo contínuo) e `Ctrl + A` (selecionar todos).
 - [x] **Tooltip/Hover customizado estilo Menu Fluent:** Popover escuro posicionado no mouse com fonte branca, exibindo apenas o nome completo do item (sem caminho completo), sumindo ao sair.
 - [ ] **Drop em arquivos container (.zip, etc.):** Suporte a arrastar e soltar itens sobre arquivos compactados/containers (.zip e afins) para inclusão direta no arquivo.
-- [ ] **Atualização e recuperação em tempo real de ícones restaurados da Lixeira:** Garantir invalidação e recarregamento imediato de ícones em cache quando arquivos/atalhos forem restaurados ou atualizados sem exigir reinicialização do app.
+- [x] **Atualização e recuperação em tempo real de ícones restaurados da Lixeira:** Garantir invalidação e recarregamento imediato de ícones em cache quando arquivos/atalhos forem restaurados ou atualizados sem exigir reinicialização do app.
 
 ## Créditos (bibliotecas de terceiros)
 

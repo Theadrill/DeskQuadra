@@ -1,4 +1,5 @@
 using System.Windows.Media;
+using DeskQuadra.Core.FileSystem;
 using DeskQuadra.Core.Models;
 using DeskQuadra.Infrastructure.WindowsShell.Contracts;
 
@@ -53,16 +54,28 @@ public sealed class DesktopItemViewModel : ViewModelBase
         set => SetProperty(ref _isDropTarget, value);
     }
 
+    private bool _isFallbackIcon;
+
     public ImageSource Icon
     {
         get
         {
-            if (_icon == null)
+            bool fileExists = FileSystemUtils.PathExists(_item.FilePath);
+            // Se o ícone ainda não foi carregado OU se era um ícone de fallback e o arquivo voltou a existir no disco:
+            if (_icon == null || (_isFallbackIcon && fileExists))
             {
+                _isFallbackIcon = !fileExists;
                 _icon = _iconExtractor.GetIcon(_item.FilePath, large: true);
             }
             return _icon;
         }
+    }
+
+    public void InvalidateIcon()
+    {
+        _icon = null;
+        _isFallbackIcon = false;
+        OnPropertyChanged(nameof(Icon));
     }
 
     private string? _toolTipText;
@@ -88,6 +101,7 @@ public sealed class DesktopItemViewModel : ViewModelBase
         _item.FilePath = newFilePath;
         _item.TargetPath = newFilePath;
         _icon = null;
+        _isFallbackIcon = false;
         _toolTipText = newName;
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(FilePath));

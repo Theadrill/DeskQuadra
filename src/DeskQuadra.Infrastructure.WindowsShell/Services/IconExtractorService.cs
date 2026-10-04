@@ -21,6 +21,19 @@ public sealed class IconExtractorService : IIconExtractorService
 
     public void ClearCache() => _cache.Clear();
 
+    public void Invalidate(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return;
+        }
+
+        string keyLarge = GetCacheKey(filePath, true);
+        string keySmall = GetCacheKey(filePath, false);
+        _cache.TryRemove(keyLarge, out _);
+        _cache.TryRemove(keySmall, out _);
+    }
+
     public ImageSource GetIcon(string filePath, bool large = true)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -30,7 +43,24 @@ public sealed class IconExtractorService : IIconExtractorService
 
         string cacheKey = GetCacheKey(filePath, large);
 
-        return _cache.GetOrAdd(cacheKey, _ => ExtractIconDirect(filePath, large));
+        if (_cache.TryGetValue(cacheKey, out var cachedIcon))
+        {
+            return cachedIcon;
+        }
+
+        bool exists = FileSystemUtils.PathExists(filePath);
+        var extracted = ExtractIconDirect(filePath, large);
+
+        // Só armazena em cache se o arquivo existir fisicamente no disco.
+        // Se o arquivo não existir (ex: foi para a lixeira), retorna o ícone temporário de fallback,
+        // mas NÃO polui o cache. Assim, no instante em que for restaurado, a próxima chamada
+        // extrairá imediatamente o ícone real de alta fidelidade sem exigir reabertura do app.
+        if (exists)
+        {
+            _cache[cacheKey] = extracted;
+        }
+
+        return extracted;
     }
 
     private static string GetCacheKey(string filePath, bool large)

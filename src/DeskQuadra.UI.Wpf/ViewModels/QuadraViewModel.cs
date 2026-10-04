@@ -243,8 +243,18 @@ public sealed class QuadraViewModel : ViewModelBase
         OnPropertyChanged(nameof(SortMode));
     }
 
+    public void InvalidateAllIcons()
+    {
+        _iconExtractor.ClearCache();
+        foreach (var item in Items)
+        {
+            item.InvalidateIcon();
+        }
+    }
+
     public void RefreshItems()
     {
+        _iconExtractor.ClearCache();
         RebuildItemViewModels();
 
         NotifyItemsChanged();

@@ -515,6 +515,7 @@ public partial class QuadraWindow : Window
         {
             return;
         }
+        _viewModel.InvalidateAllIcons();
         _viewModel.RefreshItems();
     }
 
@@ -2870,6 +2871,7 @@ public partial class QuadraWindow : Window
 
     private void RescanMenu_Click(object sender, RoutedEventArgs e)
     {
+        _viewModel.InvalidateAllIcons();
         _coordinator.RescanDesktopItems();
         _viewModel.RefreshItems();
     }

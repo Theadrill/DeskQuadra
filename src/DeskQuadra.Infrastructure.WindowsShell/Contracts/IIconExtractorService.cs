@@ -9,4 +9,5 @@ public interface IIconExtractorService
 {
     ImageSource GetIcon(string filePath, bool large = true);
     void ClearCache() { }
+    void Invalidate(string filePath) { }
 }
