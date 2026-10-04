@@ -158,6 +158,48 @@
                 </Setter.Value>
             </Setter>
         </Style>
+ 
+        <!-- ===== ToolTip Moderno Fluent (visual escuro estilo Menu) ===== -->
+        <Style x:Key="ModernToolTipStyle" TargetType="ToolTip">
+            <Setter Property="Background" Value="{DynamicResource Menu.Background}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Menu.BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource Menu.BorderThickness}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Menu.Foreground}"/>
+            <Setter Property="FontSize" Value="{DynamicResource ToolTip.FontSize}"/>
+            <Setter Property="Padding" Value="{DynamicResource ToolTip.Padding}"/>
+            <Setter Property="HasDropShadow" Value="False"/>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="{DynamicResource ToolTip.MaxWidth}"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{DynamicResource ToolTip.CornerRadius}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="{DynamicResource Menu.Shadow.BlurRadius}"
+                                                  ShadowDepth="{DynamicResource Menu.Shadow.Depth}"
+                                                  Opacity="{DynamicResource Menu.Shadow.Opacity}"
+                                                  Color="{DynamicResource Menu.Shadow.Color}"/>
+                            </Border.Effect>
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ToolTip" BasedOn="{StaticResource ModernToolTipStyle}"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

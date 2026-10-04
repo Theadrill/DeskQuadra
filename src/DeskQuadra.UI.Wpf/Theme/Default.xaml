@@ -112,6 +112,12 @@
     <SolidColorBrush x:Key="Menu.TouchItem.Hover.Background" Color="#4D0078D4"/>
     <SolidColorBrush x:Key="Menu.TouchItem.Pressed.Background" Color="#800078D4"/>
 
+    <!-- ===== Tooltip escuro (estilo Menu Fluent) ===== -->
+    <CornerRadius x:Key="ToolTip.CornerRadius">6</CornerRadius>
+    <Thickness x:Key="ToolTip.Padding">8,5</Thickness>
+    <sys:Double x:Key="ToolTip.FontSize">12</sys:Double>
+    <sys:Double x:Key="ToolTip.MaxWidth">450</sys:Double>
+
     <!-- ===== Separador de menu (T1 terceiros: UM Style compartilhado, REUSE tokens
          Quadra.Separator.* — nunca estilo inline; Separator não é MenuItem, então
          ApplyStyleRecursively o ignora e ele mantém este visual nas 2 densidades) ===== -->

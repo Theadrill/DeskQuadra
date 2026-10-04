@@ -9,21 +9,33 @@ public class DesktopItemTitleLayoutTests
     [Fact]
     public void DefaultTheme_QuadraItemTitleMaxHeight_CorrespondeAExatamenteDuasLinhas()
     {
-        // Carrega o dicionário Default.xaml
-        var dictionary = new ResourceDictionary
+        var thread = new Thread(() =>
         {
-            Source = new Uri("/DeskQuadra.UI.Wpf;component/Theme/Default.xaml", UriKind.RelativeOrAbsolute)
-        };
+            if (System.Windows.Application.Current == null)
+            {
+                _ = new System.Windows.Application();
+            }
 
-        Assert.True(dictionary.Contains("Quadra.Item.LineHeight"));
-        Assert.True(dictionary.Contains("Quadra.Item.Title.MaxHeight"));
+            // Carrega o dicionário Default.xaml
+            var dictionary = new ResourceDictionary
+            {
+                Source = new Uri("/DeskQuadra.UI.Wpf;component/Theme/Default.xaml", UriKind.RelativeOrAbsolute)
+            };
 
-        var lineHeight = (double)dictionary["Quadra.Item.LineHeight"];
-        var maxHeight = (double)dictionary["Quadra.Item.Title.MaxHeight"];
+            Assert.True(dictionary.Contains("Quadra.Item.LineHeight"));
+            Assert.True(dictionary.Contains("Quadra.Item.Title.MaxHeight"));
 
-        Assert.Equal(14.0, lineHeight);
-        Assert.Equal(28.0, maxHeight);
-        Assert.Equal(2 * lineHeight, maxHeight);
+            var lineHeight = (double)dictionary["Quadra.Item.LineHeight"];
+            var maxHeight = (double)dictionary["Quadra.Item.Title.MaxHeight"];
+
+            Assert.Equal(14.0, lineHeight);
+            Assert.Equal(28.0, maxHeight);
+            Assert.Equal(2 * lineHeight, maxHeight);
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
     }
 
     [Fact]

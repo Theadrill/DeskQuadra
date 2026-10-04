@@ -65,15 +65,34 @@ public sealed class DesktopItemViewModel : ViewModelBase
         }
     }
 
+    private string? _toolTipText;
+    public string ToolTipText
+    {
+        get => _toolTipText ?? _item.Name;
+        private set => SetProperty(ref _toolTipText, value);
+    }
+
+    public void ResetToolTip()
+    {
+        ToolTipText = _item.Name;
+    }
+
+    public void ShowFullPathInToolTip()
+    {
+        ToolTipText = !string.IsNullOrWhiteSpace(_item.FilePath) ? _item.FilePath : _item.Name;
+    }
+
     public void UpdateNameAndPath(string newName, string newFilePath)
     {
         _item.Name = newName;
         _item.FilePath = newFilePath;
         _item.TargetPath = newFilePath;
         _icon = null;
+        _toolTipText = newName;
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(FilePath));
         OnPropertyChanged(nameof(Icon));
+        OnPropertyChanged(nameof(ToolTipText));
     }
 
     public DesktopItemViewModel(DesktopItem item, IIconExtractorService iconExtractor)

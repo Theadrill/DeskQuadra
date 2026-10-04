@@ -121,7 +121,9 @@ public partial class QuadraWindow : Window
     // Recolhimento pós-drop do spring-loaded: Quadra recolhida que expandiu temporariamente e recebeu drop recolhe sozinha após ~3s de ociosidade
     private DispatcherTimer? _postDropCollapseTimer; // one-shot (~3000ms) armado após o drop
     private bool _awaitingPostDropCollapse; // Quadra expandida aguardando recolher sozinha após o drop
-
+    // Hover / ToolTip de itens: transição dinâmica após 1s de hover contínuo (Nome -> FilePath)
+    private CancellationTokenSource? _toolTipTransitionCts;
+    private DesktopItemViewModel? _activeToolTipItem;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -1398,9 +1400,68 @@ public partial class QuadraWindow : Window
         _touchInertiaVelocityPxPerSec = 0;
     }
 
+    private void DesktopItem_ToolTipOpening(object sender, ToolTipEventArgs e)
+    {
+        CancelToolTipTransition();
+
+        if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
+        {
+            _activeToolTipItem = item;
+            item.ResetToolTip();
+
+            var cts = new CancellationTokenSource();
+            _toolTipTransitionCts = cts;
+
+            _ = TransitionToolTipToPathAfterDelayAsync(item, cts.Token);
+        }
+    }
+
+    private async Task TransitionToolTipToPathAfterDelayAsync(DesktopItemViewModel item, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(1500, cancellationToken);
+            if (!cancellationToken.IsCancellationRequested && _activeToolTipItem == item)
+            {
+                item.ShowFullPathInToolTip();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Hover encerrado antes de 1.5s de permanência contínua
+        }
+    }
+
+    private void DesktopItem_ToolTipClosing(object sender, ToolTipEventArgs e)
+    {
+        CancelToolTipTransition();
+    }
+
+    private void DesktopItem_MouseLeave(object sender, MouseEventArgs e)
+    {
+        CancelToolTipTransition();
+    }
+
+    private void CancelToolTipTransition()
+    {
+        if (_toolTipTransitionCts != null)
+        {
+            _toolTipTransitionCts.Cancel();
+            _toolTipTransitionCts.Dispose();
+            _toolTipTransitionCts = null;
+        }
+
+        if (_activeToolTipItem != null)
+        {
+            _activeToolTipItem.ResetToolTip();
+            _activeToolTipItem = null;
+        }
+    }
+
     private void DesktopItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         StopTouchInertia(); // qualquer novo Down/interação cancela a inércia
+        CancelToolTipTransition();
         if (e.OriginalSource is TextBox || (sender is FrameworkElement feDown && feDown.DataContext is DesktopItemViewModel itemDown && itemDown.IsRenaming))
         {
             return;

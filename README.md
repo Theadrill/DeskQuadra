@@ -13,7 +13,7 @@ O DeskQuadra redefine a experiência da área de trabalho do Windows, transforma
 - [ ] **Remover temporários no final:** `HangTestSwitch`, `ChordDiagLog`.
 - [ ] **Otimizar impacto na inicialização do Windows:** hoje o Gerenciador marca ALTO (scan + extração de todos os ícones + 1 janela pesada por Quadra + Guardian junto, tudo no login; autostart aponta p/ Debug) — aliviar em fatias futuras (ícones lazy/async, janelas sob demanda, Guardian atrasado, autostart no build final).
 - [x] **Seleção múltipla de itens:** Retângulo de seleção com mouse (marquee selection), `Ctrl + clique` (aditivo/alternado), `Shift + clique` (intervalo contínuo) e `Ctrl + A` (selecionar todos).
-- [ ] **Tooltip/Hover customizado estilo Menu Fluent:** Popover escuro posicionado no mouse com fonte branca, exibindo apenas o nome completo do item (sem caminho completo), sumindo ao sair.
+- [x] **Tooltip/Hover customizado estilo Menu Fluent:** Popover escuro posicionado no mouse com fonte branca, exibindo apenas o nome completo do item (sem caminho completo), sumindo ao sair.
 - [ ] **Drop em arquivos container (.zip, etc.):** Suporte a arrastar e soltar itens sobre arquivos compactados/containers (.zip e afins) para inclusão direta no arquivo.
 - [ ] **Atualização e recuperação em tempo real de ícones restaurados da Lixeira:** Garantir invalidação e recarregamento imediato de ícones em cache quando arquivos/atalhos forem restaurados ou atualizados sem exigir reinicialização do app.
 

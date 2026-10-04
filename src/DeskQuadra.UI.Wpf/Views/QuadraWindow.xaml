@@ -255,7 +255,16 @@
                                             Padding="{DynamicResource Quadra.Item.Padding}"
                                             Margin="{DynamicResource Quadra.Item.Margin}"
                                             Cursor="Hand"
-                                            ToolTip="{Binding FilePath}"
+                                            ToolTipService.Placement="Mouse"
+                                            ToolTipService.HorizontalOffset="12"
+                                            ToolTipService.VerticalOffset="16"
+                                            ToolTipService.InitialShowDelay="500"
+                                            ToolTipService.BetweenShowDelay="300"
+                                            ToolTipService.ShowDuration="10000"
+                                            ToolTip="{Binding ToolTipText}"
+                                            ToolTipOpening="DesktopItem_ToolTipOpening"
+                                            ToolTipClosing="DesktopItem_ToolTipClosing"
+                                            MouseLeave="DesktopItem_MouseLeave"
                                             ContextMenuOpening="DesktopItem_ContextMenuOpening"
                                             PreviewMouseLeftButtonDown="DesktopItem_PreviewMouseLeftButtonDown"
                                             PreviewMouseMove="DesktopItem_PreviewMouseMove"
@@ -291,6 +300,9 @@
                                                     <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
                                                         <Setter Property="Background" Value="{DynamicResource Quadra.Item.Hover.Background}"/>
                                                         <Setter Property="BorderBrush" Value="{DynamicResource Quadra.Item.Selected.BorderBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                                                        <Setter Property="ToolTipService.IsEnabled" Value="False"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
