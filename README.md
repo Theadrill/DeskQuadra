@@ -16,6 +16,8 @@ O DeskQuadra redefine a experiência da área de trabalho do Windows, transforma
 - [x] **Tooltip/Hover customizado estilo Menu Fluent:** Popover escuro posicionado no mouse com fonte branca, exibindo apenas o nome completo do item (sem caminho completo), sumindo ao sair.
 - [ ] **Drop em arquivos container (.zip, etc.):** Suporte a arrastar e soltar itens sobre arquivos compactados/containers (.zip e afins) para inclusão direta no arquivo.
 - [x] **Atualização e recuperação em tempo real de ícones restaurados da Lixeira:** Garantir invalidação e recarregamento imediato de ícones em cache quando arquivos/atalhos forem restaurados ou atualizados sem exigir reinicialização do app.
+- [ ] **Visual transparente estilo Windows 11 (Mica / Acrylic blur):** Evoluir o visual translúcido das quadras para transparência idêntica ao Windows 11 com desfoque de fundo (acrylic blur / material backdrop real) e acabamento refinado.
+- [ ] **Ícones de operações rápidas no menu de contexto estilo Windows 11:** Barra superior de ações compactas (copiar, recortar, colar, renomear, excluir, etc.) no topo do menu de contexto moderno do Windows 11.
 
 ## Créditos (bibliotecas de terceiros)
 
