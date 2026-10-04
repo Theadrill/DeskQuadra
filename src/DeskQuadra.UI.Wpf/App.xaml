@@ -159,6 +159,25 @@
             </Setter>
         </Style>
 
+        <!-- ===== Linha de Ações Rápidas do Menu (Container neutro sem hover na linha) ===== -->
+        <Style x:Key="QuickActionsRowStyle" TargetType="MenuItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,1,0,2"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border Background="Transparent" Padding="0" Margin="0">
+                            <ContentPresenter ContentSource="Header" Focusable="False" HorizontalAlignment="Stretch"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ===== Botões de Ação Rápida no topo do Menu de Contexto (Estilo Windows 11) ===== -->
         <Style x:Key="QuickActionButtonStyle" TargetType="Button">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>

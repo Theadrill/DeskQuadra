@@ -46,6 +46,7 @@ public class ContextMenuQuickActionsResourceTests
 
             Assert.True(dict.Contains("Menu.QuickAction.Accent"));
             Assert.True(dict.Contains("Menu.QuickAction.Foreground"));
+            Assert.True(dict.Contains("Menu.QuickAction.Divider"));
             Assert.True(dict.Contains("Menu.QuickAction.Button.Width"));
             Assert.True(dict.Contains("Menu.QuickAction.Button.Height"));
             Assert.True(dict.Contains("Menu.QuickAction.Icon.Size"));

@@ -266,128 +266,164 @@
                                         <Border.ContextMenu>
                                             <ContextMenu Style="{StaticResource ModernContextMenuStyle}">
                                                 <!-- Barra Superior de Ações Rápidas (Estilo Windows 11: Recortar, Copiar, Renomear, Compartilhar, Excluir) -->
-                                                <Border x:Name="QuickActionsBar" Margin="2,2,2,3">
-                                                    <UniformGrid Rows="1" Columns="5">
-                                                        <!-- Recortar -->
-                                                        <Button x:Name="QuickActionCutButton"
-                                                                Style="{StaticResource QuickActionButtonStyle}"
-                                                                ToolTip="{x:Static properties:Strings.QuickAction_Cut}"
-                                                                Click="QuickActionCut_Click">
-                                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Height="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Margin="0,0,0,2">
-                                                                    <Canvas Width="20" Height="20">
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Cut.Blades}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Cut.Handles}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Accent}"/>
-                                                                    </Canvas>
-                                                                </Viewbox>
-                                                                <TextBlock Text="{x:Static properties:Strings.QuickAction_Cut}"
-                                                                           FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
-                                                                           Foreground="{DynamicResource Menu.QuickAction.Foreground}"
-                                                                           HorizontalAlignment="Center"
-                                                                           TextAlignment="Center"/>
-                                                            </StackPanel>
-                                                        </Button>
+                                                <MenuItem x:Name="QuickActionsMenuItem" Style="{StaticResource QuickActionsRowStyle}">
+                                                    <MenuItem.Header>
+                                                        <Grid HorizontalAlignment="Stretch">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                                        <!-- Copiar -->
-                                                        <Button x:Name="QuickActionCopyButton"
-                                                                Style="{StaticResource QuickActionButtonStyle}"
-                                                                ToolTip="{x:Static properties:Strings.QuickAction_Copy}"
-                                                                Click="QuickActionCopy_Click">
-                                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Height="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Margin="0,0,0,2">
-                                                                    <Canvas Width="20" Height="20">
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Copy.Back}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Accent}"/>
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Copy.Front}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
-                                                                    </Canvas>
-                                                                </Viewbox>
-                                                                <TextBlock Text="{x:Static properties:Strings.QuickAction_Copy}"
-                                                                           FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
-                                                                           Foreground="{DynamicResource Menu.QuickAction.Foreground}"
-                                                                           HorizontalAlignment="Center"
-                                                                           TextAlignment="Center"/>
-                                                            </StackPanel>
-                                                        </Button>
+                                                            <!-- Recortar -->
+                                                            <Button x:Name="QuickActionCutButton"
+                                                                    Grid.Column="0"
+                                                                    Style="{StaticResource QuickActionButtonStyle}"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    Margin="1,0"
+                                                                    Click="QuickActionCut_Click">
+                                                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Height="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Margin="0,0,0,2">
+                                                                        <Canvas Width="20" Height="20">
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Cut.Blades}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Cut.Handles}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Accent}"/>
+                                                                        </Canvas>
+                                                                    </Viewbox>
+                                                                    <TextBlock Text="{x:Static properties:Strings.QuickAction_Cut}"
+                                                                               FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
+                                                                               Foreground="{DynamicResource Menu.QuickAction.Foreground}"
+                                                                               HorizontalAlignment="Center"
+                                                                               TextAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </Button>
+                                                            <Rectangle Grid.Column="0" Width="1" Height="26"
+                                                                       Fill="{DynamicResource Menu.QuickAction.Divider}"
+                                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                       IsHitTestVisible="False"/>
 
-                                                        <!-- Renomear -->
-                                                        <Button x:Name="QuickActionRenameButton"
-                                                                Style="{StaticResource QuickActionButtonStyle}"
-                                                                ToolTip="{x:Static properties:Strings.QuickAction_Rename}"
-                                                                Click="QuickActionRename_Click">
-                                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Height="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Margin="0,0,0,2">
-                                                                    <Canvas Width="20" Height="20">
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Rename.Frame}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Rename.Cursor}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Accent}"/>
-                                                                    </Canvas>
-                                                                </Viewbox>
-                                                                <TextBlock Text="{x:Static properties:Strings.QuickAction_Rename}"
-                                                                           FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
-                                                                           Foreground="{DynamicResource Menu.QuickAction.Foreground}"
-                                                                           HorizontalAlignment="Center"
-                                                                           TextAlignment="Center"/>
-                                                            </StackPanel>
-                                                        </Button>
+                                                            <!-- Copiar -->
+                                                            <Button x:Name="QuickActionCopyButton"
+                                                                    Grid.Column="1"
+                                                                    Style="{StaticResource QuickActionButtonStyle}"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    Margin="1,0"
+                                                                    Click="QuickActionCopy_Click">
+                                                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Height="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Margin="0,0,0,2">
+                                                                        <Canvas Width="20" Height="20">
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Copy.Back}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Accent}"/>
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Copy.Front}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
+                                                                        </Canvas>
+                                                                    </Viewbox>
+                                                                    <TextBlock Text="{x:Static properties:Strings.QuickAction_Copy}"
+                                                                               FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
+                                                                               Foreground="{DynamicResource Menu.QuickAction.Foreground}"
+                                                                               HorizontalAlignment="Center"
+                                                                               TextAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </Button>
+                                                            <Rectangle Grid.Column="1" Width="1" Height="26"
+                                                                       Fill="{DynamicResource Menu.QuickAction.Divider}"
+                                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                       IsHitTestVisible="False"/>
 
-                                                        <!-- Compartilhar -->
-                                                        <Button x:Name="QuickActionShareButton"
-                                                                Style="{StaticResource QuickActionButtonStyle}"
-                                                                ToolTip="{x:Static properties:Strings.QuickAction_Share}"
-                                                                Click="QuickActionShare_Click">
-                                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Height="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Margin="0,0,0,2">
-                                                                    <Canvas Width="20" Height="20">
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Share.Box}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Share.Arrow}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Accent}"/>
-                                                                    </Canvas>
-                                                                </Viewbox>
-                                                                <TextBlock Text="{x:Static properties:Strings.QuickAction_Share}"
-                                                                           FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
-                                                                           Foreground="{DynamicResource Menu.QuickAction.Foreground}"
-                                                                           HorizontalAlignment="Center"
-                                                                           TextAlignment="Center"
-                                                                           TextWrapping="Wrap"/>
-                                                            </StackPanel>
-                                                        </Button>
+                                                            <!-- Renomear -->
+                                                            <Button x:Name="QuickActionRenameButton"
+                                                                    Grid.Column="2"
+                                                                    Style="{StaticResource QuickActionButtonStyle}"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    Margin="1,0"
+                                                                    Click="QuickActionRename_Click">
+                                                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Height="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Margin="0,0,0,2">
+                                                                        <Canvas Width="20" Height="20">
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Rename.Frame}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Rename.Cursor}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Accent}"/>
+                                                                        </Canvas>
+                                                                    </Viewbox>
+                                                                    <TextBlock Text="{x:Static properties:Strings.QuickAction_Rename}"
+                                                                               FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
+                                                                               Foreground="{DynamicResource Menu.QuickAction.Foreground}"
+                                                                               HorizontalAlignment="Center"
+                                                                               TextAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </Button>
+                                                            <Rectangle Grid.Column="2" Width="1" Height="26"
+                                                                       Fill="{DynamicResource Menu.QuickAction.Divider}"
+                                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                       IsHitTestVisible="False"/>
 
-                                                        <!-- Excluir -->
-                                                        <Button x:Name="QuickActionDeleteButton"
-                                                                Style="{StaticResource QuickActionButtonStyle}"
-                                                                ToolTip="{x:Static properties:Strings.QuickAction_Delete}"
-                                                                Click="QuickActionDelete_Click">
-                                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Height="{DynamicResource Menu.QuickAction.Icon.Size}"
-                                                                         Margin="0,0,0,2">
-                                                                    <Canvas Width="20" Height="20">
-                                                                        <Path Data="{StaticResource Icon.QuickAction.Delete}"
-                                                                              Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
-                                                                    </Canvas>
-                                                                </Viewbox>
-                                                                <TextBlock Text="{x:Static properties:Strings.QuickAction_Delete}"
-                                                                           FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
-                                                                           Foreground="{DynamicResource Menu.QuickAction.Foreground}"
-                                                                           HorizontalAlignment="Center"
-                                                                           TextAlignment="Center"/>
-                                                            </StackPanel>
-                                                        </Button>
-                                                    </UniformGrid>
-                                                </Border>
+                                                            <!-- Compartilhar -->
+                                                            <Button x:Name="QuickActionShareButton"
+                                                                    Grid.Column="3"
+                                                                    Style="{StaticResource QuickActionButtonStyle}"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    Margin="1,0"
+                                                                    Click="QuickActionShare_Click">
+                                                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Height="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Margin="0,0,0,2">
+                                                                        <Canvas Width="20" Height="20">
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Share.Box}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Share.Arrow}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Accent}"/>
+                                                                        </Canvas>
+                                                                    </Viewbox>
+                                                                    <TextBlock Text="{x:Static properties:Strings.QuickAction_Share}"
+                                                                               FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
+                                                                               Foreground="{DynamicResource Menu.QuickAction.Foreground}"
+                                                                               HorizontalAlignment="Center"
+                                                                               TextAlignment="Center"
+                                                                               TextWrapping="Wrap"/>
+                                                                </StackPanel>
+                                                            </Button>
+                                                            <Rectangle Grid.Column="3" Width="1" Height="26"
+                                                                       Fill="{DynamicResource Menu.QuickAction.Divider}"
+                                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                       IsHitTestVisible="False"/>
+
+                                                            <!-- Excluir -->
+                                                            <Button x:Name="QuickActionDeleteButton"
+                                                                    Grid.Column="4"
+                                                                    Style="{StaticResource QuickActionButtonStyle}"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    Margin="1,0"
+                                                                    Click="QuickActionDelete_Click">
+                                                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <Viewbox Width="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Height="{DynamicResource Menu.QuickAction.Icon.Size}"
+                                                                             Margin="0,0,0,2">
+                                                                        <Canvas Width="20" Height="20">
+                                                                            <Path Data="{StaticResource Icon.QuickAction.Delete}"
+                                                                                  Fill="{DynamicResource Menu.QuickAction.Foreground}"/>
+                                                                        </Canvas>
+                                                                    </Viewbox>
+                                                                    <TextBlock Text="{x:Static properties:Strings.QuickAction_Delete}"
+                                                                               FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
+                                                                               Foreground="{DynamicResource Menu.QuickAction.Foreground}"
+                                                                               HorizontalAlignment="Center"
+                                                                               TextAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </Grid>
+                                                    </MenuItem.Header>
+                                                </MenuItem>
                                                 <Separator Style="{StaticResource MenuSeparatorStyle}"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_Open}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpen_Click"/>
                                                 <MenuItem Header="{x:Static properties:Strings.ItemMenu_OpenLocation}" Style="{StaticResource MouseMenuItemStyle}" Click="ItemMenuOpenLocation_Click"/>

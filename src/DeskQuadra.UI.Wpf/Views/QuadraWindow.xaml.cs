@@ -1972,6 +1972,11 @@ public partial class QuadraWindow : Window
         {
             if (item is MenuItem mi)
             {
+                if (mi.Name == "QuickActionsMenuItem")
+                {
+                    continue;
+                }
+
                 mi.Style = style;
                 if (mi.Items.Count > 0)
                 {

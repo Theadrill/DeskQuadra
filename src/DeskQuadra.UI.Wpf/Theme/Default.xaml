@@ -207,7 +207,7 @@
     <SolidColorBrush x:Key="Menu.QuickAction.Foreground" Color="#F0F0F0"/>
     <SolidColorBrush x:Key="Menu.QuickAction.Hover.Background" Color="#22FFFFFF"/>
     <SolidColorBrush x:Key="Menu.QuickAction.Pressed.Background" Color="#38FFFFFF"/>
-    <SolidColorBrush x:Key="Menu.QuickAction.Divider" Color="#18FFFFFF"/>
+    <SolidColorBrush x:Key="Menu.QuickAction.Divider" Color="#20FFFFFF"/>
 
     <!-- Geometrias Recortar (Oficial Fluent UI - Lâminas brancas + Alças vazadas azuis) -->
     <StreamGeometry x:Key="Icon.QuickAction.Cut.Blades">M5.91939 2.22774C5.769 1.99615 5.45933 1.93033 5.22774 2.08072C4.99615 2.23112 4.93033 2.54079 5.08072 2.77238L9.40382 9.42936 10 10.3474 10.5962 7.59329 14.0806 2.22774C14.231 1.99615 14.5407 1.93033 14.7723 2.08072C15.0039 2.23112 15.0697 2.54079 14.9193 2.77238L11.1924 8.51133 10 10.3474z</StreamGeometry>
