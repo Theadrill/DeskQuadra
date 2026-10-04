@@ -42,6 +42,44 @@ public class SettingsViewModelVisualEffectsTests
             PreferredTechnique = technique;
             TechniqueChanged?.Invoke(this, technique);
         }
+
+        public double GeneralOpacity { get; set; } = 30.0;
+        public bool IsAdvancedMode { get; set; } = false;
+        public double BackgroundAlpha { get; set; } = 28.0;
+        public double TintIntensity { get; set; } = 15.0;
+        public event EventHandler? VisualOpacityChanged;
+
+        public void SetGeneralOpacity(double opacity)
+        {
+            GeneralOpacity = opacity;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetAdvancedMode(bool isAdvanced)
+        {
+            IsAdvancedMode = isAdvanced;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetBackgroundAlpha(double alpha)
+        {
+            BackgroundAlpha = alpha;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetTintIntensity(double tint)
+        {
+            TintIntensity = tint;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ResetToDefaults()
+        {
+            GeneralOpacity = 30.0;
+            BackgroundAlpha = 28.0;
+            TintIntensity = 15.0;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private sealed class FakeVisualCapabilityService : IWindowsVisualCapabilityService
@@ -216,11 +254,12 @@ public class SettingsViewModelVisualEffectsTests
     [Fact]
     public void OpacitySliders_DefaultValuesAndLabels_FormattedCorrectly()
     {
+        var fakeService = new FakeVisualSettingsService();
         var vm = new SettingsViewModel(
             new FakeStartupService(),
             new FakeDensityService(),
             hasTouchHardware: false,
-            new FakeVisualSettingsService(),
+            fakeService,
             new FakeVisualCapabilityService());
 
         Assert.Equal(30.0, vm.GeneralOpacity);
@@ -233,17 +272,50 @@ public class SettingsViewModelVisualEffectsTests
 
         vm.GeneralOpacity = 50.0;
         Assert.Equal("50%", vm.GeneralOpacityLabel);
+        Assert.Equal(50.0, fakeService.GeneralOpacity);
 
         vm.BackgroundAlpha = 80.0;
         Assert.Equal("80%", vm.BackgroundAlphaLabel);
+        Assert.Equal(80.0, fakeService.BackgroundAlpha);
 
         vm.TintIntensity = 10.0;
         Assert.Equal("10%", vm.TintIntensityLabel);
+        Assert.Equal(10.0, fakeService.TintIntensity);
 
         vm.ResetToDefaults();
         Assert.Equal(30.0, vm.GeneralOpacity);
         Assert.Equal(28.0, vm.BackgroundAlpha);
         Assert.Equal(15.0, vm.TintIntensity);
+        Assert.Equal(30.0, fakeService.GeneralOpacity);
+        Assert.Equal(28.0, fakeService.BackgroundAlpha);
+        Assert.Equal(15.0, fakeService.TintIntensity);
+    }
+
+    [Fact]
+    public void SettingsViewModel_InitializesFromVisualSettingsService_WithPersistedValues()
+    {
+        var fakeService = new FakeVisualSettingsService
+        {
+            GeneralOpacity = 65.0,
+            IsAdvancedMode = true,
+            BackgroundAlpha = 45.0,
+            TintIntensity = 30.0
+        };
+
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            fakeService,
+            new FakeVisualCapabilityService());
+
+        Assert.Equal(65.0, vm.GeneralOpacity);
+        Assert.Equal("65%", vm.GeneralOpacityLabel);
+        Assert.True(vm.IsAdvancedMode);
+        Assert.Equal(45.0, vm.BackgroundAlpha);
+        Assert.Equal("45%", vm.BackgroundAlphaLabel);
+        Assert.Equal(30.0, vm.TintIntensity);
+        Assert.Equal("30%", vm.TintIntensityLabel);
     }
 
     [Fact]

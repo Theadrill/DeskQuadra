@@ -14,15 +14,20 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
     private readonly object _gate = new();
     private bool _enableWindows11VisualEffects = true;
     private VisualEffectTechnique _preferredTechnique = VisualEffectTechnique.Auto;
+    private double _generalOpacity = 30.0;
+    private bool _isAdvancedMode = false;
+    private double _backgroundAlpha = 28.0;
+    private double _tintIntensity = 15.0;
 
     public event EventHandler<bool>? VisualEffectsChanged;
     public event EventHandler<VisualEffectTechnique>? TechniqueChanged;
+    public event EventHandler? VisualOpacityChanged;
 
     public JsonVisualSettingsService(string? customStorageDirectory = null)
     {
         string dir = JsonStorageDefaults.GetAppDataDirectory(customStorageDirectory);
         _settingsFilePath = Path.Combine(dir, "settings.json");
-        (_enableWindows11VisualEffects, _preferredTechnique) = LoadBestEffort();
+        LoadBestEffort();
     }
 
     public bool EnableWindows11VisualEffects
@@ -35,18 +40,36 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
         get { lock (_gate) { return _preferredTechnique; } }
     }
 
+    public double GeneralOpacity
+    {
+        get { lock (_gate) { return _generalOpacity; } }
+    }
+
+    public bool IsAdvancedMode
+    {
+        get { lock (_gate) { return _isAdvancedMode; } }
+    }
+
+    public double BackgroundAlpha
+    {
+        get { lock (_gate) { return _backgroundAlpha; } }
+    }
+
+    public double TintIntensity
+    {
+        get { lock (_gate) { return _tintIntensity; } }
+    }
+
     public void SetEnableWindows11VisualEffects(bool enabled)
     {
         bool changed;
-        VisualEffectTechnique tech;
         lock (_gate)
         {
             changed = _enableWindows11VisualEffects != enabled;
             _enableWindows11VisualEffects = enabled;
-            tech = _preferredTechnique;
         }
 
-        SaveBestEffort(enabled, tech);
+        SaveBestEffort();
         if (changed)
         {
             VisualEffectsChanged?.Invoke(this, enabled);
@@ -56,48 +79,156 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
     public void SetPreferredTechnique(VisualEffectTechnique technique)
     {
         bool changed;
-        bool enabled;
         lock (_gate)
         {
             changed = _preferredTechnique != technique;
             _preferredTechnique = technique;
-            enabled = _enableWindows11VisualEffects;
         }
 
-        SaveBestEffort(enabled, technique);
+        SaveBestEffort();
         if (changed)
         {
             TechniqueChanged?.Invoke(this, technique);
         }
     }
 
-    private (bool Enabled, VisualEffectTechnique Technique) LoadBestEffort()
+    public void SetGeneralOpacity(double opacity)
+    {
+        double clamped = Math.Clamp(opacity, 5.0, 90.0);
+        bool changed;
+        lock (_gate)
+        {
+            changed = Math.Abs(_generalOpacity - clamped) > 0.001;
+            _generalOpacity = clamped;
+            // Se não estiver em modo avançado, sincroniza fundo e tint proporcionalmente
+            if (!_isAdvancedMode)
+            {
+                _backgroundAlpha = Math.Clamp(clamped * 0.933, 5.0, 90.0); // 30% -> ~28%
+                _tintIntensity = Math.Clamp(clamped * 0.5, 0.0, 100.0);    // 30% -> ~15%
+            }
+        }
+
+        SaveBestEffort();
+        if (changed)
+        {
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void SetAdvancedMode(bool isAdvanced)
+    {
+        bool changed;
+        lock (_gate)
+        {
+            changed = _isAdvancedMode != isAdvanced;
+            _isAdvancedMode = isAdvanced;
+        }
+
+        SaveBestEffort();
+        if (changed)
+        {
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void SetBackgroundAlpha(double alpha)
+    {
+        double clamped = Math.Clamp(alpha, 5.0, 90.0);
+        bool changed;
+        lock (_gate)
+        {
+            changed = Math.Abs(_backgroundAlpha - clamped) > 0.001;
+            _backgroundAlpha = clamped;
+        }
+
+        SaveBestEffort();
+        if (changed)
+        {
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void SetTintIntensity(double tint)
+    {
+        double clamped = Math.Clamp(tint, 0.0, 100.0);
+        bool changed;
+        lock (_gate)
+        {
+            changed = Math.Abs(_tintIntensity - clamped) > 0.001;
+            _tintIntensity = clamped;
+        }
+
+        SaveBestEffort();
+        if (changed)
+        {
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void ResetToDefaults()
+    {
+        lock (_gate)
+        {
+            _generalOpacity = 30.0;
+            _backgroundAlpha = 28.0;
+            _tintIntensity = 15.0;
+        }
+
+        SaveBestEffort();
+        VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void LoadBestEffort()
     {
         try
         {
             if (!File.Exists(_settingsFilePath))
             {
-                return (true, VisualEffectTechnique.Auto);
+                return;
             }
 
             string json = File.ReadAllText(_settingsFilePath);
             var dto = JsonSerializer.Deserialize<VisualSettingsDto>(json, JsonStorageDefaults.SerializerOptions);
-            bool enabled = dto?.EnableWindows11VisualEffects ?? true;
-            VisualEffectTechnique tech = VisualEffectTechnique.Auto;
-            if (!string.IsNullOrEmpty(dto?.PreferredTechnique) &&
-                Enum.TryParse<VisualEffectTechnique>(dto.PreferredTechnique, ignoreCase: true, out var parsedTech))
+            if (dto != null)
             {
-                tech = parsedTech;
+                lock (_gate)
+                {
+                    _enableWindows11VisualEffects = dto.EnableWindows11VisualEffects ?? true;
+                    if (!string.IsNullOrEmpty(dto.PreferredTechnique) &&
+                        Enum.TryParse<VisualEffectTechnique>(dto.PreferredTechnique, ignoreCase: true, out var parsedTech))
+                    {
+                        _preferredTechnique = parsedTech;
+                    }
+
+                    if (dto.GeneralOpacity.HasValue)
+                    {
+                        _generalOpacity = Math.Clamp(dto.GeneralOpacity.Value, 5.0, 90.0);
+                    }
+
+                    if (dto.IsAdvancedMode.HasValue)
+                    {
+                        _isAdvancedMode = dto.IsAdvancedMode.Value;
+                    }
+
+                    if (dto.BackgroundAlpha.HasValue)
+                    {
+                        _backgroundAlpha = Math.Clamp(dto.BackgroundAlpha.Value, 5.0, 90.0);
+                    }
+
+                    if (dto.TintIntensity.HasValue)
+                    {
+                        _tintIntensity = Math.Clamp(dto.TintIntensity.Value, 0.0, 100.0);
+                    }
+                }
             }
-            return (enabled, tech);
         }
         catch
         {
-            return (true, VisualEffectTechnique.Auto);
+            // Fallback nos padrões de fábrica já inicializados nos campos
         }
     }
 
-    private void SaveBestEffort(bool enabled, VisualEffectTechnique technique)
+    private void SaveBestEffort()
     {
         try
         {
@@ -121,8 +252,15 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
                 }
             }
 
-            dict["EnableWindows11VisualEffects"] = enabled;
-            dict["PreferredTechnique"] = technique.ToString();
+            lock (_gate)
+            {
+                dict["EnableWindows11VisualEffects"] = _enableWindows11VisualEffects;
+                dict["PreferredTechnique"] = _preferredTechnique.ToString();
+                dict["GeneralOpacity"] = Math.Round(_generalOpacity, 1);
+                dict["IsAdvancedMode"] = _isAdvancedMode;
+                dict["BackgroundAlpha"] = Math.Round(_backgroundAlpha, 1);
+                dict["TintIntensity"] = Math.Round(_tintIntensity, 1);
+            }
 
             string json = JsonSerializer.Serialize(dict, JsonStorageDefaults.SerializerOptions);
             string tmp = _settingsFilePath + ".tmp";
@@ -139,5 +277,9 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
     {
         public bool? EnableWindows11VisualEffects { get; set; }
         public string? PreferredTechnique { get; set; }
+        public double? GeneralOpacity { get; set; }
+        public bool? IsAdvancedMode { get; set; }
+        public double? BackgroundAlpha { get; set; }
+        public double? TintIntensity { get; set; }
     }
 }

@@ -100,6 +100,15 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
                 useAcrylic = _capabilityService.IsAcrylicSupported;
             }
 
+            if (accentColor == 0 && target == VisualEffectTarget.QuadraWindow)
+            {
+                double tintPct = _settingsService.IsAdvancedMode
+                    ? _settingsService.TintIntensity
+                    : (_settingsService.GeneralOpacity * 0.5);
+                byte tintAlpha = (byte)Math.Clamp((int)Math.Round(tintPct * 2.55), 1, 240);
+                accentColor = ((uint)tintAlpha << 24) | 0x00181414;
+            }
+
             bool result = useAcrylic
                 ? ApplyAcrylicAccentPolicy(windowHandle, accentColor)
                 : ApplyClassicAccentPolicy(windowHandle, accentColor);

@@ -107,4 +107,71 @@ public class VisualSettingsServiceTests : IDisposable
         var service2 = new JsonVisualSettingsService(_tempDir);
         Assert.Equal(DeskQuadra.Core.Models.VisualEffectTechnique.ClassicBlur, service2.PreferredTechnique);
     }
+
+    [Fact]
+    public void OpacityDefaults_AreExpectedValues()
+    {
+        var service = new JsonVisualSettingsService(_tempDir);
+        Assert.Equal(30.0, service.GeneralOpacity);
+        Assert.False(service.IsAdvancedMode);
+        Assert.Equal(28.0, service.BackgroundAlpha);
+        Assert.Equal(15.0, service.TintIntensity);
+    }
+
+    [Fact]
+    public void SetGeneralOpacity_ClampsAndPersistsAndFiresEvent()
+    {
+        var service = new JsonVisualSettingsService(_tempDir);
+        bool fired = false;
+        service.VisualOpacityChanged += (s, e) => fired = true;
+
+        service.SetGeneralOpacity(50.0);
+        Assert.True(fired);
+        Assert.Equal(50.0, service.GeneralOpacity);
+
+        // Clamping abaixo do mínimo (5) e acima do máximo (90)
+        service.SetGeneralOpacity(1.0);
+        Assert.Equal(5.0, service.GeneralOpacity);
+
+        service.SetGeneralOpacity(99.0);
+        Assert.Equal(90.0, service.GeneralOpacity);
+
+        // Persistência em disco
+        var reloaded = new JsonVisualSettingsService(_tempDir);
+        Assert.Equal(90.0, reloaded.GeneralOpacity);
+    }
+
+    [Fact]
+    public void SetAdvancedModeAndSliders_PersistsIndependently()
+    {
+        var service = new JsonVisualSettingsService(_tempDir);
+        service.SetAdvancedMode(true);
+        service.SetBackgroundAlpha(65.0);
+        service.SetTintIntensity(40.0);
+
+        var reloaded = new JsonVisualSettingsService(_tempDir);
+        Assert.True(reloaded.IsAdvancedMode);
+        Assert.Equal(65.0, reloaded.BackgroundAlpha);
+        Assert.Equal(40.0, reloaded.TintIntensity);
+    }
+
+    [Fact]
+    public void ResetToDefaults_RestoresOriginalValues()
+    {
+        var service = new JsonVisualSettingsService(_tempDir);
+        service.SetGeneralOpacity(70.0);
+        service.SetBackgroundAlpha(80.0);
+        service.SetTintIntensity(50.0);
+
+        service.ResetToDefaults();
+        Assert.Equal(30.0, service.GeneralOpacity);
+        Assert.Equal(28.0, service.BackgroundAlpha);
+        Assert.Equal(15.0, service.TintIntensity);
+
+        var reloaded = new JsonVisualSettingsService(_tempDir);
+        Assert.Equal(30.0, reloaded.GeneralOpacity);
+        Assert.Equal(28.0, reloaded.BackgroundAlpha);
+        Assert.Equal(15.0, reloaded.TintIntensity);
+    }
 }
+

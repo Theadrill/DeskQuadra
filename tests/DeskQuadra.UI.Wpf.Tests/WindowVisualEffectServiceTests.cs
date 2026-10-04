@@ -33,6 +33,44 @@ public class WindowVisualEffectServiceTests
             PreferredTechnique = technique;
             TechniqueChanged?.Invoke(this, technique);
         }
+
+        public double GeneralOpacity { get; set; } = 30.0;
+        public bool IsAdvancedMode { get; set; } = false;
+        public double BackgroundAlpha { get; set; } = 28.0;
+        public double TintIntensity { get; set; } = 15.0;
+        public event EventHandler? VisualOpacityChanged;
+
+        public void SetGeneralOpacity(double opacity)
+        {
+            GeneralOpacity = opacity;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetAdvancedMode(bool isAdvanced)
+        {
+            IsAdvancedMode = isAdvanced;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetBackgroundAlpha(double alpha)
+        {
+            BackgroundAlpha = alpha;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetTintIntensity(double tint)
+        {
+            TintIntensity = tint;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ResetToDefaults()
+        {
+            GeneralOpacity = 30.0;
+            BackgroundAlpha = 28.0;
+            TintIntensity = 15.0;
+            VisualOpacityChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Fact]

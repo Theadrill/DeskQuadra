@@ -698,18 +698,7 @@ public partial class App : System.Windows.Application
             Dispatcher.Invoke(() =>
             {
                 ApplyVisualTheme(enabled);
-
-                foreach (var window in _quadraWindows.Values)
-                {
-                    try
-                    {
-                        window.RefreshVisualEffect();
-                    }
-                    catch
-                    {
-                        // Best-effort
-                    }
-                }
+                UpdateQuadraVisualAppearance(visualService);
             });
         };
 
@@ -730,6 +719,47 @@ public partial class App : System.Windows.Application
                 }
             });
         };
+
+        visualService.VisualOpacityChanged += (s, e) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateQuadraVisualAppearance(visualService);
+            });
+        };
+
+        // Aplica na inicialização os valores persistidos
+        UpdateQuadraVisualAppearance(visualService);
+    }
+
+    private void UpdateQuadraVisualAppearance(IVisualSettingsService visualService)
+    {
+        double alphaPct = visualService.IsAdvancedMode
+            ? visualService.BackgroundAlpha
+            : visualService.GeneralOpacity;
+
+        byte alphaByte = (byte)Math.Clamp((int)Math.Round(alphaPct * 2.55), 10, 240);
+
+        if (!visualService.EnableWindows11VisualEffects)
+        {
+            alphaByte = 0xEB; // ~92% sólido clássico
+        }
+
+        var quadraBg = new SolidColorBrush(Color.FromArgb(alphaByte, 0x14, 0x14, 0x18));
+        quadraBg.Freeze();
+        Resources["Quadra.Background"] = quadraBg;
+
+        foreach (var window in _quadraWindows.Values)
+        {
+            try
+            {
+                window.RefreshVisualEffect();
+            }
+            catch
+            {
+                // Best-effort
+            }
+        }
     }
 
     private void ApplyVisualTheme(bool enableModern)

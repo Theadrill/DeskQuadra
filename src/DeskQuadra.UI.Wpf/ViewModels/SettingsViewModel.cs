@@ -125,9 +125,20 @@ public sealed class SettingsViewModel : ViewModelBase
         get => _generalOpacity;
         set
         {
-            if (SetProperty(ref _generalOpacity, Math.Clamp(value, 5.0, 90.0)))
+            double clamped = Math.Clamp(value, 5.0, 90.0);
+            if (SetProperty(ref _generalOpacity, clamped))
             {
                 OnPropertyChanged(nameof(GeneralOpacityLabel));
+                _visualSettings?.SetGeneralOpacity(clamped);
+                if (!_isAdvancedMode)
+                {
+                    _backgroundAlpha = Math.Clamp(clamped * 0.933, 5.0, 90.0);
+                    _tintIntensity = Math.Clamp(clamped * 0.5, 0.0, 100.0);
+                    OnPropertyChanged(nameof(BackgroundAlpha));
+                    OnPropertyChanged(nameof(BackgroundAlphaLabel));
+                    OnPropertyChanged(nameof(TintIntensity));
+                    OnPropertyChanged(nameof(TintIntensityLabel));
+                }
             }
         }
     }
@@ -137,7 +148,13 @@ public sealed class SettingsViewModel : ViewModelBase
     public bool IsAdvancedMode
     {
         get => _isAdvancedMode;
-        set => SetProperty(ref _isAdvancedMode, value);
+        set
+        {
+            if (SetProperty(ref _isAdvancedMode, value))
+            {
+                _visualSettings?.SetAdvancedMode(value);
+            }
+        }
     }
 
     public double BackgroundAlpha
@@ -145,9 +162,11 @@ public sealed class SettingsViewModel : ViewModelBase
         get => _backgroundAlpha;
         set
         {
-            if (SetProperty(ref _backgroundAlpha, Math.Clamp(value, 5.0, 90.0)))
+            double clamped = Math.Clamp(value, 5.0, 90.0);
+            if (SetProperty(ref _backgroundAlpha, clamped))
             {
                 OnPropertyChanged(nameof(BackgroundAlphaLabel));
+                _visualSettings?.SetBackgroundAlpha(clamped);
             }
         }
     }
@@ -159,9 +178,11 @@ public sealed class SettingsViewModel : ViewModelBase
         get => _tintIntensity;
         set
         {
-            if (SetProperty(ref _tintIntensity, Math.Clamp(value, 0.0, 100.0)))
+            double clamped = Math.Clamp(value, 0.0, 100.0);
+            if (SetProperty(ref _tintIntensity, clamped))
             {
                 OnPropertyChanged(nameof(TintIntensityLabel));
+                _visualSettings?.SetTintIntensity(clamped);
             }
         }
     }
@@ -170,9 +191,16 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public void ResetToDefaults()
     {
+        _visualSettings?.ResetToDefaults();
         GeneralOpacity = 30.0;
         BackgroundAlpha = 28.0;
         TintIntensity = 15.0;
+        OnPropertyChanged(nameof(GeneralOpacity));
+        OnPropertyChanged(nameof(GeneralOpacityLabel));
+        OnPropertyChanged(nameof(BackgroundAlpha));
+        OnPropertyChanged(nameof(BackgroundAlphaLabel));
+        OnPropertyChanged(nameof(TintIntensity));
+        OnPropertyChanged(nameof(TintIntensityLabel));
     }
 
     public DensityPreference DensityPreference
@@ -237,6 +265,13 @@ public sealed class SettingsViewModel : ViewModelBase
         _startWithWindows = startupService.IsEnabled();
         _densityPreference = densitySettings.Current;
         _enableWindows11VisualEffects = visualSettings?.EnableWindows11VisualEffects ?? true;
+        if (visualSettings != null)
+        {
+            _generalOpacity = visualSettings.GeneralOpacity;
+            _isAdvancedMode = visualSettings.IsAdvancedMode;
+            _backgroundAlpha = visualSettings.BackgroundAlpha;
+            _tintIntensity = visualSettings.TintIntensity;
+        }
     }
 }
 
