@@ -270,11 +270,11 @@
                                                     <MenuItem.Header>
                                                         <Grid HorizontalAlignment="Center">
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
-                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
-                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
-                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
-                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
 
                                                             <!-- Recortar -->
