@@ -332,17 +332,17 @@ public class SettingsViewModelVisualEffectsTests
         Assert.False(vm.EffectiveIsTouch);
         Assert.Equal(32.0, vm.DialogControlHeight);
         Assert.Equal(14.0, vm.DialogSliderThumbSize);
-        Assert.Equal(42.0, vm.DialogSwitchWidth);
-        Assert.Equal(22.0, vm.DialogSwitchHeight);
-        Assert.Equal(16.0, vm.DialogSwitchThumbSize);
+        Assert.Equal(44.0, vm.DialogSwitchWidth);
+        Assert.Equal(24.0, vm.DialogSwitchHeight);
+        Assert.Equal(14.0, vm.DialogSwitchThumbSize);
 
         vm.IsDensityTouch = true;
         Assert.True(vm.EffectiveIsTouch);
         Assert.Equal(44.0, vm.DialogControlHeight);
         Assert.Equal(24.0, vm.DialogSliderThumbSize);
-        Assert.Equal(50.0, vm.DialogSwitchWidth);
-        Assert.Equal(28.0, vm.DialogSwitchHeight);
-        Assert.Equal(20.0, vm.DialogSwitchThumbSize);
+        Assert.Equal(52.0, vm.DialogSwitchWidth);
+        Assert.Equal(30.0, vm.DialogSwitchHeight);
+        Assert.Equal(18.0, vm.DialogSwitchThumbSize);
     }
 
     [Fact]

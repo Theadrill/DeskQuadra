@@ -246,11 +246,11 @@ public sealed class SettingsViewModel : ViewModelBase
     public double DialogSliderThumbSize => EffectiveIsTouch ? 24.0 : 14.0;
     public Thickness DialogItemMargin => EffectiveIsTouch ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 0, 8);
     public Thickness DialogButtonPadding => EffectiveIsTouch ? new Thickness(12, 10, 12, 10) : new Thickness(8, 6, 8, 6);
-    public double DialogSwitchWidth => EffectiveIsTouch ? 50.0 : 42.0;
-    public double DialogSwitchHeight => EffectiveIsTouch ? 28.0 : 22.0;
-    public CornerRadius DialogSwitchCornerRadius => EffectiveIsTouch ? new CornerRadius(14) : new CornerRadius(11);
-    public Thickness DialogSwitchPadding => EffectiveIsTouch ? new Thickness(4) : new Thickness(3);
-    public double DialogSwitchThumbSize => EffectiveIsTouch ? 20.0 : 16.0;
+    public double DialogSwitchWidth => EffectiveIsTouch ? 52.0 : 44.0;
+    public double DialogSwitchHeight => EffectiveIsTouch ? 30.0 : 24.0;
+    public CornerRadius DialogSwitchCornerRadius => EffectiveIsTouch ? new CornerRadius(15) : new CornerRadius(12);
+    public Thickness DialogSwitchPadding => EffectiveIsTouch ? new Thickness(3) : new Thickness(2);
+    public double DialogSwitchThumbSize => EffectiveIsTouch ? 18.0 : 14.0;
 
     public bool IsDensityAuto
     {
