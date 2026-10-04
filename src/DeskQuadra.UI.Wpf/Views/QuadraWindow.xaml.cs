@@ -8,6 +8,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using DeskQuadra.Application.Services;
 using DeskQuadra.Application.Snap;
@@ -125,6 +126,7 @@ public partial class QuadraWindow : Window
     private CancellationTokenSource? _toolTipTransitionCts;
     private DesktopItemViewModel? _activeToolTipItem;
     private readonly IWindowVisualEffectService? _visualEffectService;
+    private DropShadowEffect? _savedShadowEffect;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -325,9 +327,24 @@ public partial class QuadraWindow : Window
 
         try
         {
-            if (!_visualEffectService.ApplyBlur(hwnd))
+            if (_visualEffectService.ApplyBlur(hwnd))
+            {
+                // Com o efeito visual ativo, remove a sombra via software do WPF
+                // para que não haja nenhum vazamento de canal alfa ou halo fora do contorno da Quadra.
+                if (QuadraContainer != null && QuadraContainer.Effect != null)
+                {
+                    _savedShadowEffect ??= QuadraContainer.Effect as DropShadowEffect;
+                    QuadraContainer.Effect = null;
+                }
+            }
+            else
             {
                 _visualEffectService.RemoveBlur(hwnd);
+                // Restaura a sombra via software clássica quando os efeitos visuais estiverem desativados
+                if (QuadraContainer != null && QuadraContainer.Effect == null && _savedShadowEffect != null)
+                {
+                    QuadraContainer.Effect = _savedShadowEffect;
+                }
             }
         }
         catch
@@ -644,7 +661,7 @@ public partial class QuadraWindow : Window
         // 2. Aplica efeito visual de acrílico/desfoque clássico se suportado e habilitado
         try
         {
-            _visualEffectService?.ApplyBlur(hwnd);
+            RefreshVisualEffect();
         }
         catch
         {
