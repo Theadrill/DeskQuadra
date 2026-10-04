@@ -141,6 +141,78 @@
         </Style>
 
         <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+
+        <!-- Estilo Cápsula Deslizante (Modern Toggle Switch) para CheckBoxes -->
+        <Style x:Key="ModernToggleSwitchStyle" TargetType="{x:Type CheckBox}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Dialog.Foreground}"/>
+            <Setter Property="FontSize" Value="{DynamicResource Dialog.Message.FontSize}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="MinHeight" Value="{Binding DialogControlHeight}"/>
+            <Setter Property="Padding" Value="0,2,0,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type CheckBox}">
+                        <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Rótulo de texto à esquerda -->
+                                <ContentPresenter Grid.Column="0"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  Margin="0,0,12,0"
+                                                  RecognizesAccessKey="True"/>
+
+                                <!-- Cápsula / Pílula Deslizante à direita -->
+                                <Border x:Name="SwitchTrack"
+                                        Grid.Column="1"
+                                        Width="{Binding DialogSwitchWidth}"
+                                        Height="{Binding DialogSwitchHeight}"
+                                        CornerRadius="{Binding DialogSwitchCornerRadius}"
+                                        Padding="{Binding DialogSwitchPadding}"
+                                        Background="#2A2A30"
+                                        BorderBrush="#40FFFFFF"
+                                        BorderThickness="1.5"
+                                        VerticalAlignment="Center">
+                                    <Ellipse x:Name="SwitchThumb"
+                                             Width="{Binding DialogSwitchThumbSize}"
+                                             Height="{Binding DialogSwitchThumbSize}"
+                                             Fill="#E0E0E0"
+                                             HorizontalAlignment="Left">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.35"/>
+                                        </Ellipse.Effect>
+                                    </Ellipse>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SwitchTrack" Property="Background" Value="{DynamicResource Dialog.Primary.Background}"/>
+                                <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="{DynamicResource Dialog.Primary.Background}"/>
+                                <Setter TargetName="SwitchThumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="SwitchThumb" Property="Fill" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="{DynamicResource Dialog.Foreground}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -150,12 +222,9 @@
             <!-- CARD 1: SISTEMA E INICIALIZAÇÃO            -->
             <!-- ========================================== -->
             <Border Style="{StaticResource SettingsCardStyle}">
-                <CheckBox IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
-                          Content="{x:Static properties:Strings.SettingsStartup}"
-                          Foreground="{DynamicResource Dialog.Foreground}"
-                          FontSize="{DynamicResource Dialog.Message.FontSize}"
-                          MinHeight="{Binding DialogControlHeight}"
-                          VerticalContentAlignment="Center"/>
+                <CheckBox Style="{StaticResource ModernToggleSwitchStyle}"
+                          IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
+                          Content="{x:Static properties:Strings.SettingsStartup}"/>
             </Border>
 
             <!-- ========================================== -->
@@ -163,13 +232,10 @@
             <!-- ========================================== -->
             <Border Style="{StaticResource SettingsCardStyle}">
                 <StackPanel>
-                    <CheckBox IsChecked="{Binding EnableWindows11VisualEffects, Mode=TwoWay}"
+                    <CheckBox Style="{StaticResource ModernToggleSwitchStyle}"
+                              IsChecked="{Binding EnableWindows11VisualEffects, Mode=TwoWay}"
                               Content="{x:Static properties:Strings.SettingsVisualEffectsWindows11}"
-                              Foreground="{DynamicResource Dialog.Foreground}"
-                              FontSize="{DynamicResource Dialog.Message.FontSize}"
                               FontWeight="SemiBold"
-                              MinHeight="{Binding DialogControlHeight}"
-                              VerticalContentAlignment="Center"
                               Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
 
                     <!-- Seção ativa: exibida quando os efeitos estão ativados -->
@@ -251,13 +317,12 @@
                         </StackPanel>
 
                         <!-- Expansor de Ajustes Avançados -->
-                        <CheckBox IsChecked="{Binding IsAdvancedMode, Mode=TwoWay}"
+                        <CheckBox Style="{StaticResource ModernToggleSwitchStyle}"
+                                  IsChecked="{Binding IsAdvancedMode, Mode=TwoWay}"
                                   Content="Ajustes Avançados de Composição"
-                                  Foreground="{DynamicResource Dialog.Foreground}"
                                   FontSize="11"
-                                  Opacity="0.8"
-                                  Margin="0,4,0,4"
-                                  VerticalContentAlignment="Center"/>
+                                  Opacity="0.9"
+                                  Margin="0,4,0,4"/>
 
                         <!-- Painel Avançado: Sliders de Ajuste Fino -->
                         <StackPanel Visibility="{Binding IsAdvancedMode, Converter={StaticResource BoolToVisConverter}}"
