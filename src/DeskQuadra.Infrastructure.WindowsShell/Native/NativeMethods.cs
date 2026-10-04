@@ -719,6 +719,52 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+    public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    public const int DWMWA_MICA_EFFECT = 1029;
+    public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+
+    public enum DWM_WINDOW_CORNER_PREFERENCE
+    {
+        DWMWCP_DEFAULT = 0,
+        DWMWCP_DONOTROUND = 1,
+        DWMWCP_ROUND = 2,
+        DWMWCP_ROUNDSMALL = 3
+    }
+
+    public enum DWM_SYSTEMBACKDROP_TYPE
+    {
+        DWMSBT_AUTO = 0,
+        DWMSBT_NONE = 1,
+        DWMSBT_MAINWINDOW = 2,      // Mica (amostra papel de parede com blur suave)
+        DWMSBT_TRANSIENTWINDOW = 3,  // Acrylic (desfoque de tudo que estiver atrás)
+        DWMSBT_TABBEDWINDOW = 4     // Mica Alt
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MARGINS
+    {
+        public int cxLeftWidth;
+        public int cxRightWidth;
+        public int cyTopHeight;
+        public int cyBottomHeight;
+
+        public MARGINS(int left, int right, int top, int bottom)
+        {
+            cxLeftWidth = left;
+            cxRightWidth = right;
+            cyTopHeight = top;
+            cyBottomHeight = bottom;
+        }
+    }
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
 }
+
 
 

@@ -51,12 +51,13 @@
   - [x] 2.2 Criar tokens de acrílico calibrados e suporte no serviço (`WindowVisualEffectService`).
   - [x] 2.3 Aplicar o efeito acrílico nas janelas de teste (`SettingsWindow`).
   - [x] 2.4 Integrar o acrílico às janelas de Quadra (`QuadraWindow`) com atualização e toggle em tempo real.
-  - [ ] 2.5 **Checkpoint PO:** Auditar visual e performance em máquina real (sem lag de arraste) e realizar commit local.
+  - [x] 2.5 **Checkpoint PO:** Realizado teste e constatada necessidade do backdrop nativo.
+- [x] **Fase 2: Motor Visual Clássico (Acrílico / Blur via Compositor Win32)** (Concluída)
 
 - [ ] **Fase 3: Motor Visual Moderno (Windows 11 22H2+ Nativo - Mica / Acrylic Backdrop)**
-  - [ ] 3.1 Implementar P/Invoke de `DwmSetWindowAttribute` com `DWMWA_SYSTEMBACKDROP_TYPE` e `DWMWA_WINDOW_CORNER_PREFERENCE`.
-  - [ ] 3.2 Adaptar o serviço de backdrop para chavear automaticamente entre o modo moderno (22621+) e o clássico.
-  - [ ] 3.3 Testar fidelidade visual com o tema nativo do Windows 11.
+  - [x] 3.1 Implementar P/Invoke de `DwmSetWindowAttribute` com `DWMWA_SYSTEMBACKDROP_TYPE`, `DWMWA_USE_IMMERSIVE_DARK_MODE`, `DWMWA_WINDOW_CORNER_PREFERENCE` e `DwmExtendFrameIntoClientArea`.
+  - [x] 3.2 Adaptar o serviço de backdrop para chavear automaticamente entre o modo moderno (22621+) e o clássico.
+  - [x] 3.3 Integrar suporte a Mica e cantos arredondados nativos no `WindowVisualEffectService`.
   - [ ] 3.4 **Checkpoint PO:** Validação visual direta e commit local.
 
 - [ ] **Fase 4: Barra Superior de Comandos Rápidos no Menu de Contexto (Espaço & Layout)**
