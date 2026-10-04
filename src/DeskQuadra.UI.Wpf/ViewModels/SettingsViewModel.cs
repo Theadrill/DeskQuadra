@@ -145,6 +145,8 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string GeneralOpacityLabel => $"{(int)GeneralOpacity}%";
 
+    public bool IsSingleSliderVisible => !IsAdvancedMode;
+
     public bool IsAdvancedMode
     {
         get => _isAdvancedMode;
@@ -152,6 +154,18 @@ public sealed class SettingsViewModel : ViewModelBase
         {
             if (SetProperty(ref _isAdvancedMode, value))
             {
+                if (value)
+                {
+                    // Ao abrir os ajustes avançados, os sliders duplos refletem imediatamente o visual atual do slider único
+                    _backgroundAlpha = Math.Clamp(_generalOpacity * 0.933, 5.0, 90.0);
+                    _tintIntensity = Math.Clamp(_generalOpacity * 0.5, 0.0, 100.0);
+                    OnPropertyChanged(nameof(BackgroundAlpha));
+                    OnPropertyChanged(nameof(BackgroundAlphaLabel));
+                    OnPropertyChanged(nameof(TintIntensity));
+                    OnPropertyChanged(nameof(TintIntensityLabel));
+                }
+
+                OnPropertyChanged(nameof(IsSingleSliderVisible));
                 _visualSettings?.SetAdvancedMode(value);
             }
         }

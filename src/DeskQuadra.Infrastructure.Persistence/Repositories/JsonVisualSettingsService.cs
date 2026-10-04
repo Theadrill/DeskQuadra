@@ -122,6 +122,11 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
         {
             changed = _isAdvancedMode != isAdvanced;
             _isAdvancedMode = isAdvanced;
+            if (isAdvanced)
+            {
+                _backgroundAlpha = Math.Clamp(_generalOpacity * 0.933, 5.0, 90.0);
+                _tintIntensity = Math.Clamp(_generalOpacity * 0.5, 0.0, 100.0);
+            }
         }
 
         SaveBestEffort();

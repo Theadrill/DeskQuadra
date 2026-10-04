@@ -338,5 +338,38 @@ public class SettingsViewModelVisualEffectsTests
         Assert.Equal(44.0, vm.DialogControlHeight);
         Assert.Equal(24.0, vm.DialogSliderThumbSize);
     }
+
+    [Fact]
+    public void IsSingleSliderVisible_HidesWhenAdvancedMode_AndDualSlidersReflectCurrentVisual()
+    {
+        var fakeService = new FakeVisualSettingsService();
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            fakeService,
+            new FakeVisualCapabilityService());
+
+        // Por padrão, modo simples: slider único visível
+        Assert.False(vm.IsAdvancedMode);
+        Assert.True(vm.IsSingleSliderVisible);
+
+        // Usuário ajusta slider único para 60%
+        vm.GeneralOpacity = 60.0;
+        Assert.Equal("60%", vm.GeneralOpacityLabel);
+
+        // Usuário ativa ajustes avançados: o slider único oculta e os duplos refletem o visual de 60%
+        vm.IsAdvancedMode = true;
+        Assert.False(vm.IsSingleSliderVisible);
+        Assert.True(vm.IsAdvancedMode);
+
+        // BackgroundAlpha deve refletir 60 * 0.933 ~= 56% e Tint 60 * 0.5 = 30%
+        Assert.Equal(Math.Round(60.0 * 0.933, 1), Math.Round(vm.BackgroundAlpha, 1));
+        Assert.Equal(30.0, vm.TintIntensity);
+
+        // Ao fechar modo avançado, slider único volta a ser visível
+        vm.IsAdvancedMode = false;
+        Assert.True(vm.IsSingleSliderVisible);
+    }
 }
 
