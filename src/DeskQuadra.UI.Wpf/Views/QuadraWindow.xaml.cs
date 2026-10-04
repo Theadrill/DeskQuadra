@@ -1668,7 +1668,7 @@ public partial class QuadraWindow : Window
         var style = (Style)FindResource(isTouch ? "TouchMenuItemStyle" : "MouseMenuItemStyle");
         ApplyStyleRecursively(menu.Items, style);
 
-        menu.Resources["Menu.QuickAction.Button.Width"] = isTouch ? 60.0 : 52.0;
+        menu.Resources["Menu.QuickAction.Button.Width"] = isTouch ? 64.0 : 56.0;
         menu.Resources["Menu.QuickAction.Button.Height"] = isTouch ? 58.0 : 46.0;
         menu.Resources["Menu.QuickAction.Icon.Size"] = isTouch ? 22.0 : 18.0;
         menu.Resources["Menu.QuickAction.Text.Size"] = isTouch ? 11.5 : 10.5;

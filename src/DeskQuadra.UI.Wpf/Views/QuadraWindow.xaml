@@ -268,13 +268,13 @@
                                                 <!-- Barra Superior de Ações Rápidas (Estilo Windows 11: Recortar, Copiar, Renomear, Compartilhar, Excluir) -->
                                                 <MenuItem x:Name="QuickActionsMenuItem" Style="{StaticResource QuickActionsRowStyle}">
                                                     <MenuItem.Header>
-                                                        <Grid HorizontalAlignment="Stretch">
+                                                        <Grid HorizontalAlignment="Center">
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
+                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
+                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
+                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
+                                                                <ColumnDefinition Width="{DynamicResource Menu.QuickAction.Button.Width}"/>
                                                             </Grid.ColumnDefinitions>
 
                                                             <!-- Recortar -->

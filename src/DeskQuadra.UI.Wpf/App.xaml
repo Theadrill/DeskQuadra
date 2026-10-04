@@ -186,6 +186,7 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Padding" Value="2,4,2,3"/>
+            <Setter Property="Width" Value="{DynamicResource Menu.QuickAction.Button.Width}"/>
             <Setter Property="MinHeight" Value="{DynamicResource Menu.QuickAction.Button.Height}"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
