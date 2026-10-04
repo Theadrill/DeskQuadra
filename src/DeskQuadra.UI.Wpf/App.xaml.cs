@@ -109,6 +109,14 @@ public partial class App : System.Windows.Application
             EnsureDensityWiring(densityService);
         }
 
+        // Sincronização inicial de efeitos visuais modernos vs tema clássico
+        var visualSettings = _serviceProvider.GetService<IVisualSettingsService>();
+        if (visualSettings != null)
+        {
+            EnsureVisualWiring(visualSettings);
+            ApplyVisualTheme(visualSettings.EnableWindows11VisualEffects);
+        }
+
         // Efeito visual translúcido / blur nos menus de contexto e popups
         var visualEffect = _serviceProvider.GetService<IWindowVisualEffectService>();
         if (visualEffect != null)
@@ -682,6 +690,8 @@ public partial class App : System.Windows.Application
         {
             Dispatcher.Invoke(() =>
             {
+                ApplyVisualTheme(enabled);
+
                 foreach (var window in _quadraWindows.Values)
                 {
                     try
@@ -695,6 +705,16 @@ public partial class App : System.Windows.Application
                 }
             });
         };
+    }
+
+    private void ApplyVisualTheme(bool enableModern)
+    {
+        var menuBackground = enableModern
+            ? new SolidColorBrush(Color.FromArgb(0x5A, 0x16, 0x16, 0x22)) // Translúcido para Acrylic nativo
+            : new SolidColorBrush(Color.FromArgb(0xEB, 0x1C, 0x1C, 0x22)); // Sólido legível clássico (92% opacidade)
+        menuBackground.Freeze();
+
+        Resources["Menu.Background"] = menuBackground;
     }
 
     // Id do hotkey ESC do menu dual (escopo estrito: registra ao abrir o popup,
