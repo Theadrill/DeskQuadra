@@ -155,12 +155,6 @@ public partial class QuadraWindow : Window
         Width = viewModel.Width;
         Height = viewModel.Height;
 
-        // Multi-tier: se o sistema suporta o DWM Modern Backdrop oficial (Win11 22621+),
-        // desliga AllowsTransparency para permitir o DWM SystemBackdrop acelerado na GPU.
-        // Se estiver no Windows 10 (ou tier clássico), ativa AllowsTransparency para o AccentPolicy.
-        bool isModern = visualEffectService != null && visualEffectService.IsModernBackdropSupported;
-        AllowsTransparency = !isModern;
-
         InitializeComponent();
 
         Loaded += (s, e) =>

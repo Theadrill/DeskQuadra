@@ -83,17 +83,30 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
                 }
             }
 
-            // 2. Janelas com transparência/camada (ex: QuadraWindow no Windows 10, Popups/Menus com AllowsTransparency):
-            // usam AccentPolicy com alfa calibrado para permitir o desfoque translúcido sem camada opaca.
+            // 2. Janelas com transparência/camada (QuadraWindow ancorada no desktop, Popups/Menus com AllowsTransparency):
+            // usam composição acrílica DWM com per-pixel alpha (AccentPolicy ACCENT_ENABLE_BLURBEHIND),
+            // que é a técnica Win32 nativa suportada pelo DWM para janelas de desktop e menus translúcidos.
             bool result = ApplyClassicAccentPolicy(windowHandle, accentColor);
             if (result)
             {
-                string classicMsg = target == VisualEffectTarget.QuadraWindow
-                    ? $"Windows 10 / Classic AccentPolicy (ACCENT_ENABLE_BLURBEHIND / Build {_capabilityService.WindowsBuildNumber})"
-                    : $"AccentPolicy Clássico Calibrado (Popups WPF / Build {_capabilityService.WindowsBuildNumber})";
-                if (target == VisualEffectTarget.QuadraWindow) LastQuadraEffectApplied = classicMsg;
-                else LastMenuEffectApplied = classicMsg;
-                System.Diagnostics.Debug.WriteLine($"[VisualEffect] {target}: {classicMsg}");
+                bool isWin11 = _capabilityService.WindowsBuildNumber >= WindowsVisualCapabilityService.Windows11RtmBuild;
+                string msg;
+                if (isWin11)
+                {
+                    msg = target == VisualEffectTarget.QuadraWindow
+                        ? $"Acrílico Nativo do Shell (Composição DWM / Build {_capabilityService.WindowsBuildNumber})"
+                        : $"Acrílico Nativo do Shell (Popups WPF / Build {_capabilityService.WindowsBuildNumber})";
+                }
+                else
+                {
+                    msg = target == VisualEffectTarget.QuadraWindow
+                        ? $"BlurBehind Nativo (Windows 10 / Build {_capabilityService.WindowsBuildNumber})"
+                        : $"BlurBehind Nativo (Popups WPF / Build {_capabilityService.WindowsBuildNumber})";
+                }
+
+                if (target == VisualEffectTarget.QuadraWindow) LastQuadraEffectApplied = msg;
+                else LastMenuEffectApplied = msg;
+                System.Diagnostics.Debug.WriteLine($"[VisualEffect] {target}: {msg}");
             }
             return result;
         }

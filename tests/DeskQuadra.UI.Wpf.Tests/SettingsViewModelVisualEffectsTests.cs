@@ -91,8 +91,8 @@ public class SettingsViewModelVisualEffectsTests
 
     private sealed class FakeVisualEffectService : IWindowVisualEffectService
     {
-        public string LastQuadraEffectApplied { get; set; } = "Windows 11 DWM Backdrop Oficial (Acrylic / Build 22631)";
-        public string LastMenuEffectApplied { get; set; } = "AccentPolicy Clássico Calibrado (Popups WPF / Build 22631)";
+        public string LastQuadraEffectApplied { get; set; } = "Acrílico Nativo do Shell (Composição DWM / Build 22631)";
+        public string LastMenuEffectApplied { get; set; } = "Acrílico Nativo do Shell (Popups WPF / Build 22631)";
         public bool IsModernBackdropSupported { get; set; } = true;
 
         public bool ApplyBlur(IntPtr windowHandle, uint accentColor = 0) => true;
@@ -116,8 +116,8 @@ public class SettingsViewModelVisualEffectsTests
             fakeEffect);
 
         string detail = vm.VisualEffectsDetail;
-        Assert.Contains("Quadras: Windows 11 DWM Backdrop", detail);
-        Assert.Contains("Menus: AccentPolicy Clássico Calibrado", detail);
+        Assert.Contains("Quadras: Acrílico Nativo do Shell", detail);
+        Assert.Contains("Menus: Acrílico Nativo do Shell", detail);
         Assert.Contains("Build 22631", detail);
     }
 
