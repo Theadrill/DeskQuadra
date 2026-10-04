@@ -176,13 +176,11 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
 
     private static bool ApplyClassicAccentPolicy(IntPtr windowHandle, uint accentColor)
     {
-        uint color = accentColor != 0 ? accentColor : DefaultAcrylicColor;
-
         var policy = new NativeMethods.AccentPolicy
         {
-            AccentState = NativeMethods.AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND,
-            AccentFlags = 2,
-            GradientColor = unchecked((int)color),
+            AccentState = NativeMethods.AccentState.ACCENT_ENABLE_BLURBEHIND,
+            AccentFlags = 0,
+            GradientColor = 0,
             AnimationId = 0
         };
 

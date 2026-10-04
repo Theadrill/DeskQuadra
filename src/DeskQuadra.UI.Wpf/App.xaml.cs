@@ -120,11 +120,14 @@ public partial class App : System.Windows.Application
                 {
                     if (sender is ContextMenu menu)
                     {
-                        var hwndSource = (HwndSource?)PresentationSource.FromVisual(menu);
-                        if (hwndSource != null)
+                        menu.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            visualEffect.ApplyBlur(hwndSource.Handle);
-                        }
+                            var hwndSource = (HwndSource?)PresentationSource.FromVisual(menu);
+                            if (hwndSource != null)
+                            {
+                                visualEffect.ApplyBlur(hwndSource.Handle);
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Loaded);
                     }
                 }));
 
@@ -135,11 +138,17 @@ public partial class App : System.Windows.Application
                 {
                     if (sender is MenuItem menuItem)
                     {
-                        var hwndSource = (HwndSource?)PresentationSource.FromVisual(menuItem);
-                        if (hwndSource != null)
+                        menuItem.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            visualEffect.ApplyBlur(hwndSource.Handle);
-                        }
+                            if (menuItem.Template?.FindName("PART_Popup", menuItem) is Popup popup && popup.Child != null)
+                            {
+                                var hwndSource = (HwndSource?)PresentationSource.FromVisual(popup.Child);
+                                if (hwndSource != null)
+                                {
+                                    visualEffect.ApplyBlur(hwndSource.Handle);
+                                }
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Loaded);
                     }
                 }));
         }

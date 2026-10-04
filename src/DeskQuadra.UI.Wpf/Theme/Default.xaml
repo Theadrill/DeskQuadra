@@ -85,7 +85,7 @@
     <Thickness x:Key="Quadra.Separator.Margin">4,2</Thickness>
 
     <!-- ===== Menu de contexto (WPF) ===== -->
-    <SolidColorBrush x:Key="Menu.Background" Color="#80181820"/>
+    <SolidColorBrush x:Key="Menu.Background" Color="#5A161622"/>
     <SolidColorBrush x:Key="Menu.BorderBrush" Color="#44FFFFFF"/>
     <Thickness x:Key="Menu.BorderThickness">1</Thickness>
     <SolidColorBrush x:Key="Menu.Foreground" Color="#F5F5F5"/>
