@@ -34,6 +34,14 @@ public class SettingsViewModelVisualEffectsTests
             EnableWindows11VisualEffects = enabled;
             VisualEffectsChanged?.Invoke(this, enabled);
         }
+
+        public VisualEffectTechnique PreferredTechnique { get; set; } = VisualEffectTechnique.Auto;
+        public event EventHandler<VisualEffectTechnique>? TechniqueChanged;
+        public void SetPreferredTechnique(VisualEffectTechnique technique)
+        {
+            PreferredTechnique = technique;
+            TechniqueChanged?.Invoke(this, technique);
+        }
     }
 
     private sealed class FakeVisualCapabilityService : IWindowsVisualCapabilityService
@@ -41,6 +49,7 @@ public class SettingsViewModelVisualEffectsTests
         public int WindowsBuildNumber { get; set; } = 22631;
         public WindowsVisualTier SupportedTier { get; set; } = WindowsVisualTier.ModernBackdrop;
         public bool IsBlurSupported => SupportedTier != WindowsVisualTier.Basic;
+        public bool IsAcrylicSupported => SupportedTier == WindowsVisualTier.ModernBackdrop;
         public bool IsHardwareAccelerationEnabled { get; set; } = true;
     }
 
@@ -138,5 +147,69 @@ public class SettingsViewModelVisualEffectsTests
 
         string detail = vm.VisualEffectsDetail;
         Assert.Contains("Desativado", detail);
+    }
+
+    [Fact]
+    public void IsTechniqueSelectorVisible_True_WhenEffectsEnabledAndBlurSupported()
+    {
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            new FakeVisualSettingsService { EnableWindows11VisualEffects = true },
+            new FakeVisualCapabilityService { SupportedTier = WindowsVisualTier.ModernBackdrop });
+
+        Assert.True(vm.IsTechniqueSelectorVisible);
+    }
+
+    [Fact]
+    public void IsTechniqueSelectorVisible_False_WhenEffectsDisabled()
+    {
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            new FakeVisualSettingsService { EnableWindows11VisualEffects = false },
+            new FakeVisualCapabilityService { SupportedTier = WindowsVisualTier.ModernBackdrop });
+
+        Assert.False(vm.IsTechniqueSelectorVisible);
+    }
+
+    [Fact]
+    public void PreferredTechnique_UpdatesPropertyAndService()
+    {
+        var fakeVisual = new FakeVisualSettingsService { PreferredTechnique = VisualEffectTechnique.Auto };
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            fakeVisual,
+            new FakeVisualCapabilityService());
+
+        Assert.True(vm.IsTechniqueAuto);
+        Assert.False(vm.IsTechniqueAcrylic);
+        Assert.False(vm.IsTechniqueClassicBlur);
+
+        vm.IsTechniqueClassicBlur = true;
+
+        Assert.Equal(VisualEffectTechnique.ClassicBlur, vm.PreferredTechnique);
+        Assert.Equal(VisualEffectTechnique.ClassicBlur, fakeVisual.PreferredTechnique);
+        Assert.True(vm.IsTechniqueClassicBlur);
+        Assert.False(vm.IsTechniqueAuto);
+    }
+
+    [Fact]
+    public void AcrylicOptionToolTip_ExplainsRequirement_WhenNotSupported()
+    {
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            new FakeVisualSettingsService(),
+            new FakeVisualCapabilityService { SupportedTier = WindowsVisualTier.ClassicBlur }); // 14393 (ClassicBlur)
+
+        Assert.False(vm.IsAcrylicSupported);
+        Assert.Contains("1803", vm.AcrylicOptionToolTip);
+        Assert.Contains("17134", vm.AcrylicOptionToolTip);
     }
 }

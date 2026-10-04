@@ -76,4 +76,35 @@ public class VisualSettingsServiceTests : IDisposable
         Assert.Equal(DeskQuadra.Core.Models.DensityPreference.Touch, reloadDensity.Current);
         Assert.False(reloadVisual.EnableWindows11VisualEffects);
     }
+
+    [Fact]
+    public void DefaultsToAutoTechnique_WhenFileDoesNotExist()
+    {
+        var service = new JsonVisualSettingsService(_tempDir);
+        Assert.Equal(DeskQuadra.Core.Models.VisualEffectTechnique.Auto, service.PreferredTechnique);
+    }
+
+    [Fact]
+    public void SetPreferredTechnique_PersistsAndFiresEvent()
+    {
+        var service = new JsonVisualSettingsService(_tempDir);
+        bool eventFired = false;
+        DeskQuadra.Core.Models.VisualEffectTechnique newTech = DeskQuadra.Core.Models.VisualEffectTechnique.Auto;
+
+        service.TechniqueChanged += (s, tech) =>
+        {
+            eventFired = true;
+            newTech = tech;
+        };
+
+        service.SetPreferredTechnique(DeskQuadra.Core.Models.VisualEffectTechnique.ClassicBlur);
+
+        Assert.True(eventFired);
+        Assert.Equal(DeskQuadra.Core.Models.VisualEffectTechnique.ClassicBlur, newTech);
+        Assert.Equal(DeskQuadra.Core.Models.VisualEffectTechnique.ClassicBlur, service.PreferredTechnique);
+
+        // Recria para garantir persistência em disco
+        var service2 = new JsonVisualSettingsService(_tempDir);
+        Assert.Equal(DeskQuadra.Core.Models.VisualEffectTechnique.ClassicBlur, service2.PreferredTechnique);
+    }
 }

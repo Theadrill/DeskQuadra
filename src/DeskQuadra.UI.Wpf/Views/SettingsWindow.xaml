@@ -64,13 +64,43 @@
                   Margin="{DynamicResource Dialog.Message.Margin}"
                   VerticalContentAlignment="Center"
                   Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
+
+        <!-- Seleção da técnica visual: exibida quando os efeitos estão ativos -->
+        <StackPanel Margin="24,0,0,8" Visibility="{Binding IsTechniqueSelectorVisible, Converter={StaticResource BoolToVisConverter}}">
+            <TextBlock Text="Técnica de Desfoque"
+                       Foreground="{DynamicResource Dialog.Foreground}"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,4"/>
+            <UniformGrid Rows="1" Columns="3" Margin="0,0,0,4">
+                <RadioButton GroupName="VisualTechnique"
+                             Style="{StaticResource DensityButtonStyle}"
+                             IsChecked="{Binding IsTechniqueAuto, Mode=TwoWay}"
+                             Content="Automático"
+                             ToolTip="Seleciona automaticamente a técnica ideal recomendada para a sua versão do Windows."
+                             Margin="0"/>
+                <RadioButton GroupName="VisualTechnique"
+                             Style="{StaticResource DensityButtonStyle}"
+                             IsChecked="{Binding IsTechniqueAcrylic, Mode=TwoWay}"
+                             IsEnabled="{Binding IsAcrylicSupported}"
+                             Content="Acrílico (Win 11)"
+                             ToolTip="{Binding AcrylicOptionToolTip}"
+                             Margin="{DynamicResource Dialog.Button.Margin}"/>
+                <RadioButton GroupName="VisualTechnique"
+                             Style="{StaticResource DensityButtonStyle}"
+                             IsChecked="{Binding IsTechniqueClassicBlur, Mode=TwoWay}"
+                             Content="Blur (Win 10)"
+                             ToolTip="Desfoque translúcido límpido estilo vidro clássico do Windows 10."
+                             Margin="{DynamicResource Dialog.Button.Margin}"/>
+            </UniformGrid>
+        </StackPanel>
+
         <TextBlock Text="{Binding VisualEffectsDetail}"
                    Foreground="{DynamicResource Dialog.Foreground}"
                    Opacity="0.65"
                    FontSize="10.5"
-                   Margin="24,-10,0,12"
-                   TextWrapping="Wrap"
-                   Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
+                   Margin="24,0,0,12"
+                   TextWrapping="Wrap"/>
         <TextBlock Text="{x:Static properties:Strings.SettingsAppearanceTitle}"
                    Foreground="{DynamicResource Dialog.Foreground}"
                    FontSize="{DynamicResource Dialog.Message.FontSize}"

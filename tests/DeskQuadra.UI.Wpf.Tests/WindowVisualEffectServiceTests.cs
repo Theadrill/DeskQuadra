@@ -12,6 +12,7 @@ public class WindowVisualEffectServiceTests
         public int WindowsBuildNumber { get; set; } = 22631;
         public WindowsVisualTier SupportedTier { get; set; } = WindowsVisualTier.ClassicBlur;
         public bool IsBlurSupported => SupportedTier != WindowsVisualTier.Basic;
+        public bool IsAcrylicSupported => SupportedTier == WindowsVisualTier.ModernBackdrop;
         public bool IsHardwareAccelerationEnabled { get; set; } = true;
     }
 
@@ -23,6 +24,14 @@ public class WindowVisualEffectServiceTests
         {
             EnableWindows11VisualEffects = enabled;
             VisualEffectsChanged?.Invoke(this, enabled);
+        }
+
+        public VisualEffectTechnique PreferredTechnique { get; set; } = VisualEffectTechnique.Auto;
+        public event EventHandler<VisualEffectTechnique>? TechniqueChanged;
+        public void SetPreferredTechnique(VisualEffectTechnique technique)
+        {
+            PreferredTechnique = technique;
+            TechniqueChanged?.Invoke(this, technique);
         }
     }
 

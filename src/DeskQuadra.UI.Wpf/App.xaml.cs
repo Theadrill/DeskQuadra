@@ -706,6 +706,24 @@ public partial class App : System.Windows.Application
                 }
             });
         };
+
+        visualService.TechniqueChanged += (s, technique) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                foreach (var window in _quadraWindows.Values)
+                {
+                    try
+                    {
+                        window.RefreshVisualEffect();
+                    }
+                    catch
+                    {
+                        // Best-effort
+                    }
+                }
+            });
+        };
     }
 
     private void ApplyVisualTheme(bool enableModern)

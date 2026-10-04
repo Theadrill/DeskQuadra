@@ -21,4 +21,20 @@ public interface IVisualSettingsService
     /// Evento disparado quando a preferência é alterada.
     /// </summary>
     event EventHandler<bool>? VisualEffectsChanged;
+
+    /// <summary>
+    /// Técnica visual de desfoque preferida pelo usuário (Auto, Acrylic ou ClassicBlur).
+    /// Padrão: Auto.
+    /// </summary>
+    DeskQuadra.Core.Models.VisualEffectTechnique PreferredTechnique { get; }
+
+    /// <summary>
+    /// Atualiza e persiste a técnica de desfoque preferida pelo usuário.
+    /// </summary>
+    void SetPreferredTechnique(DeskQuadra.Core.Models.VisualEffectTechnique technique);
+
+    /// <summary>
+    /// Evento disparado quando a técnica preferida é alterada.
+    /// </summary>
+    event EventHandler<DeskQuadra.Core.Models.VisualEffectTechnique>? TechniqueChanged;
 }

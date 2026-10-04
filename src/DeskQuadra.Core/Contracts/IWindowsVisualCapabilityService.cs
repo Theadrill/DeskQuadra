@@ -20,10 +20,15 @@ public interface IWindowsVisualCapabilityService
     WindowsVisualTier SupportedTier { get; }
 
     /// <summary>
-    /// Indica se a máquina tem suporte a qualquer efeito de desfoque (ClassicBlur ou ModernBackdrop).
+    /// Indica se a máquina tem suporte a qualquer efeito de desfoque (ClassicBlur ou Acrylic).
     /// Usado para determinar se o controle deve ser exibido na interface de configurações.
     /// </summary>
     bool IsBlurSupported { get; }
+
+    /// <summary>
+    /// Indica se a build do Windows (>= 17134) suporta a técnica de Acrílico Moderno com textura.
+    /// </summary>
+    bool IsAcrylicSupported { get; }
 
     /// <summary>
     /// Indica se a aceleração por hardware e a composição do DWM estão ativas.

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DeskQuadra.Core.Contracts;
+using DeskQuadra.Core.Models;
 
 namespace DeskQuadra.Infrastructure.Persistence.Repositories;
 
@@ -12,14 +13,16 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
     private readonly string _settingsFilePath;
     private readonly object _gate = new();
     private bool _enableWindows11VisualEffects = true;
+    private VisualEffectTechnique _preferredTechnique = VisualEffectTechnique.Auto;
 
     public event EventHandler<bool>? VisualEffectsChanged;
+    public event EventHandler<VisualEffectTechnique>? TechniqueChanged;
 
     public JsonVisualSettingsService(string? customStorageDirectory = null)
     {
         string dir = JsonStorageDefaults.GetAppDataDirectory(customStorageDirectory);
         _settingsFilePath = Path.Combine(dir, "settings.json");
-        _enableWindows11VisualEffects = LoadBestEffort();
+        (_enableWindows11VisualEffects, _preferredTechnique) = LoadBestEffort();
     }
 
     public bool EnableWindows11VisualEffects
@@ -27,42 +30,74 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
         get { lock (_gate) { return _enableWindows11VisualEffects; } }
     }
 
+    public VisualEffectTechnique PreferredTechnique
+    {
+        get { lock (_gate) { return _preferredTechnique; } }
+    }
+
     public void SetEnableWindows11VisualEffects(bool enabled)
     {
         bool changed;
+        VisualEffectTechnique tech;
         lock (_gate)
         {
             changed = _enableWindows11VisualEffects != enabled;
             _enableWindows11VisualEffects = enabled;
+            tech = _preferredTechnique;
         }
 
-        SaveBestEffort(enabled);
+        SaveBestEffort(enabled, tech);
         if (changed)
         {
             VisualEffectsChanged?.Invoke(this, enabled);
         }
     }
 
-    private bool LoadBestEffort()
+    public void SetPreferredTechnique(VisualEffectTechnique technique)
+    {
+        bool changed;
+        bool enabled;
+        lock (_gate)
+        {
+            changed = _preferredTechnique != technique;
+            _preferredTechnique = technique;
+            enabled = _enableWindows11VisualEffects;
+        }
+
+        SaveBestEffort(enabled, technique);
+        if (changed)
+        {
+            TechniqueChanged?.Invoke(this, technique);
+        }
+    }
+
+    private (bool Enabled, VisualEffectTechnique Technique) LoadBestEffort()
     {
         try
         {
             if (!File.Exists(_settingsFilePath))
             {
-                return true;
+                return (true, VisualEffectTechnique.Auto);
             }
 
             string json = File.ReadAllText(_settingsFilePath);
             var dto = JsonSerializer.Deserialize<VisualSettingsDto>(json, JsonStorageDefaults.SerializerOptions);
-            return dto?.EnableWindows11VisualEffects ?? true;
+            bool enabled = dto?.EnableWindows11VisualEffects ?? true;
+            VisualEffectTechnique tech = VisualEffectTechnique.Auto;
+            if (!string.IsNullOrEmpty(dto?.PreferredTechnique) &&
+                Enum.TryParse<VisualEffectTechnique>(dto.PreferredTechnique, ignoreCase: true, out var parsedTech))
+            {
+                tech = parsedTech;
+            }
+            return (enabled, tech);
         }
         catch
         {
-            return true;
+            return (true, VisualEffectTechnique.Auto);
         }
     }
 
-    private void SaveBestEffort(bool enabled)
+    private void SaveBestEffort(bool enabled, VisualEffectTechnique technique)
     {
         try
         {
@@ -87,6 +122,7 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
             }
 
             dict["EnableWindows11VisualEffects"] = enabled;
+            dict["PreferredTechnique"] = technique.ToString();
 
             string json = JsonSerializer.Serialize(dict, JsonStorageDefaults.SerializerOptions);
             string tmp = _settingsFilePath + ".tmp";
@@ -102,5 +138,6 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
     private sealed class VisualSettingsDto
     {
         public bool? EnableWindows11VisualEffects { get; set; }
+        public string? PreferredTechnique { get; set; }
     }
 }

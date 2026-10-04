@@ -34,6 +34,12 @@ public sealed class SettingsViewModel : ViewModelBase
     }
 
     public bool IsVisualEffectsSupported => _visualCapability?.IsBlurSupported ?? false;
+    public bool IsAcrylicSupported => _visualCapability?.IsAcrylicSupported ?? false;
+    public bool IsTechniqueSelectorVisible => IsVisualEffectsSupported && EnableWindows11VisualEffects;
+
+    public string AcrylicOptionToolTip => IsAcrylicSupported
+        ? "Acrílico com textura fluida e iluminação do Windows 11."
+        : "Requer Windows 10 versão 1803 (Build 17134) ou superior.";
 
     public bool EnableWindows11VisualEffects
     {
@@ -43,9 +49,45 @@ public sealed class SettingsViewModel : ViewModelBase
             if (SetProperty(ref _enableWindows11VisualEffects, value))
             {
                 _visualSettings?.SetEnableWindows11VisualEffects(value);
+                OnPropertyChanged(nameof(IsTechniqueSelectorVisible));
                 OnPropertyChanged(nameof(VisualEffectsDetail));
             }
         }
+    }
+
+    public VisualEffectTechnique PreferredTechnique
+    {
+        get => _visualSettings?.PreferredTechnique ?? VisualEffectTechnique.Auto;
+        set
+        {
+            if (_visualSettings != null && _visualSettings.PreferredTechnique != value)
+            {
+                _visualSettings.SetPreferredTechnique(value);
+                OnPropertyChanged(nameof(PreferredTechnique));
+                OnPropertyChanged(nameof(IsTechniqueAuto));
+                OnPropertyChanged(nameof(IsTechniqueAcrylic));
+                OnPropertyChanged(nameof(IsTechniqueClassicBlur));
+                OnPropertyChanged(nameof(VisualEffectsDetail));
+            }
+        }
+    }
+
+    public bool IsTechniqueAuto
+    {
+        get => PreferredTechnique == VisualEffectTechnique.Auto;
+        set { if (value) PreferredTechnique = VisualEffectTechnique.Auto; }
+    }
+
+    public bool IsTechniqueAcrylic
+    {
+        get => PreferredTechnique == VisualEffectTechnique.Acrylic;
+        set { if (value) PreferredTechnique = VisualEffectTechnique.Acrylic; }
+    }
+
+    public bool IsTechniqueClassicBlur
+    {
+        get => PreferredTechnique == VisualEffectTechnique.ClassicBlur;
+        set { if (value) PreferredTechnique = VisualEffectTechnique.ClassicBlur; }
     }
 
     public string VisualEffectsDetail
@@ -54,7 +96,8 @@ public sealed class SettingsViewModel : ViewModelBase
         {
             if (!IsVisualEffectsSupported)
             {
-                return "Não suportado pelo hardware ou SO (Básico)";
+                int b = _visualCapability?.WindowsBuildNumber ?? 0;
+                return $"Não suportado (Hardware básico ou Build {b} inferior à 14393 - Tema Sólido ativo)";
             }
 
             if (!EnableWindows11VisualEffects)

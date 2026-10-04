@@ -83,26 +83,44 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
                 }
             }
 
-            // 2. Janelas com transparência/camada (QuadraWindow ancorada no desktop, Popups/Menus com AllowsTransparency):
-            // usam composição acrílica DWM com per-pixel alpha (AccentPolicy ACCENT_ENABLE_BLURBEHIND),
-            // que é a técnica Win32 nativa suportada pelo DWM para janelas de desktop e menus translúcidos.
-            bool result = ApplyClassicAccentPolicy(windowHandle, accentColor);
+            // 2. Determina a técnica efetiva baseada na preferência do usuário e na capacidade do sistema:
+            VisualEffectTechnique preferred = _settingsService.PreferredTechnique;
+            bool useAcrylic;
+
+            if (preferred == VisualEffectTechnique.Acrylic)
+            {
+                useAcrylic = _capabilityService.IsAcrylicSupported;
+            }
+            else if (preferred == VisualEffectTechnique.ClassicBlur)
+            {
+                useAcrylic = false;
+            }
+            else // Auto
+            {
+                useAcrylic = _capabilityService.IsAcrylicSupported;
+            }
+
+            bool result = useAcrylic
+                ? ApplyAcrylicAccentPolicy(windowHandle, accentColor)
+                : ApplyClassicAccentPolicy(windowHandle, accentColor);
+
             if (result)
             {
-                bool isWin11 = _capabilityService.WindowsBuildNumber >= WindowsVisualCapabilityService.Windows11RtmBuild;
-                string msg;
-                if (isWin11)
+                string techLabel;
+                if (useAcrylic)
                 {
-                    msg = target == VisualEffectTarget.QuadraWindow
-                        ? $"Acrílico Nativo do Shell (Composição DWM / Build {_capabilityService.WindowsBuildNumber})"
-                        : $"Acrílico Nativo do Shell (Popups WPF / Build {_capabilityService.WindowsBuildNumber})";
+                    techLabel = _capabilityService.WindowsBuildNumber >= WindowsVisualCapabilityService.Windows11RtmBuild
+                        ? "Acrílico Moderno (Win 11)"
+                        : "Acrílico Fluent (Win 10)";
                 }
                 else
                 {
-                    msg = target == VisualEffectTarget.QuadraWindow
-                        ? $"BlurBehind Nativo (Windows 10 / Build {_capabilityService.WindowsBuildNumber})"
-                        : $"BlurBehind Nativo (Popups WPF / Build {_capabilityService.WindowsBuildNumber})";
+                    techLabel = "Blur Clássico (Win 10)";
                 }
+
+                string msg = target == VisualEffectTarget.QuadraWindow
+                    ? $"{techLabel} / Build {_capabilityService.WindowsBuildNumber}"
+                    : $"{techLabel} (Menus) / Build {_capabilityService.WindowsBuildNumber}";
 
                 if (target == VisualEffectTarget.QuadraWindow) LastQuadraEffectApplied = msg;
                 else LastMenuEffectApplied = msg;
@@ -237,6 +255,50 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
         catch
         {
             return false;
+        }
+    }
+
+    private static bool ApplyAcrylicAccentPolicy(IntPtr windowHandle, uint accentColor)
+    {
+        uint color = accentColor != 0 ? accentColor : DefaultAcrylicColor;
+
+        var policy = new NativeMethods.AccentPolicy
+        {
+            AccentState = NativeMethods.AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND,
+            AccentFlags = 2,
+            GradientColor = unchecked((int)color),
+            AnimationId = 0
+        };
+
+        int sizeOfPolicy = Marshal.SizeOf(policy);
+        IntPtr policyPtr = Marshal.AllocHGlobal(sizeOfPolicy);
+
+        try
+        {
+            Marshal.StructureToPtr(policy, policyPtr, false);
+
+            var data = new NativeMethods.WindowCompositionAttributeData
+            {
+                Attribute = NativeMethods.WindowCompositionAttribute.WCA_ACCENT_POLICY,
+                Data = policyPtr,
+                SizeOfData = sizeOfPolicy
+            };
+
+            int result = NativeMethods.SetWindowCompositionAttribute(windowHandle, ref data);
+            if (result != 0)
+            {
+                return true;
+            }
+
+            return ApplyClassicAccentPolicy(windowHandle, accentColor);
+        }
+        catch
+        {
+            return ApplyClassicAccentPolicy(windowHandle, accentColor);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(policyPtr);
         }
     }
 
