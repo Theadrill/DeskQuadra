@@ -5,7 +5,7 @@
         Title="{x:Static properties:Strings.SettingsTitle}"
         Icon="/Assets/DeskQuadra.ico"
         WindowStartupLocation="CenterScreen"
-        Width="360"
+        Width="440"
         SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStyle="SingleBorderWindow"
@@ -18,7 +18,7 @@
         <Style x:Key="DensityButtonStyle" TargetType="RadioButton">
             <Setter Property="Foreground" Value="{DynamicResource Dialog.Foreground}"/>
             <Setter Property="FontSize" Value="{DynamicResource Dialog.Button.FontSize}"/>
-            <Setter Property="Padding" Value="{DynamicResource Dialog.Button.Padding}"/>
+            <Setter Property="Padding" Value="8,6,8,6"/>
             <Setter Property="BorderThickness" Value="{DynamicResource Dialog.Button.BorderThickness}"/>
             <Setter Property="Background" Value="{DynamicResource Dialog.Secondary.Background}"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
