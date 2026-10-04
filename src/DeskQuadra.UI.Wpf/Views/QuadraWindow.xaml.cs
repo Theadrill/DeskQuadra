@@ -124,6 +124,7 @@ public partial class QuadraWindow : Window
     // Hover / ToolTip de itens: transição dinâmica após 1s de hover contínuo (Nome -> FilePath)
     private CancellationTokenSource? _toolTipTransitionCts;
     private DesktopItemViewModel? _activeToolTipItem;
+    private readonly IWindowVisualEffectService? _visualEffectService;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -132,7 +133,8 @@ public partial class QuadraWindow : Window
         ILayoutCoordinator coordinator,
         IFileLauncherService launcherService,
         IFileDeletionService deletionService,
-        IThirdPartyMenuService thirdPartyMenuService)
+        IThirdPartyMenuService thirdPartyMenuService,
+        IWindowVisualEffectService? visualEffectService = null)
     {
         _viewModel = viewModel;
         DataContext = viewModel;
@@ -142,6 +144,7 @@ public partial class QuadraWindow : Window
         _launcherService = launcherService;
         _deletionService = deletionService;
         _thirdPartyMenuService = thirdPartyMenuService;
+        _visualEffectService = visualEffectService;
 
         // Configura posicionamento manual estrito antes da inicialização visual
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -304,6 +307,32 @@ public partial class QuadraWindow : Window
             {
                 _isApplyingCollapse = false;
             }
+        }
+    }
+
+    /// <summary>
+    /// Reavalia e reaplica ou remove o efeito visual de acrílico/desfoque em runtime.
+    /// Chamado quando o usuário altera a configuração na janela de Settings.
+    /// </summary>
+    public void RefreshVisualEffect()
+    {
+        var helper = new WindowInteropHelper(this);
+        IntPtr hwnd = helper.Handle;
+        if (hwnd == IntPtr.Zero || _visualEffectService == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!_visualEffectService.ApplyBlur(hwnd))
+            {
+                _visualEffectService.RemoveBlur(hwnd);
+            }
+        }
+        catch
+        {
+            // Silencioso: falha de efeito visual não interfere na janela
         }
     }
 
@@ -612,7 +641,17 @@ public partial class QuadraWindow : Window
         // 1. Vincula a janela ao Desktop Shell (Progman)
         _anchorService.AnchorToDesktop(hwnd);
 
-        // 2. Instala o hook de janela para interceptar e neutralizar qualquer comando de ocultação (Win + D)
+        // 2. Aplica efeito visual de acrílico/desfoque clássico se suportado e habilitado
+        try
+        {
+            _visualEffectService?.ApplyBlur(hwnd);
+        }
+        catch
+        {
+            // Silencioso: falha de efeito visual não interfere na funcionalidade
+        }
+
+        // 3. Instala o hook de janela para interceptar e neutralizar qualquer comando de ocultação (Win + D)
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(WndProc);
     }

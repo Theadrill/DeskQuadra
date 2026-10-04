@@ -21,7 +21,9 @@ public static class DependencyInjection
         // T2 terceiros: detecção só leitura (lista, não executa) com cache por extensão.
         services.AddSingleton<IThirdPartyMenuService, ThirdPartyMenuService>();
         services.AddSingleton<IWindowsVisualCapabilityService, WindowsVisualCapabilityService>();
+        services.AddSingleton<IWindowVisualEffectService, WindowVisualEffectService>();
         return services;
     }
 }
+
 

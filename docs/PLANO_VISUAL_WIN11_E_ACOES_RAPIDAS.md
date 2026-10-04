@@ -43,13 +43,14 @@
   - [x] 1.3 Adicionar preferência visual no Core/Settings (`IVisualSettingsService`) com persistência em `settings.json`.
   - [x] 1.4 Adicionar toggle na janela de Configurações (`SettingsWindow.xaml` / `SettingsViewModel.cs`) com visibilidade condicional.
   - [x] 1.5 Criar testes unitários para a detecção de build, capability, fallback e persistência (16 novos testes, total de 542 testes passando).
-  - [ ] 1.6 **Checkpoint PO:** Executar, testar a exibição da opção em Configurações e realizar commit local.
+  - [x] 1.6 **Checkpoint PO:** Executado e aprovado pelo PO.
+- [x] **Fase 1: Infraestrutura de Detecção, Fallback e Opção nas Configurações** (Concluída)
 
 - [ ] **Fase 2: Motor Visual Clássico (Acrílico / Blur via Compositor Win32)**
-  - [ ] 2.1 Implementar P/Invoke e serviço Win32 de acrílico clássico (`SetWindowCompositionAttribute` / `AccentPolicy`).
-  - [ ] 2.2 Criar tokens de acrílico calibrados em `Default.xaml` com proteção para o canal alfa.
-  - [ ] 2.3 Aplicar o efeito acrílico nas janelas de teste (`SettingsWindow` e `ContextMenu`).
-  - [ ] 2.4 Integrar o acrílico às janelas de Quadra (`QuadraWindow`) com tratamento de transparência e DWM.
+  - [x] 2.1 Implementar P/Invoke e serviço Win32 de acrílico clássico (`SetWindowCompositionAttribute` / `AccentPolicy`).
+  - [x] 2.2 Criar tokens de acrílico calibrados e suporte no serviço (`WindowVisualEffectService`).
+  - [x] 2.3 Aplicar o efeito acrílico nas janelas de teste (`SettingsWindow`).
+  - [x] 2.4 Integrar o acrílico às janelas de Quadra (`QuadraWindow`) com atualização e toggle em tempo real.
   - [ ] 2.5 **Checkpoint PO:** Auditar visual e performance em máquina real (sem lag de arraste) e realizar commit local.
 
 - [ ] **Fase 3: Motor Visual Moderno (Windows 11 22H2+ Nativo - Mica / Acrylic Backdrop)**

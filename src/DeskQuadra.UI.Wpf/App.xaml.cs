@@ -337,9 +337,10 @@ public partial class App : System.Windows.Application
         var launcherService = _serviceProvider.GetRequiredService<IFileLauncherService>();
         var deletionService = _serviceProvider.GetRequiredService<IFileDeletionService>();
         var thirdPartyMenuService = _serviceProvider.GetRequiredService<IThirdPartyMenuService>();
+        var visualEffectService = _serviceProvider.GetService<IWindowVisualEffectService>();
 
         var viewModel = new QuadraViewModel(quadra, iconExtractor);
-        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService, deletionService, thirdPartyMenuService);
+        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService, deletionService, thirdPartyMenuService, visualEffectService);
         window.Closed += (s, e) => _quadraWindows.Remove(quadra.Id);
         _quadraWindows[quadra.Id] = window;
         window.Show();
@@ -584,14 +585,18 @@ public partial class App : System.Windows.Application
         }
 
         EnsureDensityWiring(densityService);
+        EnsureVisualWiring(visualSettings);
         // Leitura sob demanda + na abertura da janela (sem timer/hook novo).
         bool hasHardware = NativeMethods.IsTouchHardwarePresent();
-        _settingsWindow = new SettingsWindow(new SettingsViewModel(
-            startupService,
-            densityService,
-            hasHardware,
-            visualSettings,
-            visualCapability));
+        var visualEffectService = _serviceProvider?.GetService<IWindowVisualEffectService>();
+        _settingsWindow = new SettingsWindow(
+            new SettingsViewModel(
+                startupService,
+                densityService,
+                hasHardware,
+                visualSettings,
+                visualCapability),
+            visualEffectService);
         _settingsWindow.Closed += (s, e) => _settingsWindow = null;
         _settingsWindow.Show();
     }
@@ -615,6 +620,35 @@ public partial class App : System.Windows.Application
             {
                 QuadraWindow.CurrentDensityPreference = pref;
                 ApplyDensityToAllOpen();
+            });
+        };
+    }
+
+    private bool _visualWired;
+
+    private void EnsureVisualWiring(IVisualSettingsService? visualService)
+    {
+        if (visualService == null || _visualWired)
+        {
+            return;
+        }
+
+        _visualWired = true;
+        visualService.VisualEffectsChanged += (s, enabled) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                foreach (var window in _quadraWindows.Values)
+                {
+                    try
+                    {
+                        window.RefreshVisualEffect();
+                    }
+                    catch
+                    {
+                        // Best-effort
+                    }
+                }
             });
         };
     }
