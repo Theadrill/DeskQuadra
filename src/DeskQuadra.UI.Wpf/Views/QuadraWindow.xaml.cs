@@ -1230,6 +1230,7 @@ public partial class QuadraWindow : Window
         // (submenu "Ordenar por" branco) e na densidade de mouse mesmo no modo touch.
         // Mesmo padrão do TitleBar_ContextMenuOpening: cadeado + densidade por gesto/preferência.
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
+        QuickActionPasteButton.IsEnabled = _clipboardService.ContainsFileDropList();
         bool isTouch = ResolveEffectiveIsTouch(e);
         // T2 terceiros no vazio (IContextMenu de FUNDO da pasta Desktop) antes da densidade (§2).
         // T8a lazy: isTouch capturado NA ABERTURA e repassado (o callback reaplica a densidade).
@@ -1972,7 +1973,7 @@ public partial class QuadraWindow : Window
         {
             if (item is MenuItem mi)
             {
-                if (mi.Name == "QuickActionsMenuItem")
+                if (mi.Name == "QuickActionsMenuItem" || mi.Name == "EmptyQuickActionsMenuItem")
                 {
                     continue;
                 }
@@ -2203,6 +2204,75 @@ public partial class QuadraWindow : Window
         if (item == null) return;
 
         HandleItemDelete(item);
+    }
+
+    private void QuickActionPaste_Click(object sender, RoutedEventArgs e)
+    {
+        if (TitleBarBorder?.ContextMenu != null)
+        {
+            TitleBarBorder.ContextMenu.IsOpen = false;
+        }
+
+        if (!_clipboardService.ContainsFileDropList())
+        {
+            return;
+        }
+
+        var files = _clipboardService.GetFileDropList();
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        bool isCut = _clipboardService.IsCutEffect();
+
+        // Se foi Cut, remove os itens das outras Quadras abertas de onde foram recortados
+        if (isCut)
+        {
+            foreach (var window in System.Windows.Application.Current.Windows.OfType<QuadraWindow>())
+            {
+                if (window != this)
+                {
+                    var itemsToRemove = window._viewModel.Items
+                        .Where(i => files.Any(f => string.Equals(f, i.FilePath, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    foreach (var itemToRemove in itemsToRemove)
+                    {
+                        window._viewModel.RemoveItem(itemToRemove);
+                    }
+
+                    if (itemsToRemove.Count > 0)
+                    {
+                        _coordinator.NotifyQuadraChanged(window._viewModel.Model);
+                    }
+                }
+            }
+        }
+
+        // Adiciona à Quadra atual
+        bool addedAny = false;
+        foreach (var file in files)
+        {
+            if (File.Exists(file) || Directory.Exists(file))
+            {
+                if (!_viewModel.Items.Any(i => string.Equals(i.FilePath, file, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _viewModel.AddItem(file);
+                    addedAny = true;
+                }
+            }
+        }
+
+        if (isCut)
+        {
+            _clipboardService.Clear();
+        }
+
+        if (addedAny || isCut)
+        {
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
+        }
     }
 
     private void ItemMenuRename_Click(object sender, RoutedEventArgs e)
@@ -3108,6 +3178,7 @@ public partial class QuadraWindow : Window
     private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         LockQuadraMenuItem.IsChecked = _viewModel.IsLocked;
+        QuickActionPasteButton.IsEnabled = _clipboardService.ContainsFileDropList();
         if (sender is FrameworkElement fe && fe.ContextMenu != null)
         {
             // T3 terceiros no vazio (IContextMenu de FUNDO da pasta Desktop) antes da densidade (§2).

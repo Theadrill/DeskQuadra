@@ -300,4 +300,7 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="QuickAction_Delete" xml:space="preserve">
     <value>Excluir</value>
   </data>
+  <data name="QuickAction_Paste" xml:space="preserve">
+    <value>Colar</value>
+  </data>
 </root>

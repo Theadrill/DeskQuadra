@@ -28,4 +28,37 @@ public class WindowsClipboardServiceTests
         bool result = service.SetFileDropList(new[] { "", "   ", "\t" });
         Assert.False(result);
     }
+
+    [Fact]
+    public void SetFileDropList_WithIsCut_SetsPreferredDropEffectAndClears()
+    {
+        var thread = new Thread(() =>
+        {
+            var service = new WindowsClipboardService();
+            string tempFile = System.IO.Path.GetTempFileName();
+            try
+            {
+                bool success = service.SetFileDropList(new[] { tempFile }, isCut: true);
+                if (success)
+                {
+                    Assert.True(service.ContainsFileDropList());
+                    Assert.True(service.IsCutEffect());
+                    var list = service.GetFileDropList();
+                    Assert.Contains(tempFile, list);
+
+                    service.Clear();
+                    Assert.False(service.ContainsFileDropList());
+                    Assert.False(service.IsCutEffect());
+                }
+            }
+            finally
+            {
+                service.Clear();
+                if (System.IO.File.Exists(tempFile)) System.IO.File.Delete(tempFile);
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+    }
 }

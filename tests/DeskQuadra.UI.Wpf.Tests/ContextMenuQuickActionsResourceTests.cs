@@ -14,12 +14,14 @@ public class ContextMenuQuickActionsResourceTests
         Assert.False(string.IsNullOrWhiteSpace(Strings.QuickAction_Rename));
         Assert.False(string.IsNullOrWhiteSpace(Strings.QuickAction_Share));
         Assert.False(string.IsNullOrWhiteSpace(Strings.QuickAction_Delete));
+        Assert.False(string.IsNullOrWhiteSpace(Strings.QuickAction_Paste));
 
         Assert.Equal("Recortar", Strings.QuickAction_Cut);
         Assert.Equal("Copiar", Strings.QuickAction_Copy);
         Assert.Equal("Renomear", Strings.QuickAction_Rename);
         Assert.Equal("Compartilhar", Strings.QuickAction_Share);
         Assert.Equal("Excluir", Strings.QuickAction_Delete);
+        Assert.Equal("Colar", Strings.QuickAction_Paste);
     }
 
     [Fact]
@@ -60,6 +62,8 @@ public class ContextMenuQuickActionsResourceTests
             Assert.True(dict.Contains("Icon.QuickAction.Share.Box"));
             Assert.True(dict.Contains("Icon.QuickAction.Share.Arrow"));
             Assert.True(dict.Contains("Icon.QuickAction.Delete"));
+            Assert.True(dict.Contains("Icon.QuickAction.Paste.Board"));
+            Assert.True(dict.Contains("Icon.QuickAction.Paste.Paper"));
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();

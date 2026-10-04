@@ -210,5 +210,6 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string QuickAction_Rename => ResourceManager.GetString("QuickAction_Rename", resourceCulture);
         public static string QuickAction_Share => ResourceManager.GetString("QuickAction_Share", resourceCulture);
         public static string QuickAction_Delete => ResourceManager.GetString("QuickAction_Delete", resourceCulture);
+        public static string QuickAction_Paste => ResourceManager.GetString("QuickAction_Paste", resourceCulture);
     }
 }

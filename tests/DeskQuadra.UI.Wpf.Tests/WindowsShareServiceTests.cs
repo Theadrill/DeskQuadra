@@ -23,6 +23,14 @@ public class WindowsShareServiceTests
         public IReadOnlyList<string> GetFileDropList() => CopiedPaths;
 
         public bool ContainsFileDropList() => CopiedPaths.Count > 0;
+
+        public bool IsCutEffect() => LastWasCut;
+
+        public void Clear()
+        {
+            LastWasCut = false;
+            CopiedPaths.Clear();
+        }
     }
 
     [Fact]

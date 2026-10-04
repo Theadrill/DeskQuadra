@@ -23,4 +23,14 @@ public interface IClipboardService
     /// Informa se a área de transferência atualmente contém arquivos.
     /// </summary>
     bool ContainsFileDropList();
+
+    /// <summary>
+    /// Informa se os arquivos no clipboard foram marcados com a ação Recortar (DROPEFFECT_MOVE = 2).
+    /// </summary>
+    bool IsCutEffect();
+
+    /// <summary>
+    /// Limpa o conteúdo da área de transferência.
+    /// </summary>
+    void Clear();
 }

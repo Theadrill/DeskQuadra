@@ -109,4 +109,38 @@ public sealed class WindowsClipboardService : IClipboardService
             return false;
         }
     }
+
+    public bool IsCutEffect()
+    {
+        try
+        {
+            var data = Clipboard.GetDataObject();
+            if (data != null && data.GetData("Preferred DropEffect") is MemoryStream stream)
+            {
+                byte[] bytes = stream.ToArray();
+                if (bytes.Length > 0 && bytes[0] == 2)
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Silencioso
+        }
+
+        return false;
+    }
+
+    public void Clear()
+    {
+        try
+        {
+            Clipboard.Clear();
+        }
+        catch
+        {
+            // Silencioso
+        }
+    }
 }
