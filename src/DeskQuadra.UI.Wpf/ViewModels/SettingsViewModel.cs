@@ -1,3 +1,4 @@
+using System.Windows;
 using DeskQuadra.Core;
 using DeskQuadra.Core.Contracts;
 using DeskQuadra.Core.Models;
@@ -113,6 +114,67 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    // Sliders de Transparência e Modo Avançado
+    private double _generalOpacity = 30.0;
+    private bool _isAdvancedMode = false;
+    private double _backgroundAlpha = 28.0;
+    private double _tintIntensity = 15.0;
+
+    public double GeneralOpacity
+    {
+        get => _generalOpacity;
+        set
+        {
+            if (SetProperty(ref _generalOpacity, Math.Clamp(value, 5.0, 90.0)))
+            {
+                OnPropertyChanged(nameof(GeneralOpacityLabel));
+            }
+        }
+    }
+
+    public string GeneralOpacityLabel => $"{(int)GeneralOpacity}%";
+
+    public bool IsAdvancedMode
+    {
+        get => _isAdvancedMode;
+        set => SetProperty(ref _isAdvancedMode, value);
+    }
+
+    public double BackgroundAlpha
+    {
+        get => _backgroundAlpha;
+        set
+        {
+            if (SetProperty(ref _backgroundAlpha, Math.Clamp(value, 5.0, 90.0)))
+            {
+                OnPropertyChanged(nameof(BackgroundAlphaLabel));
+            }
+        }
+    }
+
+    public string BackgroundAlphaLabel => $"{(int)BackgroundAlpha}%";
+
+    public double TintIntensity
+    {
+        get => _tintIntensity;
+        set
+        {
+            if (SetProperty(ref _tintIntensity, Math.Clamp(value, 0.0, 100.0)))
+            {
+                OnPropertyChanged(nameof(TintIntensityLabel));
+            }
+        }
+    }
+
+    public string TintIntensityLabel => $"{(int)TintIntensity}%";
+
+    public void ResetToDefaults()
+    {
+        GeneralOpacity = 30.0;
+        BackgroundAlpha = 28.0;
+        TintIntensity = 15.0;
+    }
+
     public DensityPreference DensityPreference
     {
         get => _densityPreference;
@@ -125,9 +187,18 @@ public sealed class SettingsViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsDensityNormal));
                 OnPropertyChanged(nameof(IsDensityTouch));
                 OnPropertyChanged(nameof(EffectiveIsTouch));
+                OnPropertyChanged(nameof(DialogControlHeight));
+                OnPropertyChanged(nameof(DialogSliderThumbSize));
+                OnPropertyChanged(nameof(DialogItemMargin));
+                OnPropertyChanged(nameof(DialogButtonPadding));
             }
         }
     }
+
+    public double DialogControlHeight => EffectiveIsTouch ? 44.0 : 32.0;
+    public double DialogSliderThumbSize => EffectiveIsTouch ? 24.0 : 14.0;
+    public Thickness DialogItemMargin => EffectiveIsTouch ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 0, 8);
+    public Thickness DialogButtonPadding => EffectiveIsTouch ? new Thickness(12, 10, 12, 10) : new Thickness(8, 6, 8, 6);
 
     public bool IsDensityAuto
     {

@@ -5,31 +5,43 @@
         Title="{x:Static properties:Strings.SettingsTitle}"
         Icon="/Assets/DeskQuadra.ico"
         WindowStartupLocation="CenterScreen"
-        Width="440"
+        Width="460"
         SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStyle="SingleBorderWindow"
         ShowInTaskbar="True"
         Background="{DynamicResource Dialog.Background}">
+
     <Window.Resources>
-        <!-- Aparência: 3 RadioButtons com cara de Button. Reusa o binding IsDensity* -->
-        <!-- existente (persistência via SettingsViewModel inalterada). Ativo = -->
-        <!-- Dialog.Primary.Background; inativo = Dialog.Secondary.Background. -->
+        <!-- Estilo base dos Cards / Seções Fluent -->
+        <Style x:Key="SettingsCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#10FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#1AFFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- Segmented Buttons (Densidade e Técnica): reagem à densidade Mouse vs Touch -->
         <Style x:Key="DensityButtonStyle" TargetType="RadioButton">
             <Setter Property="Foreground" Value="{DynamicResource Dialog.Foreground}"/>
             <Setter Property="FontSize" Value="{DynamicResource Dialog.Button.FontSize}"/>
-            <Setter Property="Padding" Value="8,6,8,6"/>
+            <Setter Property="Padding" Value="{Binding DialogButtonPadding}"/>
+            <Setter Property="MinHeight" Value="{Binding DialogControlHeight}"/>
             <Setter Property="BorderThickness" Value="{DynamicResource Dialog.Button.BorderThickness}"/>
             <Setter Property="Background" Value="{DynamicResource Dialog.Secondary.Background}"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="Bd"
                                 Background="{TemplateBinding Background}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
@@ -37,6 +49,9 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Dialog.Primary.Background}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -48,81 +63,286 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Botão compacto de ação/reset -->
+        <Style x:Key="IconButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Dialog.Secondary.Background}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Dialog.Foreground}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="8,4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#35FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#55FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Slider moderno estilo Windows 11 com trilha preenchida e thumb dinâmico por toque -->
+        <Style x:Key="ModernSliderStyle" TargetType="Slider">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Height" Value="{Binding DialogControlHeight}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <!-- Trilha vazia de fundo -->
+                            <Border Height="4" Background="#30FFFFFF" CornerRadius="2" VerticalAlignment="Center"/>
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" Background="{DynamicResource Dialog.Primary.Background}" CornerRadius="2,0,0,2"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Cursor="Hand">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Grid Width="{Binding DialogSliderThumbSize}" Height="{Binding DialogSliderThumbSize}">
+                                                    <Ellipse Fill="#FFFFFF" Stroke="{DynamicResource Dialog.Primary.Background}" StrokeThickness="3"/>
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
     </Window.Resources>
-    <StackPanel Margin="{DynamicResource Dialog.Panel.Margin}">
-        <CheckBox IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
-                  Content="{x:Static properties:Strings.SettingsStartup}"
-                  Foreground="{DynamicResource Dialog.Foreground}"
-                  FontSize="{DynamicResource Dialog.Message.FontSize}"
-                  Margin="{DynamicResource Dialog.Message.Margin}"
-                  VerticalContentAlignment="Center"/>
-        <CheckBox IsChecked="{Binding EnableWindows11VisualEffects, Mode=TwoWay}"
-                  Content="{x:Static properties:Strings.SettingsVisualEffectsWindows11}"
-                  Foreground="{DynamicResource Dialog.Foreground}"
-                  FontSize="{DynamicResource Dialog.Message.FontSize}"
-                  Margin="{DynamicResource Dialog.Message.Margin}"
-                  VerticalContentAlignment="Center"
-                  Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
 
-        <!-- Seleção da técnica visual: exibida quando os efeitos estão ativos -->
-        <StackPanel Margin="24,0,0,8" Visibility="{Binding IsTechniqueSelectorVisible, Converter={StaticResource BoolToVisConverter}}">
-            <TextBlock Text="Técnica de Desfoque"
-                       Foreground="{DynamicResource Dialog.Foreground}"
-                       FontSize="11"
-                       FontWeight="SemiBold"
-                       Margin="0,0,0,4"/>
-            <UniformGrid Rows="1" Columns="3" Margin="0,0,0,4">
-                <RadioButton GroupName="VisualTechnique"
-                             Style="{StaticResource DensityButtonStyle}"
-                             IsChecked="{Binding IsTechniqueAuto, Mode=TwoWay}"
-                             Content="Automático"
-                             ToolTip="Seleciona automaticamente a técnica ideal recomendada para a sua versão do Windows."
-                             Margin="0"/>
-                <RadioButton GroupName="VisualTechnique"
-                             Style="{StaticResource DensityButtonStyle}"
-                             IsChecked="{Binding IsTechniqueAcrylic, Mode=TwoWay}"
-                             IsEnabled="{Binding IsAcrylicSupported}"
-                             Content="Acrílico (Win 11)"
-                             ToolTip="{Binding AcrylicOptionToolTip}"
-                             Margin="{DynamicResource Dialog.Button.Margin}"/>
-                <RadioButton GroupName="VisualTechnique"
-                             Style="{StaticResource DensityButtonStyle}"
-                             IsChecked="{Binding IsTechniqueClassicBlur, Mode=TwoWay}"
-                             Content="Blur (Win 10)"
-                             ToolTip="Desfoque translúcido límpido estilo vidro clássico do Windows 10."
-                             Margin="{DynamicResource Dialog.Button.Margin}"/>
-            </UniformGrid>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="{DynamicResource Dialog.Panel.Margin}">
+
+            <!-- ========================================== -->
+            <!-- CARD 1: SISTEMA E INICIALIZAÇÃO            -->
+            <!-- ========================================== -->
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <CheckBox IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
+                          Content="{x:Static properties:Strings.SettingsStartup}"
+                          Foreground="{DynamicResource Dialog.Foreground}"
+                          FontSize="{DynamicResource Dialog.Message.FontSize}"
+                          MinHeight="{Binding DialogControlHeight}"
+                          VerticalContentAlignment="Center"/>
+            </Border>
+
+            <!-- ========================================== -->
+            <!-- CARD 2: EFEITOS VISUAIS E DESFOQUE         -->
+            <!-- ========================================== -->
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <CheckBox IsChecked="{Binding EnableWindows11VisualEffects, Mode=TwoWay}"
+                              Content="{x:Static properties:Strings.SettingsVisualEffectsWindows11}"
+                              Foreground="{DynamicResource Dialog.Foreground}"
+                              FontSize="{DynamicResource Dialog.Message.FontSize}"
+                              FontWeight="SemiBold"
+                              MinHeight="{Binding DialogControlHeight}"
+                              VerticalContentAlignment="Center"
+                              Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
+
+                    <!-- Seção ativa: exibida quando os efeitos estão ativados -->
+                    <StackPanel Visibility="{Binding IsTechniqueSelectorVisible, Converter={StaticResource BoolToVisConverter}}"
+                                Margin="0,8,0,0">
+
+                        <!-- Seleção de Técnica -->
+                        <TextBlock Text="Técnica de Desfoque"
+                                   Foreground="{DynamicResource Dialog.Foreground}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.85"
+                                   Margin="0,0,0,4"/>
+
+                        <UniformGrid Rows="1" Columns="3" Margin="0,0,0,12">
+                            <RadioButton GroupName="VisualTechnique"
+                                         Style="{StaticResource DensityButtonStyle}"
+                                         IsChecked="{Binding IsTechniqueAuto, Mode=TwoWay}"
+                                         Content="Automático"
+                                         ToolTip="Seleciona automaticamente a técnica ideal para a versão do seu Windows."
+                                         Margin="0"/>
+                            <RadioButton GroupName="VisualTechnique"
+                                         Style="{StaticResource DensityButtonStyle}"
+                                         IsChecked="{Binding IsTechniqueAcrylic, Mode=TwoWay}"
+                                         IsEnabled="{Binding IsAcrylicSupported}"
+                                         Content="Acrílico (Win 11)"
+                                         ToolTip="{Binding AcrylicOptionToolTip}"
+                                         Margin="{DynamicResource Dialog.Button.Margin}"/>
+                            <RadioButton GroupName="VisualTechnique"
+                                         Style="{StaticResource DensityButtonStyle}"
+                                         IsChecked="{Binding IsTechniqueClassicBlur, Mode=TwoWay}"
+                                         Content="Blur (Win 10)"
+                                         ToolTip="Desfoque translúcido límpido estilo vidro clássico do Windows 10."
+                                         Margin="{DynamicResource Dialog.Button.Margin}"/>
+                        </UniformGrid>
+
+                        <Separator Background="#18FFFFFF" Margin="0,0,0,10"/>
+
+                        <!-- Slider 1: Transparência Geral com Badge e Botão Reset -->
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="Nível de Transparência"
+                                       Foreground="{DynamicResource Dialog.Foreground}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Opacity="0.85"
+                                       VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding GeneralOpacityLabel}"
+                                       Foreground="{DynamicResource Dialog.Foreground}"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Opacity="0.9"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0"/>
+
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource IconButtonStyle}"
+                                    Content="↺"
+                                    ToolTip="Restaurar padrão (30%)"
+                                    FontSize="12"
+                                    Click="ResetOpacity_Click"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Slider Style="{StaticResource ModernSliderStyle}"
+                                Minimum="5"
+                                Maximum="90"
+                                Value="{Binding GeneralOpacity, Mode=TwoWay}"
+                                Margin="0,0,0,8"/>
+
+                        <!-- Expansor de Ajustes Avançados -->
+                        <CheckBox IsChecked="{Binding IsAdvancedMode, Mode=TwoWay}"
+                                  Content="Ajustes Avançados de Composição"
+                                  Foreground="{DynamicResource Dialog.Foreground}"
+                                  FontSize="11"
+                                  Opacity="0.8"
+                                  Margin="0,4,0,4"
+                                  VerticalContentAlignment="Center"/>
+
+                        <!-- Painel Avançado: Sliders de Ajuste Fino -->
+                        <StackPanel Visibility="{Binding IsAdvancedMode, Converter={StaticResource BoolToVisConverter}}"
+                                    Margin="12,6,0,6">
+                            
+                            <!-- Slider A: Fundo (Alpha) -->
+                            <Grid Margin="0,0,0,2">
+                                <TextBlock Text="Transparência do Fundo (Alpha)"
+                                           Foreground="{DynamicResource Dialog.Foreground}"
+                                           FontSize="10.5"
+                                           Opacity="0.75"
+                                           HorizontalAlignment="Left"/>
+                                <TextBlock Text="{Binding BackgroundAlphaLabel}"
+                                           Foreground="{DynamicResource Dialog.Foreground}"
+                                           FontSize="10.5"
+                                           Opacity="0.85"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Slider Style="{StaticResource ModernSliderStyle}"
+                                    Minimum="5"
+                                    Maximum="90"
+                                    Value="{Binding BackgroundAlpha, Mode=TwoWay}"
+                                    Margin="0,0,0,6"/>
+
+                            <!-- Slider B: Escurecimento / Tint -->
+                            <Grid Margin="0,0,0,2">
+                                <TextBlock Text="Escurecimento / Tint (DWM)"
+                                           Foreground="{DynamicResource Dialog.Foreground}"
+                                           FontSize="10.5"
+                                           Opacity="0.75"
+                                           HorizontalAlignment="Left"/>
+                                <TextBlock Text="{Binding TintIntensityLabel}"
+                                           Foreground="{DynamicResource Dialog.Foreground}"
+                                           FontSize="10.5"
+                                           Opacity="0.85"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Slider Style="{StaticResource ModernSliderStyle}"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    Value="{Binding TintIntensity, Mode=TwoWay}"
+                                    Margin="0,0,0,4"/>
+                        </StackPanel>
+
+                    </StackPanel>
+
+                    <!-- Feedback e diagnóstico em tempo real -->
+                    <TextBlock Text="{Binding VisualEffectsDetail}"
+                               Foreground="{DynamicResource Dialog.Foreground}"
+                               Opacity="0.6"
+                               FontSize="10.5"
+                               Margin="0,8,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ========================================== -->
+            <!-- CARD 3: APARÊNCIA E DENSIDADE (TOUCH)      -->
+            <!-- ========================================== -->
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <TextBlock Text="{x:Static properties:Strings.SettingsAppearanceTitle}"
+                               Foreground="{DynamicResource Dialog.Foreground}"
+                               FontSize="{DynamicResource Dialog.Message.FontSize}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <UniformGrid Rows="1" Columns="3" Margin="0,2,0,0">
+                        <RadioButton GroupName="Density"
+                                     Style="{StaticResource DensityButtonStyle}"
+                                     IsChecked="{Binding IsDensityAuto, Mode=TwoWay}"
+                                     Content="{x:Static properties:Strings.SettingsDensityAuto}"
+                                     Margin="0"/>
+                        <RadioButton GroupName="Density"
+                                     Style="{StaticResource DensityButtonStyle}"
+                                     IsChecked="{Binding IsDensityNormal, Mode=TwoWay}"
+                                     Content="{x:Static properties:Strings.SettingsDensityNormal}"
+                                     Margin="{DynamicResource Dialog.Button.Margin}"/>
+                        <RadioButton GroupName="Density"
+                                     Style="{StaticResource DensityButtonStyle}"
+                                     IsChecked="{Binding IsDensityTouch, Mode=TwoWay}"
+                                     Content="{x:Static properties:Strings.SettingsDensityTouch}"
+                                     Margin="{DynamicResource Dialog.Button.Margin}"/>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+
         </StackPanel>
-
-        <TextBlock Text="{Binding VisualEffectsDetail}"
-                   Foreground="{DynamicResource Dialog.Foreground}"
-                   Opacity="0.65"
-                   FontSize="10.5"
-                   Margin="24,0,0,12"
-                   TextWrapping="Wrap"/>
-        <TextBlock Text="{x:Static properties:Strings.SettingsAppearanceTitle}"
-                   Foreground="{DynamicResource Dialog.Foreground}"
-                   FontSize="{DynamicResource Dialog.Message.FontSize}"
-                   FontWeight="SemiBold"
-                   Margin="0,4,0,6"/>
-        <UniformGrid Rows="1" Columns="3" Margin="0,2,0,2">
-            <RadioButton GroupName="Density"
-                         Style="{StaticResource DensityButtonStyle}"
-                         IsChecked="{Binding IsDensityAuto, Mode=TwoWay}"
-                         Content="{x:Static properties:Strings.SettingsDensityAuto}"
-                         Margin="0"/>
-            <RadioButton GroupName="Density"
-                         Style="{StaticResource DensityButtonStyle}"
-                         IsChecked="{Binding IsDensityNormal, Mode=TwoWay}"
-                         Content="{x:Static properties:Strings.SettingsDensityNormal}"
-                         Margin="{DynamicResource Dialog.Button.Margin}"/>
-            <RadioButton GroupName="Density"
-                         Style="{StaticResource DensityButtonStyle}"
-                         IsChecked="{Binding IsDensityTouch, Mode=TwoWay}"
-                         Content="{x:Static properties:Strings.SettingsDensityTouch}"
-                         Margin="{DynamicResource Dialog.Button.Margin}"/>
-        </UniformGrid>
-    </StackPanel>
+    </ScrollViewer>
 </Window>
-

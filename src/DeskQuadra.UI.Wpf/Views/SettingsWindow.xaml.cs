@@ -34,5 +34,12 @@ public partial class SettingsWindow : Window
             }
         }
     }
-}
 
+    private void ResetOpacity_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.ResetToDefaults();
+        }
+    }
+}

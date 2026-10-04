@@ -212,4 +212,59 @@ public class SettingsViewModelVisualEffectsTests
         Assert.Contains("1803", vm.AcrylicOptionToolTip);
         Assert.Contains("17134", vm.AcrylicOptionToolTip);
     }
+
+    [Fact]
+    public void OpacitySliders_DefaultValuesAndLabels_FormattedCorrectly()
+    {
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            new FakeVisualSettingsService(),
+            new FakeVisualCapabilityService());
+
+        Assert.Equal(30.0, vm.GeneralOpacity);
+        Assert.Equal("30%", vm.GeneralOpacityLabel);
+        Assert.False(vm.IsAdvancedMode);
+        Assert.Equal(28.0, vm.BackgroundAlpha);
+        Assert.Equal("28%", vm.BackgroundAlphaLabel);
+        Assert.Equal(15.0, vm.TintIntensity);
+        Assert.Equal("15%", vm.TintIntensityLabel);
+
+        vm.GeneralOpacity = 50.0;
+        Assert.Equal("50%", vm.GeneralOpacityLabel);
+
+        vm.BackgroundAlpha = 80.0;
+        Assert.Equal("80%", vm.BackgroundAlphaLabel);
+
+        vm.TintIntensity = 10.0;
+        Assert.Equal("10%", vm.TintIntensityLabel);
+
+        vm.ResetToDefaults();
+        Assert.Equal(30.0, vm.GeneralOpacity);
+        Assert.Equal(28.0, vm.BackgroundAlpha);
+        Assert.Equal(15.0, vm.TintIntensity);
+    }
+
+    [Fact]
+    public void DialogDensityProperties_AdaptToTouchAndNormal()
+    {
+        var densityService = new FakeDensityService { Current = DensityPreference.Normal };
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            densityService,
+            hasTouchHardware: false,
+            new FakeVisualSettingsService(),
+            new FakeVisualCapabilityService());
+
+        Assert.False(vm.EffectiveIsTouch);
+        Assert.Equal(32.0, vm.DialogControlHeight);
+        Assert.Equal(14.0, vm.DialogSliderThumbSize);
+
+        vm.IsDensityTouch = true;
+        Assert.True(vm.EffectiveIsTouch);
+        Assert.Equal(44.0, vm.DialogControlHeight);
+        Assert.Equal(24.0, vm.DialogSliderThumbSize);
+    }
 }
+
