@@ -285,4 +285,19 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="Dialog_Ok" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="QuickAction_Cut" xml:space="preserve">
+    <value>Recortar</value>
+  </data>
+  <data name="QuickAction_Copy" xml:space="preserve">
+    <value>Copiar</value>
+  </data>
+  <data name="QuickAction_Rename" xml:space="preserve">
+    <value>Renomear</value>
+  </data>
+  <data name="QuickAction_Share" xml:space="preserve">
+    <value>Compartilhar</value>
+  </data>
+  <data name="QuickAction_Delete" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
 </root>

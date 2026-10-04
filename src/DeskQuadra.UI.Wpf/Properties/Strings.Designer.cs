@@ -205,5 +205,10 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string Dialog_RenameConflictTitle => ResourceManager.GetString("Dialog_RenameConflictTitle", resourceCulture);
         public static string Dialog_RenameConflictMessage => ResourceManager.GetString("Dialog_RenameConflictMessage", resourceCulture);
         public static string Dialog_Ok => ResourceManager.GetString("Dialog_Ok", resourceCulture);
+        public static string QuickAction_Cut => ResourceManager.GetString("QuickAction_Cut", resourceCulture);
+        public static string QuickAction_Copy => ResourceManager.GetString("QuickAction_Copy", resourceCulture);
+        public static string QuickAction_Rename => ResourceManager.GetString("QuickAction_Rename", resourceCulture);
+        public static string QuickAction_Share => ResourceManager.GetString("QuickAction_Share", resourceCulture);
+        public static string QuickAction_Delete => ResourceManager.GetString("QuickAction_Delete", resourceCulture);
     }
 }

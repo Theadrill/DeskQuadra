@@ -127,6 +127,9 @@ public partial class QuadraWindow : Window
     private CancellationTokenSource? _toolTipTransitionCts;
     private DesktopItemViewModel? _activeToolTipItem;
     private readonly IWindowVisualEffectService? _visualEffectService;
+    private readonly IClipboardService _clipboardService;
+    private readonly IShareService _shareService;
+    private DesktopItemViewModel? _contextMenuItem;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -136,7 +139,9 @@ public partial class QuadraWindow : Window
         IFileLauncherService launcherService,
         IFileDeletionService deletionService,
         IThirdPartyMenuService thirdPartyMenuService,
-        IWindowVisualEffectService? visualEffectService = null)
+        IWindowVisualEffectService? visualEffectService = null,
+        IClipboardService? clipboardService = null,
+        IShareService? shareService = null)
     {
         _viewModel = viewModel;
         DataContext = viewModel;
@@ -147,6 +152,8 @@ public partial class QuadraWindow : Window
         _deletionService = deletionService;
         _thirdPartyMenuService = thirdPartyMenuService;
         _visualEffectService = visualEffectService;
+        _clipboardService = clipboardService ?? new WindowsClipboardService();
+        _shareService = shareService ?? new WindowsShareService(_clipboardService);
 
         // Configura posicionamento manual estrito antes da inicialização visual
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -564,13 +571,18 @@ public partial class QuadraWindow : Window
 
     private ContextMenu? _activeOpenItemContextMenu;
 
-    private void OnGlobalCloseMenusRequested()
+    private void CloseActiveItemContextMenu()
     {
         if (_activeOpenItemContextMenu != null && _activeOpenItemContextMenu.IsOpen)
         {
             _activeOpenItemContextMenu.IsOpen = false;
             _activeOpenItemContextMenu = null;
         }
+    }
+
+    private void OnGlobalCloseMenusRequested()
+    {
+        CloseActiveItemContextMenu();
 
         if (TitleBarBorder?.ContextMenu != null && TitleBarBorder.ContextMenu.IsOpen)
         {
@@ -1617,6 +1629,7 @@ public partial class QuadraWindow : Window
             // (.lnk = o próprio link). Antes da densidade (§2).
             if (fe.DataContext is DesktopItemViewModel item)
             {
+                _contextMenuItem = item;
                 if (!item.IsSelected)
                 {
                     SelectionActivatedInQuadra?.Invoke(this);
@@ -1641,7 +1654,11 @@ public partial class QuadraWindow : Window
                 moveItem.Visibility = touchGesture ? Visibility.Visible : Visibility.Collapsed;
             }
             fe.ContextMenu.Opened += (s, ev) => _activeOpenItemContextMenu = (ContextMenu)s;
-            fe.ContextMenu.Closed += (s, ev) => { if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null; };
+            fe.ContextMenu.Closed += (s, ev) =>
+            {
+                if (_activeOpenItemContextMenu == s) _activeOpenItemContextMenu = null;
+                _contextMenuItem = null;
+            };
             _activeOpenItemContextMenu = fe.ContextMenu;
         }
     }
@@ -1650,6 +1667,11 @@ public partial class QuadraWindow : Window
     {
         var style = (Style)FindResource(isTouch ? "TouchMenuItemStyle" : "MouseMenuItemStyle");
         ApplyStyleRecursively(menu.Items, style);
+
+        menu.Resources["Menu.QuickAction.Button.Width"] = isTouch ? 60.0 : 50.0;
+        menu.Resources["Menu.QuickAction.Button.Height"] = isTouch ? 58.0 : 46.0;
+        menu.Resources["Menu.QuickAction.Icon.Size"] = isTouch ? 20.0 : 16.0;
+        menu.Resources["Menu.QuickAction.Text.Size"] = isTouch ? 11.5 : 10.5;
     }
 
     // Tag T3: marca os MenuItem inseridos pelo PopulateThirdPartySection (topo e
@@ -2087,6 +2109,97 @@ public partial class QuadraWindow : Window
         }
     }
 
+    private DesktopItemViewModel? ResolveTargetItem(object sender)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel vm)
+        {
+            return vm;
+        }
+
+        return _contextMenuItem;
+    }
+
+    private IReadOnlyList<string> GetSelectedOrTargetFilePaths(DesktopItemViewModel? fallbackItem)
+    {
+        var selected = _viewModel.Items.Where(i => i.IsSelected && !string.IsNullOrWhiteSpace(i.FilePath))
+                                       .Select(i => i.FilePath)
+                                       .ToList();
+        if (selected.Count > 0)
+        {
+            return selected;
+        }
+
+        if (fallbackItem != null && !string.IsNullOrWhiteSpace(fallbackItem.FilePath))
+        {
+            return new[] { fallbackItem.FilePath };
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private void QuickActionCut_Click(object sender, RoutedEventArgs e)
+    {
+        var item = ResolveTargetItem(sender);
+        CloseActiveItemContextMenu();
+        if (item == null) return;
+
+        var paths = GetSelectedOrTargetFilePaths(item);
+        if (paths.Count > 0)
+        {
+            _clipboardService.SetFileDropList(paths, isCut: true);
+        }
+    }
+
+    private void QuickActionCopy_Click(object sender, RoutedEventArgs e)
+    {
+        var item = ResolveTargetItem(sender);
+        CloseActiveItemContextMenu();
+        if (item == null) return;
+
+        var paths = GetSelectedOrTargetFilePaths(item);
+        if (paths.Count > 0)
+        {
+            _clipboardService.SetFileDropList(paths, isCut: false);
+        }
+    }
+
+    private void QuickActionRename_Click(object sender, RoutedEventArgs e)
+    {
+        var item = ResolveTargetItem(sender);
+        CloseActiveItemContextMenu();
+        if (item == null) return;
+
+        BeginItemRename(item);
+    }
+
+    private void QuickActionShare_Click(object sender, RoutedEventArgs e)
+    {
+        var item = ResolveTargetItem(sender);
+        CloseActiveItemContextMenu();
+        if (item == null || string.IsNullOrWhiteSpace(item.FilePath)) return;
+
+        IntPtr hwnd;
+        try
+        {
+            hwnd = new WindowInteropHelper(this).Handle;
+        }
+        catch
+        {
+            hwnd = IntPtr.Zero;
+        }
+
+        _shareService.ShareFile(hwnd, item.FilePath);
+    }
+
+    private void QuickActionDelete_Click(object sender, RoutedEventArgs e)
+    {
+        var item = ResolveTargetItem(sender);
+        CloseActiveItemContextMenu();
+        if (item == null) return;
+
+        HandleItemDelete(item);
+    }
+
     private void ItemMenuRename_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
@@ -2114,6 +2227,11 @@ public partial class QuadraWindow : Window
             return;
         }
 
+        HandleItemDelete(item);
+    }
+
+    private void HandleItemDelete(DesktopItemViewModel item)
+    {
         int choice = DarkDialog.ShowOptions(
             Strings.Dialog_DeleteItemTitle,
             string.Format(Strings.Dialog_DeleteItemMessageFormat, item.Name),

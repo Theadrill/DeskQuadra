@@ -396,9 +396,11 @@ public partial class App : System.Windows.Application
         var deletionService = _serviceProvider.GetRequiredService<IFileDeletionService>();
         var thirdPartyMenuService = _serviceProvider.GetRequiredService<IThirdPartyMenuService>();
         var visualEffectService = _serviceProvider.GetService<IWindowVisualEffectService>();
+        var clipboardService = _serviceProvider.GetService<IClipboardService>();
+        var shareService = _serviceProvider.GetService<IShareService>();
 
         var viewModel = new QuadraViewModel(quadra, iconExtractor);
-        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService, deletionService, thirdPartyMenuService, visualEffectService);
+        var window = new QuadraWindow(viewModel, anchorService, snapEngine, coordinator, launcherService, deletionService, thirdPartyMenuService, visualEffectService, clipboardService, shareService);
         window.Closed += (s, e) => _quadraWindows.Remove(quadra.Id);
         _quadraWindows[quadra.Id] = window;
         window.Show();

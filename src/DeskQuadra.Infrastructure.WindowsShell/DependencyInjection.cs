@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.AddSingleton<IThirdPartyMenuService, ThirdPartyMenuService>();
         services.AddSingleton<IWindowsVisualCapabilityService, WindowsVisualCapabilityService>();
         services.AddSingleton<IWindowVisualEffectService, WindowVisualEffectService>();
+        services.AddSingleton<IClipboardService, WindowsClipboardService>();
+        services.AddSingleton<IShareService, WindowsShareService>();
         return services;
     }
 }

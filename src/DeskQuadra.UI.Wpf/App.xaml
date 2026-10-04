@@ -158,7 +158,43 @@
                 </Setter.Value>
             </Setter>
         </Style>
- 
+
+        <!-- ===== Botões de Ação Rápida no topo do Menu de Contexto (Estilo Windows 11) ===== -->
+        <Style x:Key="QuickActionButtonStyle" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Menu.QuickAction.Foreground}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="2,4,2,3"/>
+            <Setter Property="MinHeight" Value="{DynamicResource Menu.QuickAction.Button.Height}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ActionBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ActionBorder" Property="Background" Value="{DynamicResource Menu.QuickAction.Hover.Background}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ActionBorder" Property="Background" Value="{DynamicResource Menu.QuickAction.Pressed.Background}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.38"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ===== ToolTip Moderno Fluent (visual escuro estilo Menu) ===== -->
         <Style x:Key="ModernToolTipStyle" TargetType="ToolTip">
             <Setter Property="Background" Value="{DynamicResource Menu.Background}"/>
