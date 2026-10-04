@@ -93,29 +93,35 @@ public static class FileDuplicator
     {
         try
         {
-            if (File.Exists(path))
+            string cleanPath = path?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(cleanPath))
             {
-                string dir = Path.GetDirectoryName(path) ?? string.Empty;
-                string nameWithoutExt = Path.GetFileNameWithoutExtension(path);
-                string ext = Path.GetExtension(path);
+                return path ?? string.Empty;
+            }
+
+            if (File.Exists(cleanPath))
+            {
+                string dir = Path.GetDirectoryName(cleanPath) ?? string.Empty;
+                string nameWithoutExt = Path.GetFileNameWithoutExtension(cleanPath);
+                string ext = Path.GetExtension(cleanPath);
                 string BuildFileName(int i) => i == 1
                     ? $"{nameWithoutExt}{copySuffix}{ext}"
                     : $"{nameWithoutExt}{string.Format(copySuffixIndexedFormat, i)}{ext}";
 
                 Action<string, string> doCopyFile = copyFile ?? ((s, d) => File.Copy(s, d));
-                return DuplicateCore(path, dir, BuildFileName, File.Exists, doCopyFile, userDesktopDir);
+                return DuplicateCore(cleanPath, dir, BuildFileName, File.Exists, doCopyFile, userDesktopDir);
             }
 
-            if (Directory.Exists(path))
+            if (Directory.Exists(cleanPath))
             {
-                string parent = Directory.GetParent(path)?.FullName ?? string.Empty;
-                string dirName = Path.GetFileName(path);
+                string parent = Directory.GetParent(cleanPath)?.FullName ?? string.Empty;
+                string dirName = Path.GetFileName(cleanPath);
                 string BuildDirName(int i) => i == 1
                     ? $"{dirName}{copySuffix}"
                     : $"{dirName}{string.Format(copySuffixIndexedFormat, i)}";
 
                 Action<string, string> doCopyDir = copyDirectory ?? CopyDirectoryRecursively;
-                return DuplicateCore(path, parent, BuildDirName, Directory.Exists, doCopyDir, userDesktopDir);
+                return DuplicateCore(cleanPath, parent, BuildDirName, Directory.Exists, doCopyDir, userDesktopDir);
             }
         }
         catch
@@ -123,7 +129,7 @@ public static class FileDuplicator
             // Em caso de falha de I/O, usa o item original sem interromper a interface
         }
 
-        return path;
+        return path ?? string.Empty;
     }
 
     public static void CopyDirectoryRecursively(string sourceDir, string targetDir)
@@ -132,7 +138,7 @@ public static class FileDuplicator
 
         foreach (string file in Directory.GetFiles(sourceDir))
         {
-            File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
+            File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)), overwrite: true);
         }
 
         foreach (string dir in Directory.GetDirectories(sourceDir))

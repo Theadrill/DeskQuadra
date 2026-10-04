@@ -172,6 +172,21 @@ public sealed class FileDuplicatorTests : IDisposable
     }
 
     [Fact]
+    public void Duplicate_Directory_WithTrailingSlash_CopiesRecursively()
+    {
+        string parent = NewDir("parent_slash");
+        string source = Path.Combine(parent, "Pasta") + Path.DirectorySeparatorChar;
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "a.txt"), "a");
+        string desktop = NewDir("desk5_slash");
+
+        string duplicated = FileDuplicator.Duplicate(source, Suffix, IndexedFormat, desktop);
+
+        Assert.Equal(Path.Combine(parent, "Pasta - Cópia"), duplicated);
+        Assert.Equal("a", File.ReadAllText(Path.Combine(duplicated, "a.txt")));
+    }
+
+    [Fact]
     public void Duplicate_Directory_FallsBackToDesktopWhenPrimaryCopyFails()
     {
         string parent = NewDir("parent6");

@@ -2213,6 +2213,11 @@ public partial class QuadraWindow : Window
             TitleBarBorder.ContextMenu.IsOpen = false;
         }
 
+        ExecutePaste();
+    }
+
+    private void ExecutePaste()
+    {
         if (!_clipboardService.ContainsFileDropList())
         {
             return;
@@ -2234,7 +2239,10 @@ public partial class QuadraWindow : Window
                 if (window != this)
                 {
                     var itemsToRemove = window._viewModel.Items
-                        .Where(i => files.Any(f => string.Equals(f, i.FilePath, StringComparison.OrdinalIgnoreCase)))
+                        .Where(i => files.Any(f => string.Equals(
+                            f.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                            i.FilePath?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                            StringComparison.OrdinalIgnoreCase)))
                         .ToList();
 
                     foreach (var itemToRemove in itemsToRemove)
@@ -2250,15 +2258,22 @@ public partial class QuadraWindow : Window
             }
         }
 
-        // Adiciona à Quadra atual
+        // Adiciona à Quadra atual (se for cópia, duplica fisicamente no disco para manter itens independentes)
         bool addedAny = false;
         foreach (var file in files)
         {
-            if (File.Exists(file) || Directory.Exists(file))
+            string cleanFile = file.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (File.Exists(cleanFile) || Directory.Exists(cleanFile))
             {
-                if (!_viewModel.Items.Any(i => string.Equals(i.FilePath, file, StringComparison.OrdinalIgnoreCase)))
+                string targetPath = !isCut ? DuplicateWithStandardSuffix(cleanFile) : cleanFile;
+
+                if (!string.IsNullOrWhiteSpace(targetPath) &&
+                    !_viewModel.Items.Any(i => string.Equals(
+                        i.FilePath?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                        targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                        StringComparison.OrdinalIgnoreCase)))
                 {
-                    _viewModel.AddItem(file);
+                    _viewModel.AddItem(targetPath);
                     addedAny = true;
                 }
             }
@@ -2267,6 +2282,7 @@ public partial class QuadraWindow : Window
         if (isCut)
         {
             _clipboardService.Clear();
+            QuickActionPasteButton.IsEnabled = false;
         }
 
         if (addedAny || isCut)
@@ -3485,6 +3501,39 @@ public partial class QuadraWindow : Window
                 item.IsSelected = true;
             }
             _selectionAnchor = _viewModel.Items.FirstOrDefault();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.C && IsControlPressed() && !_isRenaming && !_viewModel.Items.Any(i => i.IsRenaming))
+        {
+            var selected = _viewModel.Items.Where(i => i.IsSelected && !string.IsNullOrWhiteSpace(i.FilePath))
+                                           .Select(i => i.FilePath)
+                                           .ToList();
+            if (selected.Count > 0)
+            {
+                _clipboardService.SetFileDropList(selected, isCut: false);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if (e.Key == Key.X && IsControlPressed() && !_isRenaming && !_viewModel.Items.Any(i => i.IsRenaming))
+        {
+            var selected = _viewModel.Items.Where(i => i.IsSelected && !string.IsNullOrWhiteSpace(i.FilePath))
+                                           .Select(i => i.FilePath)
+                                           .ToList();
+            if (selected.Count > 0)
+            {
+                _clipboardService.SetFileDropList(selected, isCut: true);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if (e.Key == Key.V && IsControlPressed() && !_isRenaming && !_viewModel.Items.Any(i => i.IsRenaming))
+        {
+            ExecutePaste();
             e.Handled = true;
             return;
         }
