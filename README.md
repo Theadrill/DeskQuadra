@@ -2,6 +2,24 @@
 
 O DeskQuadra redefine a experiência da área de trabalho do Windows, transformando um ambiente antes disperso em um espaço visualmente estruturado, intencional e harmonioso através de áreas dedicadas para organizar e harmonizar seus atalhos.
 
+## Requisitos do Sistema e Compatibilidade
+
+### Requisitos Mínimos
+* **Sistema Operacional:** Windows 10 versão 1607 (Build 14393 - Anniversary Update) ou superior (x64 / ARM64).
+  * *Nota de arquitetura:* Versões anteriores (como Windows 7, 8.1 ou Windows 10 1507) não são compatíveis devido aos requisitos formais de runtime do **.NET 8** e APIs Win32 de DPI Per-Monitor v2.
+* **Ambiente de Execução:** .NET 8 Desktop Runtime (incluso no executável empacotado).
+* **Hardware Gráfico:** Placa de vídeo com suporte a DirectX/DWM (aceleração de composição de janelas).
+
+### Tiers Visuais e Degradação Graciosa (Graceful Fallback)
+
+O DeskQuadra detecta as capacidades gráficas e a versão do sistema operacional em tempo de execução:
+
+| Cenário / Versão | Técnica Visual | Comportamento na Interface |
+| :--- | :--- | :--- |
+| **Windows 10 1803+ (Build 17134+) e Windows 11** | **Acrílico Moderno** e **Blur Clássico** | Ambas as técnicas ficam totalmente habilitadas para escolha do usuário nas Configurações. |
+| **Windows 10 1607 a 17133 (Build 14393 a 17133)** | **Blur Clássico (Windows 10)** | O "Blur Clássico" fica ativo; a opção "Acrílico" permanece desabilitada com indicação de versão. |
+| **Sem GPU / Sem Aceleração / Erro no DWM / Desativado** | **Tema Sólido de Alta Legibilidade** | Os seletores de transparência são ocultados ou desativados; o app aplica o tema escuro sólido (`#EB1C1C22`), preservando 100% do contraste e funcionalidade. |
+
 ## TODO / Roadmap (pós-1.0 — nada bloqueia o release)
 
 - [ ] **MOVER touch — abas multi-monitor:** BLOQUEADO (PO sem segundo monitor para validar; overview traz tudo para a tela do gesto até lá).
