@@ -11,7 +11,6 @@
         Title="{Binding Title}"
         Icon="/Assets/DeskQuadra.ico"
         WindowStyle="None"
-        AllowsTransparency="True"
         Background="Transparent"
         ShowInTaskbar="False"
         ResizeMode="NoResize"

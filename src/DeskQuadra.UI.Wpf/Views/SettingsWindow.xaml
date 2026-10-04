@@ -64,6 +64,13 @@
                   Margin="{DynamicResource Dialog.Message.Margin}"
                   VerticalContentAlignment="Center"
                   Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
+        <TextBlock Text="{Binding VisualEffectsDetail}"
+                   Foreground="{DynamicResource Dialog.Foreground}"
+                   Opacity="0.65"
+                   FontSize="10.5"
+                   Margin="24,-10,0,12"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
         <TextBlock Text="{x:Static properties:Strings.SettingsAppearanceTitle}"
                    Foreground="{DynamicResource Dialog.Foreground}"
                    FontSize="{DynamicResource Dialog.Message.FontSize}"

@@ -18,6 +18,12 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
     // Cor de tint suave para transparência translúcida (ARGB: A=0x01 para permitir desfoque sem pintar camada opaca escura)
     public const uint DefaultAcrylicColor = 0x01141418;
 
+    public string LastQuadraEffectApplied { get; private set; } = "Não inicializado";
+    public string LastMenuEffectApplied { get; private set; } = "Não inicializado";
+
+    public bool IsModernBackdropSupported =>
+        _capabilityService.SupportedTier == WindowsVisualTier.ModernBackdrop;
+
     public WindowVisualEffectService(
         IWindowsVisualCapabilityService capabilityService,
         IVisualSettingsService settingsService)
@@ -28,6 +34,11 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
 
     public bool ApplyBlur(IntPtr windowHandle, uint accentColor = 0)
     {
+        return ApplyBlur(windowHandle, VisualEffectTarget.QuadraWindow, accentColor);
+    }
+
+    public bool ApplyBlur(IntPtr windowHandle, VisualEffectTarget target, uint accentColor = 0)
+    {
         if (windowHandle == IntPtr.Zero)
         {
             return false;
@@ -37,6 +48,10 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
         if (!_settingsService.EnableWindows11VisualEffects || !_capabilityService.IsBlurSupported)
         {
             RemoveBlur(windowHandle);
+            string disabledMsg = "Desativado (Tema Sólido Clássico)";
+            if (target == VisualEffectTarget.QuadraWindow) LastQuadraEffectApplied = disabledMsg;
+            else LastMenuEffectApplied = disabledMsg;
+            System.Diagnostics.Debug.WriteLine($"[VisualEffect] {target}: {disabledMsg}");
             return false;
         }
 
@@ -55,21 +70,36 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
 
             bool isLayered = IsLayeredWindow(windowHandle);
 
-            // 1. Janelas não-camadas (ex: janelas padrão de diálogo) no Windows 11 Build 22621+ usam DWM Backdrop oficial
+            // 1. Janelas não-camadas (Quadra sem WS_EX_LAYERED ou diálogos) no Windows 11 Build 22621+ usam DWM Backdrop oficial
             if (!isLayered && _capabilityService.SupportedTier == WindowsVisualTier.ModernBackdrop)
             {
                 if (ApplyModernBackdrop(windowHandle))
                 {
+                    string modernMsg = $"Windows 11 DWM Backdrop Oficial (Acrylic / Build {_capabilityService.WindowsBuildNumber})";
+                    if (target == VisualEffectTarget.QuadraWindow) LastQuadraEffectApplied = modernMsg;
+                    else LastMenuEffectApplied = modernMsg;
+                    System.Diagnostics.Debug.WriteLine($"[VisualEffect] {target}: {modernMsg}");
                     return true;
                 }
             }
 
-            // 2. Janelas com transparência/camada (ex: QuadraWindow, Popups/Menus com AllowsTransparency):
+            // 2. Janelas com transparência/camada (ex: QuadraWindow no Windows 10, Popups/Menus com AllowsTransparency):
             // usam AccentPolicy com alfa calibrado para permitir o desfoque translúcido sem camada opaca.
-            return ApplyClassicAccentPolicy(windowHandle, accentColor);
+            bool result = ApplyClassicAccentPolicy(windowHandle, accentColor);
+            if (result)
+            {
+                string classicMsg = target == VisualEffectTarget.QuadraWindow
+                    ? $"Windows 10 / Classic AccentPolicy (ACCENT_ENABLE_BLURBEHIND / Build {_capabilityService.WindowsBuildNumber})"
+                    : $"AccentPolicy Clássico Calibrado (Popups WPF / Build {_capabilityService.WindowsBuildNumber})";
+                if (target == VisualEffectTarget.QuadraWindow) LastQuadraEffectApplied = classicMsg;
+                else LastMenuEffectApplied = classicMsg;
+                System.Diagnostics.Debug.WriteLine($"[VisualEffect] {target}: {classicMsg}");
+            }
+            return result;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[VisualEffect] Erro ao aplicar blur em {target}: {ex.Message}");
             return false;
         }
     }
@@ -136,6 +166,17 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
     {
         try
         {
+            // Garante que a superfície de composição do WPF não pinte um fundo preto/branco opaco
+            try
+            {
+                var source = System.Windows.Interop.HwndSource.FromHwnd(windowHandle);
+                if (source?.CompositionTarget != null)
+                {
+                    source.CompositionTarget.BackgroundColor = System.Windows.Media.Colors.Transparent;
+                }
+            }
+            catch { }
+
             // 1. Ativa Dark Mode imersivo no frame
             int darkMode = 1;
             NativeMethods.DwmSetWindowAttribute(

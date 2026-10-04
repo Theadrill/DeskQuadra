@@ -133,7 +133,7 @@ public partial class App : System.Windows.Application
                             var hwndSource = (HwndSource?)PresentationSource.FromVisual(menu);
                             if (hwndSource != null)
                             {
-                                visualEffect.ApplyBlur(hwndSource.Handle);
+                                visualEffect.ApplyBlur(hwndSource.Handle, VisualEffectTarget.ContextMenu);
                             }
                         }), System.Windows.Threading.DispatcherPriority.Loaded);
                     }
@@ -153,7 +153,7 @@ public partial class App : System.Windows.Application
                                 var hwndSource = (HwndSource?)PresentationSource.FromVisual(popup.Child);
                                 if (hwndSource != null)
                                 {
-                                    visualEffect.ApplyBlur(hwndSource.Handle);
+                                    visualEffect.ApplyBlur(hwndSource.Handle, VisualEffectTarget.Submenu);
                                 }
                             }
                         }), System.Windows.Threading.DispatcherPriority.Loaded);
@@ -647,7 +647,8 @@ public partial class App : System.Windows.Application
                 densityService,
                 hasHardware,
                 visualSettings,
-                visualCapability),
+                visualCapability,
+                visualEffectService),
             visualEffectService);
         _settingsWindow.Closed += (s, e) => _settingsWindow = null;
         _settingsWindow.Show();

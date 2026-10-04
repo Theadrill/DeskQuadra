@@ -15,6 +15,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly IDensitySettingsService _densitySettings;
     private readonly IVisualSettingsService? _visualSettings;
     private readonly IWindowsVisualCapabilityService? _visualCapability;
+    private readonly IWindowVisualEffectService? _visualEffectService;
     private readonly bool _hasTouchHardware;
     private bool _startWithWindows;
     private bool _enableWindows11VisualEffects;
@@ -42,7 +43,30 @@ public sealed class SettingsViewModel : ViewModelBase
             if (SetProperty(ref _enableWindows11VisualEffects, value))
             {
                 _visualSettings?.SetEnableWindows11VisualEffects(value);
+                OnPropertyChanged(nameof(VisualEffectsDetail));
             }
+        }
+    }
+
+    public string VisualEffectsDetail
+    {
+        get
+        {
+            if (!IsVisualEffectsSupported)
+            {
+                return "Não suportado pelo hardware ou SO (Básico)";
+            }
+
+            if (!EnableWindows11VisualEffects)
+            {
+                return "Desativado (Modo Clássico Sólido - sem desfoque)";
+            }
+
+            string quadraTech = _visualEffectService?.LastQuadraEffectApplied ?? "Pendente";
+            string menuTech = _visualEffectService?.LastMenuEffectApplied ?? "Pendente";
+            int build = _visualCapability?.WindowsBuildNumber ?? 0;
+
+            return $"• Quadras: {quadraTech}\n• Menus: {menuTech}\n• Versão do SO: Windows Build {build}";
         }
     }
 
@@ -87,12 +111,14 @@ public sealed class SettingsViewModel : ViewModelBase
         IDensitySettingsService densitySettings,
         bool hasTouchHardware,
         IVisualSettingsService? visualSettings = null,
-        IWindowsVisualCapabilityService? visualCapability = null)
+        IWindowsVisualCapabilityService? visualCapability = null,
+        IWindowVisualEffectService? visualEffectService = null)
     {
         _startupService = startupService;
         _densitySettings = densitySettings;
         _visualSettings = visualSettings;
         _visualCapability = visualCapability;
+        _visualEffectService = visualEffectService;
         _hasTouchHardware = hasTouchHardware;
         _startWithWindows = startupService.IsEnabled();
         _densityPreference = densitySettings.Current;

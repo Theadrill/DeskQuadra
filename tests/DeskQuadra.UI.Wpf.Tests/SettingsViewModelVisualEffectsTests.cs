@@ -88,4 +88,55 @@ public class SettingsViewModelVisualEffectsTests
         Assert.False(vm.EnableWindows11VisualEffects);
         Assert.False(fakeVisual.EnableWindows11VisualEffects);
     }
+
+    private sealed class FakeVisualEffectService : IWindowVisualEffectService
+    {
+        public string LastQuadraEffectApplied { get; set; } = "Windows 11 DWM Backdrop Oficial (Acrylic / Build 22631)";
+        public string LastMenuEffectApplied { get; set; } = "AccentPolicy Clássico Calibrado (Popups WPF / Build 22631)";
+        public bool IsModernBackdropSupported { get; set; } = true;
+
+        public bool ApplyBlur(IntPtr windowHandle, uint accentColor = 0) => true;
+        public bool ApplyBlur(IntPtr windowHandle, VisualEffectTarget target, uint accentColor = 0) => true;
+        public bool RemoveBlur(IntPtr windowHandle) => true;
+    }
+
+    [Fact]
+    public void VisualEffectsDetail_ShowsAppliedTechniques_WhenEnabled()
+    {
+        var fakeVisual = new FakeVisualSettingsService { EnableWindows11VisualEffects = true };
+        var fakeEffect = new FakeVisualEffectService();
+        var fakeCap = new FakeVisualCapabilityService { WindowsBuildNumber = 22631 };
+
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            fakeVisual,
+            fakeCap,
+            fakeEffect);
+
+        string detail = vm.VisualEffectsDetail;
+        Assert.Contains("Quadras: Windows 11 DWM Backdrop", detail);
+        Assert.Contains("Menus: AccentPolicy Clássico Calibrado", detail);
+        Assert.Contains("Build 22631", detail);
+    }
+
+    [Fact]
+    public void VisualEffectsDetail_ShowsDisabled_WhenSettingIsFalse()
+    {
+        var fakeVisual = new FakeVisualSettingsService { EnableWindows11VisualEffects = false };
+        var fakeEffect = new FakeVisualEffectService();
+        var fakeCap = new FakeVisualCapabilityService { WindowsBuildNumber = 22631 };
+
+        var vm = new SettingsViewModel(
+            new FakeStartupService(),
+            new FakeDensityService(),
+            hasTouchHardware: false,
+            fakeVisual,
+            fakeCap,
+            fakeEffect);
+
+        string detail = vm.VisualEffectsDetail;
+        Assert.Contains("Desativado", detail);
+    }
 }
