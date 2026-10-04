@@ -68,6 +68,7 @@
     <SolidColorBrush x:Key="Quadra.Item.Foreground" Color="#F5F5F5"/>
     <sys:Double x:Key="Quadra.Item.FontSize">11</sys:Double>
     <sys:Double x:Key="Quadra.Item.LineHeight">14</sys:Double>
+    <sys:Double x:Key="Quadra.Item.Title.MaxHeight">28</sys:Double>
     <CornerRadius x:Key="Quadra.Item.CornerRadius">6</CornerRadius>
     <Thickness x:Key="Quadra.Item.Padding">4,4,4,2</Thickness>
     <Thickness x:Key="Quadra.Item.Margin">2</Thickness>

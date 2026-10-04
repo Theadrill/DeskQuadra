@@ -320,8 +320,9 @@
                                                        TextAlignment="Center"
                                                        TextWrapping="Wrap"
                                                        TextTrimming="CharacterEllipsis"
-                                                       MaxHeight="34"
-                                                       Margin="0,3,0,0">
+                                                       VerticalAlignment="Top"
+                                                       MaxHeight="{DynamicResource Quadra.Item.Title.MaxHeight}"
+                                                       Margin="0,2,0,0">
                                                 <TextBlock.Effect>
                                                     <DropShadowEffect BlurRadius="{DynamicResource Quadra.Item.Shadow.BlurRadius}"
                                                                       ShadowDepth="{DynamicResource Quadra.Item.Shadow.Depth}"
