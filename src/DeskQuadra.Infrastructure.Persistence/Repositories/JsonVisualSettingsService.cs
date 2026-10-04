@@ -1,71 +1,68 @@
 using System.Text.Json;
 using DeskQuadra.Core.Contracts;
-using DeskQuadra.Core.Models;
 
 namespace DeskQuadra.Infrastructure.Persistence.Repositories;
 
 /// <summary>
-/// Persistência dedicada da preferência de densidade em %APPDATA%\DeskQuadra\settings.json.
-/// Separado de quadras.json (só layout) para não quebrar migração: arquivo ausente/corrompido =&gt; Auto.
+/// Persistência da preferência de efeitos visuais Windows 11 em %APPDATA%\DeskQuadra\settings.json.
+/// Compartilha o arquivo settings.json de forma resiliente com as demais preferências.
 /// </summary>
-public sealed class JsonDensitySettingsService : IDensitySettingsService
+public sealed class JsonVisualSettingsService : IVisualSettingsService
 {
     private readonly string _settingsFilePath;
     private readonly object _gate = new();
-    private DensityPreference _current = DensityPreference.Auto;
+    private bool _enableWindows11VisualEffects = true;
 
-    public event EventHandler<DensityPreference>? PreferenceChanged;
+    public event EventHandler<bool>? VisualEffectsChanged;
 
-    public JsonDensitySettingsService(string? customStorageDirectory = null)
+    public JsonVisualSettingsService(string? customStorageDirectory = null)
     {
         string dir = JsonStorageDefaults.GetAppDataDirectory(customStorageDirectory);
         _settingsFilePath = Path.Combine(dir, "settings.json");
-        _current = LoadBestEffort();
+        _enableWindows11VisualEffects = LoadBestEffort();
     }
 
-    public DensityPreference Current
+    public bool EnableWindows11VisualEffects
     {
-        get { lock (_gate) { return _current; } }
+        get { lock (_gate) { return _enableWindows11VisualEffects; } }
     }
 
-    public void Set(DensityPreference preference)
+    public void SetEnableWindows11VisualEffects(bool enabled)
     {
         bool changed;
         lock (_gate)
         {
-            changed = _current != preference;
-            _current = preference;
+            changed = _enableWindows11VisualEffects != enabled;
+            _enableWindows11VisualEffects = enabled;
         }
 
-        SaveBestEffort(preference);
+        SaveBestEffort(enabled);
         if (changed)
         {
-            PreferenceChanged?.Invoke(this, preference);
+            VisualEffectsChanged?.Invoke(this, enabled);
         }
     }
 
-    private DensityPreference LoadBestEffort()
+    private bool LoadBestEffort()
     {
         try
         {
             if (!File.Exists(_settingsFilePath))
             {
-                return DensityPreference.Auto;
+                return true;
             }
 
             string json = File.ReadAllText(_settingsFilePath);
-            var dto = JsonSerializer.Deserialize<SettingsDto>(json, JsonStorageDefaults.SerializerOptions);
-            return dto is not null && Enum.IsDefined(typeof(DensityPreference), dto.DensityPreference)
-                ? dto.DensityPreference
-                : DensityPreference.Auto;
+            var dto = JsonSerializer.Deserialize<VisualSettingsDto>(json, JsonStorageDefaults.SerializerOptions);
+            return dto?.EnableWindows11VisualEffects ?? true;
         }
         catch
         {
-            return DensityPreference.Auto;
+            return true;
         }
     }
 
-    private void SaveBestEffort(DensityPreference preference)
+    private void SaveBestEffort(bool enabled)
     {
         try
         {
@@ -75,11 +72,12 @@ public sealed class JsonDensitySettingsService : IDensitySettingsService
                 Directory.CreateDirectory(dir);
             }
 
+            // Lê o DTO existente para preservar outros campos (ex: DensityPreference)
             var node = File.Exists(_settingsFilePath)
                 ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(_settingsFilePath))
                 : new Dictionary<string, JsonElement>();
 
-            var dict = new Dictionary<string, object>();
+            var dict = node != null ? new Dictionary<string, object>() : new Dictionary<string, object>();
             if (node != null)
             {
                 foreach (var kvp in node)
@@ -88,7 +86,7 @@ public sealed class JsonDensitySettingsService : IDensitySettingsService
                 }
             }
 
-            dict["DensityPreference"] = preference;
+            dict["EnableWindows11VisualEffects"] = enabled;
 
             string json = JsonSerializer.Serialize(dict, JsonStorageDefaults.SerializerOptions);
             string tmp = _settingsFilePath + ".tmp";
@@ -97,13 +95,12 @@ public sealed class JsonDensitySettingsService : IDensitySettingsService
         }
         catch
         {
-            // Best-effort: preferência segue em memória; próxima abertura relê Auto.
+            // Best-effort: se falhar escrita, estado permanece em memória
         }
     }
 
-    private sealed class SettingsDto
+    private sealed class VisualSettingsDto
     {
-        public DensityPreference DensityPreference { get; set; } = DensityPreference.Auto;
+        public bool? EnableWindows11VisualEffects { get; set; }
     }
 }
-

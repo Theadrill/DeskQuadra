@@ -48,6 +48,7 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
     </Window.Resources>
     <StackPanel Margin="{DynamicResource Dialog.Panel.Margin}">
         <CheckBox IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
@@ -56,6 +57,13 @@
                   FontSize="{DynamicResource Dialog.Message.FontSize}"
                   Margin="{DynamicResource Dialog.Message.Margin}"
                   VerticalContentAlignment="Center"/>
+        <CheckBox IsChecked="{Binding EnableWindows11VisualEffects, Mode=TwoWay}"
+                  Content="{x:Static properties:Strings.SettingsVisualEffectsWindows11}"
+                  Foreground="{DynamicResource Dialog.Foreground}"
+                  FontSize="{DynamicResource Dialog.Message.FontSize}"
+                  Margin="{DynamicResource Dialog.Message.Margin}"
+                  VerticalContentAlignment="Center"
+                  Visibility="{Binding IsVisualEffectsSupported, Converter={StaticResource BoolToVisConverter}}"/>
         <TextBlock Text="{x:Static properties:Strings.SettingsAppearanceTitle}"
                    Foreground="{DynamicResource Dialog.Foreground}"
                    FontSize="{DynamicResource Dialog.Message.FontSize}"
@@ -80,3 +88,4 @@
         </UniformGrid>
     </StackPanel>
 </Window>
+

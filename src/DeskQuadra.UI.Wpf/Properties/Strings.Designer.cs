@@ -183,6 +183,7 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string SettingsDensityNormal => ResourceManager.GetString("SettingsDensityNormal", resourceCulture);
 
         public static string SettingsDensityTouch => ResourceManager.GetString("SettingsDensityTouch", resourceCulture);
+        public static string SettingsVisualEffectsWindows11 => ResourceManager.GetString("SettingsVisualEffectsWindows11", resourceCulture);
 
         public static string Dialog_RecoveryTitle => ResourceManager.GetString("Dialog_RecoveryTitle", resourceCulture);
 

@@ -452,9 +452,25 @@ internal static class NativeMethods
     // SM_DIGITIZER=94 (NID_INTEGRATED/EXTERNAL_TOUCH), SM_MAXIMUMTOUCHES=95.
     public const int SM_DIGITIZER = 94;
     public const int SM_MAXIMUMTOUCHES = 95;
+    public const int SM_REMOTESESSION = 0x1000;
 
     [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int nIndex);
+
+    /// <summary>
+    /// Verifica se a sessão atual está rodando sob Terminal Services / RDP.
+    /// </summary>
+    public static bool IsRemoteSession()
+    {
+        try
+        {
+            return GetSystemMetrics(SM_REMOTESESSION) != 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     /// <summary>
     /// Leitura sob demanda do hardware touch. Best-effort: falha =&gt; false (Normal).
@@ -664,4 +680,9 @@ internal static class NativeMethods
             return null;
         }
     }
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DwmIsCompositionEnabled([MarshalAs(UnmanagedType.Bool)] out bool pfEnabled);
 }
+

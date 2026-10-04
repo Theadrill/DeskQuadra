@@ -240,6 +240,9 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="SettingsDensityTouch" xml:space="preserve">
     <value>Touch</value>
   </data>
+  <data name="SettingsVisualEffectsWindows11" xml:space="preserve">
+    <value>Efeitos visuais e transparência do Windows 11</value>
+  </data>
   <data name="Dialog_RecoveryTitle" xml:space="preserve">
     <value>Restaurar layout mais recente?</value>
   </data>

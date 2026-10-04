@@ -13,8 +13,11 @@ public sealed class SettingsViewModel : ViewModelBase
 {
     private readonly IStartupService _startupService;
     private readonly IDensitySettingsService _densitySettings;
+    private readonly IVisualSettingsService? _visualSettings;
+    private readonly IWindowsVisualCapabilityService? _visualCapability;
     private readonly bool _hasTouchHardware;
     private bool _startWithWindows;
+    private bool _enableWindows11VisualEffects;
     private DensityPreference _densityPreference;
 
     public bool StartWithWindows
@@ -25,6 +28,20 @@ public sealed class SettingsViewModel : ViewModelBase
             if (SetProperty(ref _startWithWindows, value))
             {
                 _startupService.SetEnabled(value);
+            }
+        }
+    }
+
+    public bool IsVisualEffectsSupported => _visualCapability?.IsBlurSupported ?? false;
+
+    public bool EnableWindows11VisualEffects
+    {
+        get => _enableWindows11VisualEffects;
+        set
+        {
+            if (SetProperty(ref _enableWindows11VisualEffects, value))
+            {
+                _visualSettings?.SetEnableWindows11VisualEffects(value);
             }
         }
     }
@@ -65,12 +82,21 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public bool EffectiveIsTouch => DensityResolver.ResolveIsTouch(_densityPreference, _hasTouchHardware);
 
-    public SettingsViewModel(IStartupService startupService, IDensitySettingsService densitySettings, bool hasTouchHardware)
+    public SettingsViewModel(
+        IStartupService startupService,
+        IDensitySettingsService densitySettings,
+        bool hasTouchHardware,
+        IVisualSettingsService? visualSettings = null,
+        IWindowsVisualCapabilityService? visualCapability = null)
     {
         _startupService = startupService;
         _densitySettings = densitySettings;
+        _visualSettings = visualSettings;
+        _visualCapability = visualCapability;
         _hasTouchHardware = hasTouchHardware;
         _startWithWindows = startupService.IsEnabled();
         _densityPreference = densitySettings.Current;
+        _enableWindows11VisualEffects = visualSettings?.EnableWindows11VisualEffects ?? true;
     }
 }
+

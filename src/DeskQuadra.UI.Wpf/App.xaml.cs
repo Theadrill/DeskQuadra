@@ -576,6 +576,8 @@ public partial class App : System.Windows.Application
 
         var startupService = _serviceProvider?.GetService<IStartupService>();
         var densityService = _serviceProvider?.GetService<IDensitySettingsService>();
+        var visualSettings = _serviceProvider?.GetService<IVisualSettingsService>();
+        var visualCapability = _serviceProvider?.GetService<IWindowsVisualCapabilityService>();
         if (startupService == null || densityService == null)
         {
             return;
@@ -584,7 +586,12 @@ public partial class App : System.Windows.Application
         EnsureDensityWiring(densityService);
         // Leitura sob demanda + na abertura da janela (sem timer/hook novo).
         bool hasHardware = NativeMethods.IsTouchHardwarePresent();
-        _settingsWindow = new SettingsWindow(new SettingsViewModel(startupService, densityService, hasHardware));
+        _settingsWindow = new SettingsWindow(new SettingsViewModel(
+            startupService,
+            densityService,
+            hasHardware,
+            visualSettings,
+            visualCapability));
         _settingsWindow.Closed += (s, e) => _settingsWindow = null;
         _settingsWindow.Show();
     }

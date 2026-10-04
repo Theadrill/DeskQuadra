@@ -38,11 +38,11 @@
 ## 2. Checklist Geral de Execução
 
 - [ ] **Fase 1: Infraestrutura de Detecção, Fallback e Opção nas Configurações**
-  - [ ] 1.1 Criar modelo e contrato de detecção (`IWindowsVisualCapabilityService`, `WindowsVisualTier`).
-  - [ ] 1.2 Implementar leitura resiliente de build do SO e verificação de aceleração gráfica (`RenderCapability.Tier`, DWM composition).
-  - [ ] 1.3 Adicionar preferência visual no Core/Settings (`VisualThemePreference` ou `EnableWindows11Blur`) com persistência em `settings.json`.
-  - [ ] 1.4 Adicionar toggle na janela de Configurações (`SettingsWindow.xaml` / `SettingsViewModel.cs`) com visibilidade condicional.
-  - [ ] 1.5 Criar testes unitários para a detecção de build, capability, fallback e persistência.
+  - [x] 1.1 Criar modelo e contrato de detecção (`IWindowsVisualCapabilityService`, `WindowsVisualTier`).
+  - [x] 1.2 Implementar leitura resiliente de build do SO e verificação de aceleração gráfica (`RenderCapability.Tier`, DWM composition).
+  - [x] 1.3 Adicionar preferência visual no Core/Settings (`IVisualSettingsService`) com persistência em `settings.json`.
+  - [x] 1.4 Adicionar toggle na janela de Configurações (`SettingsWindow.xaml` / `SettingsViewModel.cs`) com visibilidade condicional.
+  - [x] 1.5 Criar testes unitários para a detecção de build, capability, fallback e persistência (16 novos testes, total de 542 testes passando).
   - [ ] 1.6 **Checkpoint PO:** Executar, testar a exibição da opção em Configurações e realizar commit local.
 
 - [ ] **Fase 2: Motor Visual Clássico (Acrílico / Blur via Compositor Win32)**
