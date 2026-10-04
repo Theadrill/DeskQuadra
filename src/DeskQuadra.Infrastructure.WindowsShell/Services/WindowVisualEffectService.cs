@@ -15,8 +15,8 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
     private readonly IWindowsVisualCapabilityService _capabilityService;
     private readonly IVisualSettingsService _settingsService;
 
-    // Cor de tint suave para transparência translúcida (ARGB: A=0xCC, R=0x1E, G=0x1E, B=0x24)
-    public const uint DefaultAcrylicColor = 0xCC241E1E;
+    // Cor de tint suave para transparência translúcida (ARGB: A=0x01 para permitir desfoque sem pintar camada opaca escura)
+    public const uint DefaultAcrylicColor = 0x01141418;
 
     public WindowVisualEffectService(
         IWindowsVisualCapabilityService capabilityService,
@@ -42,8 +42,10 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
 
         try
         {
-            // 1. Tenta o método moderno do Windows 11 (Build 22621+) se compatível
-            if (_capabilityService.SupportedTier == WindowsVisualTier.ModernBackdrop)
+            bool isLayered = IsLayeredWindow(windowHandle);
+
+            // 1. Janelas não-camadas (ex: janelas padrão de diálogo) no Windows 11 Build 22621+ usam DWM Backdrop oficial
+            if (!isLayered && _capabilityService.SupportedTier == WindowsVisualTier.ModernBackdrop)
             {
                 if (ApplyModernBackdrop(windowHandle))
                 {
@@ -51,7 +53,8 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
                 }
             }
 
-            // 2. Fallback: método clássico AccentPolicy
+            // 2. Janelas com transparência/camada (ex: QuadraWindow, Popups/Menus com AllowsTransparency)
+            // ou sistemas Windows 10/11 anteriores: usam AccentPolicy com alfa calibrado (sem escurecer ou conflitar com o DWM frame)
             return ApplyClassicAccentPolicy(windowHandle, accentColor);
         }
         catch
@@ -142,9 +145,8 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
             NativeMethods.DwmExtendFrameIntoClientArea(windowHandle, ref margins);
 
             // 4. Aplica o Backdrop do Windows 11:
-            // DWMSBT_MAINWINDOW (2) = Mica nativo (desfoca o papel de parede oficial com altíssimo desempenho)
-            // ou DWMSBT_TRANSIENTWINDOW (3) = Acrylic nativo
-            int backdropType = (int)NativeMethods.DWM_SYSTEMBACKDROP_TYPE.DWMSBT_MAINWINDOW;
+            // DWMSBT_TRANSIENTWINDOW (3) = Acrylic nativo (desfoque e transparência real de janelas e flyouts)
+            int backdropType = (int)NativeMethods.DWM_SYSTEMBACKDROP_TYPE.DWMSBT_TRANSIENTWINDOW;
             int result = NativeMethods.DwmSetWindowAttribute(
                 windowHandle,
                 NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE,
@@ -152,6 +154,19 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
                 sizeof(int));
 
             return result == 0; // S_OK
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsLayeredWindow(IntPtr windowHandle)
+    {
+        try
+        {
+            int exStyle = NativeMethods.GetWindowLong(windowHandle, NativeMethods.GWL_EXSTYLE);
+            return (exStyle & NativeMethods.WS_EX_LAYERED) != 0;
         }
         catch
         {

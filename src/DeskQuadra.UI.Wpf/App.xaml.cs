@@ -109,6 +109,41 @@ public partial class App : System.Windows.Application
             EnsureDensityWiring(densityService);
         }
 
+        // Efeito visual translúcido / blur nos menus de contexto e popups
+        var visualEffect = _serviceProvider.GetService<IWindowVisualEffectService>();
+        if (visualEffect != null)
+        {
+            EventManager.RegisterClassHandler(
+                typeof(ContextMenu),
+                ContextMenu.OpenedEvent,
+                new RoutedEventHandler((sender, _) =>
+                {
+                    if (sender is ContextMenu menu)
+                    {
+                        var hwndSource = (HwndSource?)PresentationSource.FromVisual(menu);
+                        if (hwndSource != null)
+                        {
+                            visualEffect.ApplyBlur(hwndSource.Handle);
+                        }
+                    }
+                }));
+
+            EventManager.RegisterClassHandler(
+                typeof(MenuItem),
+                MenuItem.SubmenuOpenedEvent,
+                new RoutedEventHandler((sender, _) =>
+                {
+                    if (sender is MenuItem menuItem)
+                    {
+                        var hwndSource = (HwndSource?)PresentationSource.FromVisual(menuItem);
+                        if (hwndSource != null)
+                        {
+                            visualEffect.ApplyBlur(hwndSource.Handle);
+                        }
+                    }
+                }));
+        }
+
         _nativeIconService = _serviceProvider.GetRequiredService<INativeDesktopIconService>();
 
         if (e.Args.Contains("--restore-icons", StringComparer.OrdinalIgnoreCase))
