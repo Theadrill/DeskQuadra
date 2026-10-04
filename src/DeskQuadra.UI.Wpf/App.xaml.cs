@@ -372,6 +372,12 @@ public partial class App : System.Windows.Application
         {
             _liveSync = null;
         }
+
+        // Flag de CLI para abrir as Configurações direto na inicialização (facilita testes de simulação)
+        if (Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--open-settings", StringComparison.OrdinalIgnoreCase)))
+        {
+            _ = Dispatcher.BeginInvoke(OpenSettings);
+        }
     }
 
     // Abre a janela da Quadra e passa a rastreá-la pelo Id (ignora se já aberta)
