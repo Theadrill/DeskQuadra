@@ -389,8 +389,7 @@
                                                                                FontSize="{DynamicResource Menu.QuickAction.Text.Size}"
                                                                                Foreground="{DynamicResource Menu.QuickAction.Foreground}"
                                                                                HorizontalAlignment="Center"
-                                                                               TextAlignment="Center"
-                                                                               TextWrapping="Wrap"/>
+                                                                               TextAlignment="Center"/>
                                                                 </StackPanel>
                                                             </Button>
                                                             <Rectangle Grid.Column="3" Width="1" Height="26"
