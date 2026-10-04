@@ -126,7 +126,6 @@ public partial class QuadraWindow : Window
     private CancellationTokenSource? _toolTipTransitionCts;
     private DesktopItemViewModel? _activeToolTipItem;
     private readonly IWindowVisualEffectService? _visualEffectService;
-    private DropShadowEffect? _savedShadowEffect;
 
     public QuadraWindow(
         QuadraViewModel viewModel,
@@ -327,24 +326,9 @@ public partial class QuadraWindow : Window
 
         try
         {
-            if (_visualEffectService.ApplyBlur(hwnd))
-            {
-                // Com o efeito visual ativo, remove a sombra via software do WPF
-                // para que não haja nenhum vazamento de canal alfa ou halo fora do contorno da Quadra.
-                if (QuadraContainer != null && QuadraContainer.Effect != null)
-                {
-                    _savedShadowEffect ??= QuadraContainer.Effect as DropShadowEffect;
-                    QuadraContainer.Effect = null;
-                }
-            }
-            else
+            if (!_visualEffectService.ApplyBlur(hwnd))
             {
                 _visualEffectService.RemoveBlur(hwnd);
-                // Restaura a sombra via software clássica quando os efeitos visuais estiverem desativados
-                if (QuadraContainer != null && QuadraContainer.Effect == null && _savedShadowEffect != null)
-                {
-                    QuadraContainer.Effect = _savedShadowEffect;
-                }
             }
         }
         catch
@@ -3596,16 +3580,15 @@ public partial class QuadraWindow : Window
     private const double ResizeSnapThreshold = 12.0;
     private const double ResizeSnapHysteresis = 3.0;
 
-    // Chrome horizontal 38 = 20 (Grid Margin 10×2, XAML:143) + 2 (Quadra.BorderThickness
-    // 1×2, Default.xaml:14) + 12 (ContentArea Margin 6×2, XAML:265) + 4 (ScrollViewer
-    // Padding 2×2, XAML:291). Não inclui o item (o slot 78 já é a célula cheia).
-    private const double HorizontalResizeChrome = 38.0;
+    // Chrome horizontal 18 = 2 (Quadra.BorderThickness 1×2, Default.xaml:14)
+    // + 12 (ContentArea Margin 6×2) + 4 (ScrollViewer Padding 2×2). Não inclui o item (o slot 78 já é a célula cheia).
+    private const double HorizontalResizeChrome = 18.0;
 
-    // Parte fixa do chrome vertical 34 = 20 (margem externa) + 2 (borda do container)
+    // Parte fixa do chrome vertical 14 = 2 (borda do container)
     // + 8 (ContentArea Margin 4×2) + 4 (ScrollViewer Padding 2×2); soma-se a altura do
     // título por densidade (28/42 via DensityResolver, Default.xaml:48). A borda
     // 0,0,0,1 do título vive dentro da altura da linha, sem somar extra.
-    private const double VerticalResizeChromeFixed = 34.0;
+    private const double VerticalResizeChromeFixed = 14.0;
     private double VerticalResizeChrome => DensityResolver.TitleBarHeight(_isTouchDensity) + VerticalResizeChromeFixed;
 
     // Direção por eixo a partir do sinal da variação (receita do XML-doc do SizeSnapper):

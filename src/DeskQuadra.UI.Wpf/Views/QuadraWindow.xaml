@@ -67,8 +67,8 @@
         </Style>
     </Window.Resources>
 
-    <!-- Grid principal contendo margem externa para a sombra projetada -->
-    <Grid Margin="10">
+    <!-- Grid principal alinhado aos limites exatos da janela (mesmo padrão do Menu de Contexto) -->
+    <Grid Margin="0">
         <!-- Container visual da Quadra: cantos arredondados, acrílico translúcido e borda suave -->
         <Border x:Name="QuadraContainer"
                 Background="{DynamicResource Quadra.Background}"
@@ -83,12 +83,6 @@
                 PreviewMouseDown="QuadraContainer_PreviewMouseDown"
                 PreviewMouseMove="QuadraContainer_PreviewMouseMove"
                 PreviewMouseLeftButtonUp="QuadraContainer_PreviewMouseLeftButtonUp">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="{DynamicResource Quadra.Shadow.BlurRadius}"
-                                   ShadowDepth="{DynamicResource Quadra.Shadow.Depth}"
-                                   Opacity="{DynamicResource Quadra.Shadow.Opacity}"
-                                   Color="{DynamicResource Quadra.Shadow.Color}"/>
-            </Border.Effect>
 
             <Grid>
                 <Grid.RowDefinitions>
