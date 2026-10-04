@@ -25,25 +25,43 @@ public class ContextMenuQuickActionsResourceTests
     [Fact]
     public void ThemeDictionary_LoadsQuickActionResources()
     {
-        var dict = new ResourceDictionary
+        var thread = new Thread(() =>
         {
-            Source = new Uri("pack://application:,,,/DeskQuadra.UI.Wpf;component/Theme/Default.xaml", UriKind.Absolute)
-        };
+            if (System.Windows.Application.Current == null)
+            {
+                try
+                {
+                    _ = new System.Windows.Application();
+                }
+                catch (InvalidOperationException)
+                {
+                    // Já instanciado em outra thread concorrente
+                }
+            }
 
-        Assert.True(dict.Contains("Menu.QuickAction.Accent"));
-        Assert.True(dict.Contains("Menu.QuickAction.Foreground"));
-        Assert.True(dict.Contains("Menu.QuickAction.Button.Width"));
-        Assert.True(dict.Contains("Menu.QuickAction.Button.Height"));
-        Assert.True(dict.Contains("Menu.QuickAction.Icon.Size"));
-        Assert.True(dict.Contains("Menu.QuickAction.Text.Size"));
-        Assert.True(dict.Contains("Icon.QuickAction.Cut.Blades"));
-        Assert.True(dict.Contains("Icon.QuickAction.Cut.Handles"));
-        Assert.True(dict.Contains("Icon.QuickAction.Copy.Back"));
-        Assert.True(dict.Contains("Icon.QuickAction.Copy.Front"));
-        Assert.True(dict.Contains("Icon.QuickAction.Rename.Frame"));
-        Assert.True(dict.Contains("Icon.QuickAction.Rename.Cursor"));
-        Assert.True(dict.Contains("Icon.QuickAction.Share.Box"));
-        Assert.True(dict.Contains("Icon.QuickAction.Share.Arrow"));
-        Assert.True(dict.Contains("Icon.QuickAction.Delete"));
+            var dict = new ResourceDictionary
+            {
+                Source = new Uri("/DeskQuadra.UI.Wpf;component/Theme/Default.xaml", UriKind.RelativeOrAbsolute)
+            };
+
+            Assert.True(dict.Contains("Menu.QuickAction.Accent"));
+            Assert.True(dict.Contains("Menu.QuickAction.Foreground"));
+            Assert.True(dict.Contains("Menu.QuickAction.Button.Width"));
+            Assert.True(dict.Contains("Menu.QuickAction.Button.Height"));
+            Assert.True(dict.Contains("Menu.QuickAction.Icon.Size"));
+            Assert.True(dict.Contains("Menu.QuickAction.Text.Size"));
+            Assert.True(dict.Contains("Icon.QuickAction.Cut.Blades"));
+            Assert.True(dict.Contains("Icon.QuickAction.Cut.Handles"));
+            Assert.True(dict.Contains("Icon.QuickAction.Copy.Back"));
+            Assert.True(dict.Contains("Icon.QuickAction.Copy.Front"));
+            Assert.True(dict.Contains("Icon.QuickAction.Rename.Frame"));
+            Assert.True(dict.Contains("Icon.QuickAction.Rename.Cursor"));
+            Assert.True(dict.Contains("Icon.QuickAction.Share.Box"));
+            Assert.True(dict.Contains("Icon.QuickAction.Share.Arrow"));
+            Assert.True(dict.Contains("Icon.QuickAction.Delete"));
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
     }
 }

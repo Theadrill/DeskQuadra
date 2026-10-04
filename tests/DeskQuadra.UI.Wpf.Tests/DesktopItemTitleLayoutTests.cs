@@ -13,7 +13,14 @@ public class DesktopItemTitleLayoutTests
         {
             if (System.Windows.Application.Current == null)
             {
-                _ = new System.Windows.Application();
+                try
+                {
+                    _ = new System.Windows.Application();
+                }
+                catch (InvalidOperationException)
+                {
+                    // Já instanciado em outra thread
+                }
             }
 
             // Carrega o dicionário Default.xaml

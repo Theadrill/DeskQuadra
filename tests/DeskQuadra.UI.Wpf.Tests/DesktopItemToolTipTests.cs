@@ -20,7 +20,14 @@ public class DesktopItemToolTipTests
         {
             if (System.Windows.Application.Current == null)
             {
-                _ = new System.Windows.Application();
+                try
+                {
+                    _ = new System.Windows.Application();
+                }
+                catch (InvalidOperationException)
+                {
+                    // Já instanciado em outra thread
+                }
             }
 
             var dictionary = new ResourceDictionary
