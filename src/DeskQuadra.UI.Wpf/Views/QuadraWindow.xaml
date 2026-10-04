@@ -80,7 +80,9 @@
                 DragOver="Quadra_DragOver"
                 Drop="Quadra_Drop"
                 DragLeave="Quadra_DragLeave"
-                PreviewMouseDown="QuadraContainer_PreviewMouseDown">
+                PreviewMouseDown="QuadraContainer_PreviewMouseDown"
+                PreviewMouseMove="QuadraContainer_PreviewMouseMove"
+                PreviewMouseLeftButtonUp="QuadraContainer_PreviewMouseLeftButtonUp">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="{DynamicResource Quadra.Shadow.BlurRadius}"
                                    ShadowDepth="{DynamicResource Quadra.Shadow.Depth}"
@@ -371,6 +373,16 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+
+                    <!-- Retângulo de seleção com mouse (Marquee / Rubber-band) -->
+                    <Canvas x:Name="SelectionCanvas" IsHitTestVisible="False" ClipToBounds="True">
+                        <Border x:Name="SelectionBox"
+                                Visibility="Collapsed"
+                                Background="{DynamicResource Selection.Background}"
+                                BorderBrush="{DynamicResource Selection.BorderBrush}"
+                                BorderThickness="{DynamicResource Selection.BorderThickness}"
+                                CornerRadius="{DynamicResource Selection.CornerRadius}"/>
+                    </Canvas>
                 </Grid>
             </Grid>
         </Border>

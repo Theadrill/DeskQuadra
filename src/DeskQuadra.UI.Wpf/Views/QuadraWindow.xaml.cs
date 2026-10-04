@@ -51,6 +51,15 @@ public partial class QuadraWindow : Window
     private bool _isItemDragging;
     private DesktopItemViewModel? _currentDropTargetItem;
 
+    // Seleção múltipla (mouse marquee e teclado Ctrl/Shift)
+    public static event Action<QuadraWindow>? SelectionActivatedInQuadra;
+    private DesktopItemViewModel? _selectionAnchor;
+    private DesktopItemViewModel? _pendingSingleSelectCandidate;
+    private bool _isMarqueeActive;
+    private Point _marqueeStartPoint;
+    private HashSet<DesktopItemViewModel>? _marqueeInitialSelection;
+    private bool _isCtrlWhenMarqueeStarted;
+
     // MOVER-via-touch (Fatia 1, sem overview): armado compartilhado entre Quadras.
     // Destaque REUSE o IsSelected (visual de seleção existente, sem cor/tema novo).
     private static TouchMoveState? s_touchMove;
@@ -178,6 +187,7 @@ public partial class QuadraWindow : Window
 
         GlobalItemSelected += OnGlobalItemSelected;
         GlobalCloseMenusRequested += OnGlobalCloseMenusRequested;
+        SelectionActivatedInQuadra += OnSelectionActivatedInQuadra;
 
         // Rastreamento robusto e instantâneo de Toque físico na janela.
         // Alimenta o estado global do InputDeviceDetector (dono único da decisão);
@@ -522,12 +532,58 @@ public partial class QuadraWindow : Window
         }
     }
 
+    private static bool IsControlPressed() =>
+        Keyboard.Modifiers.HasFlag(ModifierKeys.Control)
+        || (NativeMethods.GetKeyState(NativeMethods.VK_CONTROL) & 0x8000) != 0;
+
+    private static bool IsShiftPressed() =>
+        Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+        || (NativeMethods.GetKeyState(NativeMethods.VK_SHIFT) & 0x8000) != 0;
+
+    private void OnSelectionActivatedInQuadra(QuadraWindow activeWindow)
+    {
+        if (activeWindow != this)
+        {
+            foreach (var item in _viewModel.Items)
+            {
+                item.IsSelected = false;
+            }
+            _selectionAnchor = null;
+            _pendingSingleSelectCandidate = null;
+        }
+    }
+
     private void OnGlobalItemSelected(DesktopItemViewModel? selectedItem)
     {
-        foreach (var item in _viewModel.Items)
+        if (selectedItem == null)
         {
-            item.IsSelected = (selectedItem != null && item == selectedItem);
+            foreach (var item in _viewModel.Items)
+            {
+                item.IsSelected = false;
+            }
+            _selectionAnchor = null;
+            _pendingSingleSelectCandidate = null;
+            return;
         }
+
+        bool contains = _viewModel.Items.Contains(selectedItem);
+        if (contains)
+        {
+            foreach (var item in _viewModel.Items)
+            {
+                item.IsSelected = (item == selectedItem);
+            }
+            _selectionAnchor = selectedItem;
+        }
+        else
+        {
+            foreach (var item in _viewModel.Items)
+            {
+                item.IsSelected = false;
+            }
+            _selectionAnchor = null;
+        }
+        _pendingSingleSelectCandidate = null;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -933,9 +989,143 @@ public partial class QuadraWindow : Window
             dep = VisualTreeHelper.GetParent(dep);
         }
 
-        if (!isOverItem)
+        if (isOverItem)
+        {
+            return;
+        }
+
+        bool isTouch = InputDeviceDetector.IsTouchInteraction(e);
+        if (isTouch)
         {
             DeselectAllGlobally();
+            return;
+        }
+
+        if (e.LeftButton == MouseButtonState.Pressed && !IsOnScrollbar(e))
+        {
+            Point ptInContent = e.GetPosition(ContentArea);
+            if (ptInContent.X >= 0 && ptInContent.X <= ContentArea.ActualWidth &&
+                ptInContent.Y >= 0 && ptInContent.Y <= ContentArea.ActualHeight)
+            {
+                StartMarqueeSelection(ptInContent);
+            }
+            else
+            {
+                DeselectAllGlobally();
+            }
+        }
+    }
+
+    private void QuadraContainer_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isMarqueeActive || e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        Point currentPoint = e.GetPosition(ContentArea);
+
+        double clampedX = Math.Max(0, Math.Min(ContentArea.ActualWidth, currentPoint.X));
+        double clampedY = Math.Max(0, Math.Min(ContentArea.ActualHeight, currentPoint.Y));
+
+        double left = Math.Min(_marqueeStartPoint.X, clampedX);
+        double top = Math.Min(_marqueeStartPoint.Y, clampedY);
+        double width = Math.Abs(clampedX - _marqueeStartPoint.X);
+        double height = Math.Abs(clampedY - _marqueeStartPoint.Y);
+
+        Canvas.SetLeft(SelectionBox, left);
+        Canvas.SetTop(SelectionBox, top);
+        SelectionBox.Width = width;
+        SelectionBox.Height = height;
+
+        Rect selectionRect = new Rect(left, top, width, height);
+        UpdateMarqueeSelection(selectionRect);
+    }
+
+    private void QuadraContainer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isMarqueeActive)
+        {
+            StopMarqueeSelection();
+            e.Handled = true;
+        }
+    }
+
+    private void StartMarqueeSelection(Point startPt)
+    {
+        SelectionActivatedInQuadra?.Invoke(this);
+
+        bool isCtrl = IsControlPressed();
+        _isCtrlWhenMarqueeStarted = isCtrl;
+
+        if (!isCtrl)
+        {
+            foreach (var item in _viewModel.Items)
+            {
+                item.IsSelected = false;
+            }
+            _selectionAnchor = null;
+        }
+
+        _isMarqueeActive = true;
+        _marqueeStartPoint = startPt;
+        _marqueeInitialSelection = _viewModel.Items.Where(i => i.IsSelected).ToHashSet();
+
+        Canvas.SetLeft(SelectionBox, startPt.X);
+        Canvas.SetTop(SelectionBox, startPt.Y);
+        SelectionBox.Width = 0;
+        SelectionBox.Height = 0;
+        SelectionBox.Visibility = Visibility.Visible;
+
+        QuadraContainer.CaptureMouse();
+    }
+
+    private void UpdateMarqueeSelection(Rect selectionRect)
+    {
+        foreach (var item in _viewModel.Items)
+        {
+            var container = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item) as FrameworkElement;
+            if (container != null && container.IsLoaded)
+            {
+                try
+                {
+                    GeneralTransform transform = container.TransformToAncestor(ContentArea);
+                    Rect itemBounds = transform.TransformBounds(new Rect(0, 0, container.ActualWidth, container.ActualHeight));
+
+                    bool intersects = selectionRect.IntersectsWith(itemBounds);
+
+                    if (_isCtrlWhenMarqueeStarted)
+                    {
+                        bool wasSelectedOriginally = _marqueeInitialSelection?.Contains(item) == true;
+                        item.IsSelected = wasSelectedOriginally ^ intersects;
+                    }
+                    else
+                    {
+                        item.IsSelected = intersects;
+                    }
+                }
+                catch
+                {
+                    // Fora da árvore ou transform indisponível
+                }
+            }
+        }
+    }
+
+    private void StopMarqueeSelection()
+    {
+        if (_isMarqueeActive)
+        {
+            _isMarqueeActive = false;
+            SelectionBox.Visibility = Visibility.Collapsed;
+            _marqueeInitialSelection = null;
+            QuadraContainer.ReleaseMouseCapture();
+
+            var firstSelected = _viewModel.Items.FirstOrDefault(i => i.IsSelected);
+            if (firstSelected != null)
+            {
+                _selectionAnchor = firstSelected;
+            }
         }
     }
 
@@ -1219,7 +1409,62 @@ public partial class QuadraWindow : Window
 
         if (sender is FrameworkElement fe && fe.DataContext is DesktopItemViewModel item)
         {
-            GlobalItemSelected?.Invoke(item);
+            SelectionActivatedInQuadra?.Invoke(this);
+
+            bool isCtrl = IsControlPressed();
+            bool isShift = IsShiftPressed();
+
+            if (isShift)
+            {
+                _selectionAnchor ??= _viewModel.Items.FirstOrDefault(i => i.IsSelected) ?? _viewModel.Items.FirstOrDefault();
+                int anchorIdx = _selectionAnchor != null ? _viewModel.Items.IndexOf(_selectionAnchor) : 0;
+                int targetIdx = _viewModel.Items.IndexOf(item);
+
+                if (anchorIdx >= 0 && targetIdx >= 0)
+                {
+                    int start = Math.Min(anchorIdx, targetIdx);
+                    int end = Math.Max(anchorIdx, targetIdx);
+
+                    for (int i = 0; i < _viewModel.Items.Count; i++)
+                    {
+                        if (i >= start && i <= end)
+                        {
+                            _viewModel.Items[i].IsSelected = true;
+                        }
+                        else if (!isCtrl)
+                        {
+                            _viewModel.Items[i].IsSelected = false;
+                        }
+                    }
+                }
+                _pendingSingleSelectCandidate = null;
+            }
+            else if (isCtrl)
+            {
+                item.IsSelected = !item.IsSelected;
+                if (item.IsSelected)
+                {
+                    _selectionAnchor = item;
+                }
+                _pendingSingleSelectCandidate = null;
+            }
+            else
+            {
+                if (item.IsSelected && _viewModel.Items.Count(i => i.IsSelected) > 1)
+                {
+                    // Item pertence a grupo multi-selecionado: adia a desseleção dos outros para o MouseUp caso não haja arraste
+                    _pendingSingleSelectCandidate = item;
+                }
+                else
+                {
+                    foreach (var vm in _viewModel.Items)
+                    {
+                        vm.IsSelected = (vm == item);
+                    }
+                    _selectionAnchor = item;
+                    _pendingSingleSelectCandidate = null;
+                }
+            }
 
             if (e.ClickCount == 2)
             {
@@ -1251,6 +1496,15 @@ public partial class QuadraWindow : Window
             // (.lnk = o próprio link). Antes da densidade (§2).
             if (fe.DataContext is DesktopItemViewModel item)
             {
+                if (!item.IsSelected)
+                {
+                    SelectionActivatedInQuadra?.Invoke(this);
+                    foreach (var vm in _viewModel.Items)
+                    {
+                        vm.IsSelected = (vm == item);
+                    }
+                    _selectionAnchor = item;
+                }
                 PopulateThirdPartySection(fe.ContextMenu, item.FilePath, background: false, isTouch: isTouch);
             }
             // Toque usa itens de 46px; mouse segue compacto (~26px).
@@ -1603,6 +1857,7 @@ public partial class QuadraWindow : Window
         if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
             Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
         {
+            _pendingSingleSelectCandidate = null;
             var item = _draggedItemCandidate;
             StartItemDragDrop(item);
         }
@@ -2129,6 +2384,18 @@ public partial class QuadraWindow : Window
 
     private void DesktopItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (_pendingSingleSelectCandidate != null && !_isItemDragging)
+        {
+            var target = _pendingSingleSelectCandidate;
+            _pendingSingleSelectCandidate = null;
+
+            foreach (var vm in _viewModel.Items)
+            {
+                vm.IsSelected = (vm == target);
+            }
+            _selectionAnchor = target;
+        }
+
         _draggedItemCandidate = null;
         _isItemDragging = false;
     }
@@ -2893,6 +3160,35 @@ public partial class QuadraWindow : Window
 
     private void Quadra_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.A && IsControlPressed() && !_isRenaming && !_viewModel.Items.Any(i => i.IsRenaming))
+        {
+            SelectionActivatedInQuadra?.Invoke(this);
+            foreach (var item in _viewModel.Items)
+            {
+                item.IsSelected = true;
+            }
+            _selectionAnchor = _viewModel.Items.FirstOrDefault();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            if (_isMarqueeActive)
+            {
+                if (_marqueeInitialSelection != null)
+                {
+                    foreach (var item in _viewModel.Items)
+                    {
+                        item.IsSelected = _marqueeInitialSelection.Contains(item);
+                    }
+                }
+                StopMarqueeSelection();
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (e.Key == Key.F2)
         {
             if (!_isRenaming && !_viewModel.Items.Any(i => i.IsRenaming))
@@ -3161,6 +3457,7 @@ public partial class QuadraWindow : Window
         PreviewMouseLeftButtonDown -= Quadra_TouchMoveDestinationDown;
         GlobalItemSelected -= OnGlobalItemSelected;
         GlobalCloseMenusRequested -= OnGlobalCloseMenusRequested;
+        SelectionActivatedInQuadra -= OnSelectionActivatedInQuadra;
         LocationChanged -= OnPositionOrSizeChanged;
         SizeChanged -= OnPositionOrSizeChanged;
         base.OnClosed(e);
