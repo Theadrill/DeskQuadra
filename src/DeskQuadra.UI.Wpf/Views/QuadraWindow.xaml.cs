@@ -327,9 +327,14 @@ public partial class QuadraWindow : Window
 
         try
         {
-            if (!_visualEffectService.ApplyBlur(hwnd))
+            if (_visualEffectService.ApplyBlur(hwnd))
+            {
+                WindowVisualEffectService.ApplyRoundedWindowRegion(hwnd, 8);
+            }
+            else
             {
                 _visualEffectService.RemoveBlur(hwnd);
+                WindowVisualEffectService.RemoveRoundedWindowRegion(hwnd);
             }
         }
         catch
@@ -1766,6 +1771,7 @@ public partial class QuadraWindow : Window
                     }
 
                     ApplyMenuDensity(menu, isTouch: isTouch);
+                    menu.UpdateLayout();
                 }
                 catch
                 {

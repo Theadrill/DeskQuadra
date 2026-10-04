@@ -65,14 +65,8 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
             }
 
             // 2. Janelas com transparência/camada (ex: QuadraWindow, Popups/Menus com AllowsTransparency):
-            // usam AccentPolicy com alfa calibrado e recorte preciso de região arredondada (SetWindowRgn)
-            // para eliminar qualquer pixel de sobra ou triângulo nas pontas curvas.
-            bool result = ApplyClassicAccentPolicy(windowHandle, accentColor);
-            if (result)
-            {
-                ApplyRoundedWindowRegion(windowHandle, 8);
-            }
-            return result;
+            // usam AccentPolicy com alfa calibrado para permitir o desfoque translúcido sem camada opaca.
+            return ApplyClassicAccentPolicy(windowHandle, accentColor);
         }
         catch
         {
@@ -269,6 +263,26 @@ public sealed class WindowVisualEffectService : IWindowVisualEffectService
         catch
         {
             // Silencioso: fallback gracioso
+        }
+    }
+
+    /// <summary>
+    /// Remove o recorte de região do HWND restaurando o comportamento retangular nativo.
+    /// </summary>
+    public static void RemoveRoundedWindowRegion(IntPtr windowHandle)
+    {
+        if (windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        try
+        {
+            NativeMethods.SetWindowRgn(windowHandle, IntPtr.Zero, true);
+        }
+        catch
+        {
+            // Silencioso
         }
     }
 }
