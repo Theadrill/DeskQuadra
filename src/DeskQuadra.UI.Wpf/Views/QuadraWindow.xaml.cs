@@ -849,7 +849,7 @@ public partial class QuadraWindow : Window
                 .Select(q => new Rect2D(q.Left, q.Top, q.Width, q.Height))
                 .ToList();
 
-            var snap = _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: 0);
+            var snap = _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: 8);
 
             Left = snap.X;
             Top = snap.Y;
