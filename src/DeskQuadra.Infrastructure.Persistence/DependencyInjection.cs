@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddSingleton<ILayoutRepository, JsonLayoutRepository>();
         services.AddSingleton<IDensitySettingsService, JsonDensitySettingsService>();
         services.AddSingleton<IVisualSettingsService, JsonVisualSettingsService>();
+        services.AddSingleton<ISnapSettingsService, JsonSnapSettingsService>();
         return services;
     }
 }

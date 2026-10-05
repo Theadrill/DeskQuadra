@@ -412,6 +412,50 @@
                 </StackPanel>
             </Border>
 
+            <!-- ========================================== -->
+            <!-- CARD 4: QUADRAS E ESPAÇAMENTO (SNAP GAP) -->
+            <!-- ========================================== -->
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <TextBlock Text="{x:Static properties:Strings.SettingsSnapTitle}"
+                               Foreground="{DynamicResource Dialog.Foreground}"
+                               FontSize="{DynamicResource Dialog.Message.FontSize}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="{x:Static properties:Strings.SettingsSnapGapLabel}"
+                                   Foreground="{DynamicResource Dialog.Foreground}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.85"
+                                   VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding SnapGapLabel}"
+                                   Foreground="{DynamicResource Dialog.Foreground}"
+                                   FontSize="11"
+                                   FontWeight="Bold"
+                                   Opacity="0.9"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Slider Style="{StaticResource ModernSliderStyle}"
+                            Minimum="0"
+                            Maximum="24"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            Value="{Binding SnapGap, Mode=TwoWay}"
+                            Margin="0,0,0,4"/>
+                </StackPanel>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 </Window>

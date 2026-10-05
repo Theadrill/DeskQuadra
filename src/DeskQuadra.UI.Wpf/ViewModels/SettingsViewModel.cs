@@ -15,6 +15,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly IStartupService _startupService;
     private readonly IDensitySettingsService _densitySettings;
     private readonly IVisualSettingsService? _visualSettings;
+    private readonly ISnapSettingsService? _snapSettings;
     private readonly IWindowsVisualCapabilityService? _visualCapability;
     private readonly IWindowVisualEffectService? _visualEffectService;
     private readonly bool _hasTouchHardware;
@@ -252,6 +253,25 @@ public sealed class SettingsViewModel : ViewModelBase
     public Thickness DialogSwitchPadding => EffectiveIsTouch ? new Thickness(3) : new Thickness(2);
     public double DialogSwitchThumbSize => EffectiveIsTouch ? 18.0 : 14.0;
 
+    // Espaçamento magnético entre Quadras e bordas (0 a 24px, padrão 8 — valor histórico do app)
+    private double _snapGap = 8.0;
+
+    public double SnapGap
+    {
+        get => _snapGap;
+        set
+        {
+            double clamped = Math.Clamp(value, 0.0, 24.0);
+            if (SetProperty(ref _snapGap, clamped))
+            {
+                OnPropertyChanged(nameof(SnapGapLabel));
+                _snapSettings?.SetGap(clamped);
+            }
+        }
+    }
+
+    public string SnapGapLabel => $"{(int)SnapGap}px";
+
     public bool IsDensityAuto
     {
         get => _densityPreference == DensityPreference.Auto;
@@ -278,11 +298,13 @@ public sealed class SettingsViewModel : ViewModelBase
         bool hasTouchHardware,
         IVisualSettingsService? visualSettings = null,
         IWindowsVisualCapabilityService? visualCapability = null,
-        IWindowVisualEffectService? visualEffectService = null)
+        IWindowVisualEffectService? visualEffectService = null,
+        ISnapSettingsService? snapSettings = null)
     {
         _startupService = startupService;
         _densitySettings = densitySettings;
         _visualSettings = visualSettings;
+        _snapSettings = snapSettings;
         _visualCapability = visualCapability;
         _visualEffectService = visualEffectService;
         _hasTouchHardware = hasTouchHardware;
@@ -295,6 +317,11 @@ public sealed class SettingsViewModel : ViewModelBase
             _isAdvancedMode = visualSettings.IsAdvancedMode;
             _backgroundAlpha = visualSettings.BackgroundAlpha;
             _tintIntensity = visualSettings.TintIntensity;
+        }
+
+        if (snapSettings != null)
+        {
+            _snapGap = snapSettings.Gap;
         }
     }
 }

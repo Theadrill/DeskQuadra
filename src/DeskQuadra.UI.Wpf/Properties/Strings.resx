@@ -243,6 +243,12 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="SettingsVisualEffectsWindows11" xml:space="preserve">
     <value>Efeitos visuais e transparência do Windows 11</value>
   </data>
+  <data name="SettingsSnapTitle" xml:space="preserve">
+    <value>Quadras e espaçamento</value>
+  </data>
+  <data name="SettingsSnapGapLabel" xml:space="preserve">
+    <value>Espaçamento magnético entre Quadras</value>
+  </data>
   <data name="Dialog_RecoveryTitle" xml:space="preserve">
     <value>Restaurar layout mais recente?</value>
   </data>

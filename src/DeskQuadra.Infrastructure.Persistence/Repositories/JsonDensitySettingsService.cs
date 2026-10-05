@@ -67,38 +67,10 @@ public sealed class JsonDensitySettingsService : IDensitySettingsService
 
     private void SaveBestEffort(DensityPreference preference)
     {
-        try
+        SettingsJsonMerge.WriteMerge(_settingsFilePath, dict =>
         {
-            string? dir = Path.GetDirectoryName(_settingsFilePath);
-            if (!string.IsNullOrEmpty(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-
-            var node = File.Exists(_settingsFilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(_settingsFilePath))
-                : new Dictionary<string, JsonElement>();
-
-            var dict = new Dictionary<string, object>();
-            if (node != null)
-            {
-                foreach (var kvp in node)
-                {
-                    dict[kvp.Key] = kvp.Value;
-                }
-            }
-
             dict["DensityPreference"] = preference;
-
-            string json = JsonSerializer.Serialize(dict, JsonStorageDefaults.SerializerOptions);
-            string tmp = _settingsFilePath + ".tmp";
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, _settingsFilePath, overwrite: true);
-        }
-        catch
-        {
-            // Best-effort: preferência segue em memória; próxima abertura relê Auto.
-        }
+        });
     }
 
     private sealed class SettingsDto

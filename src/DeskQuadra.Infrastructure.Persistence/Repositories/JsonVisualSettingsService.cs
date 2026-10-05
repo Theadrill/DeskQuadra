@@ -235,47 +235,31 @@ public sealed class JsonVisualSettingsService : IVisualSettingsService
 
     private void SaveBestEffort()
     {
-        try
+        double generalOpacity;
+        bool isAdvancedMode;
+        double backgroundAlpha;
+        double tintIntensity;
+        bool enableEffects;
+        VisualEffectTechnique preferredTechnique;
+        lock (_gate)
         {
-            string? dir = Path.GetDirectoryName(_settingsFilePath);
-            if (!string.IsNullOrEmpty(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-
-            // Lê o DTO existente para preservar outros campos (ex: DensityPreference)
-            var node = File.Exists(_settingsFilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(_settingsFilePath))
-                : new Dictionary<string, JsonElement>();
-
-            var dict = node != null ? new Dictionary<string, object>() : new Dictionary<string, object>();
-            if (node != null)
-            {
-                foreach (var kvp in node)
-                {
-                    dict[kvp.Key] = kvp.Value;
-                }
-            }
-
-            lock (_gate)
-            {
-                dict["EnableWindows11VisualEffects"] = _enableWindows11VisualEffects;
-                dict["PreferredTechnique"] = _preferredTechnique.ToString();
-                dict["GeneralOpacity"] = Math.Round(_generalOpacity, 1);
-                dict["IsAdvancedMode"] = _isAdvancedMode;
-                dict["BackgroundAlpha"] = Math.Round(_backgroundAlpha, 1);
-                dict["TintIntensity"] = Math.Round(_tintIntensity, 1);
-            }
-
-            string json = JsonSerializer.Serialize(dict, JsonStorageDefaults.SerializerOptions);
-            string tmp = _settingsFilePath + ".tmp";
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, _settingsFilePath, overwrite: true);
+            generalOpacity = _generalOpacity;
+            isAdvancedMode = _isAdvancedMode;
+            backgroundAlpha = _backgroundAlpha;
+            tintIntensity = _tintIntensity;
+            enableEffects = _enableWindows11VisualEffects;
+            preferredTechnique = _preferredTechnique;
         }
-        catch
+
+        SettingsJsonMerge.WriteMerge(_settingsFilePath, dict =>
         {
-            // Best-effort: se falhar escrita, estado permanece em memória
-        }
+            dict["EnableWindows11VisualEffects"] = enableEffects;
+            dict["PreferredTechnique"] = preferredTechnique.ToString();
+            dict["GeneralOpacity"] = Math.Round(generalOpacity, 1);
+            dict["IsAdvancedMode"] = isAdvancedMode;
+            dict["BackgroundAlpha"] = Math.Round(backgroundAlpha, 1);
+            dict["TintIntensity"] = Math.Round(tintIntensity, 1);
+        });
     }
 
     private sealed class VisualSettingsDto

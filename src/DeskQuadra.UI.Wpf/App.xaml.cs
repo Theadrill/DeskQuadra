@@ -109,6 +109,13 @@ public partial class App : System.Windows.Application
             EnsureDensityWiring(densityService);
         }
 
+        // Espaçamento magnético (snap gap): preferência global aplicada em todas as Quadras.
+        var snapService = _serviceProvider.GetService<ISnapSettingsService>();
+        if (snapService != null)
+        {
+            EnsureSnapWiring(snapService);
+        }
+
         // Sincronização inicial de efeitos visuais modernos vs tema clássico
         var visualSettings = _serviceProvider.GetService<IVisualSettingsService>();
         if (visualSettings != null)
@@ -637,6 +644,7 @@ public partial class App : System.Windows.Application
 
         var startupService = _serviceProvider?.GetService<IStartupService>();
         var densityService = _serviceProvider?.GetService<IDensitySettingsService>();
+        var snapSettings = _serviceProvider?.GetService<ISnapSettingsService>();
         var visualSettings = _serviceProvider?.GetService<IVisualSettingsService>();
         var visualCapability = _serviceProvider?.GetService<IWindowsVisualCapabilityService>();
         if (startupService == null || densityService == null)
@@ -656,7 +664,8 @@ public partial class App : System.Windows.Application
                 hasHardware,
                 visualSettings,
                 visualCapability,
-                visualEffectService),
+                visualEffectService,
+                snapSettings),
             visualEffectService);
         _settingsWindow.Closed += (s, e) => _settingsWindow = null;
         _settingsWindow.Show();
@@ -686,6 +695,27 @@ public partial class App : System.Windows.Application
     }
 
     private bool _visualWired;
+
+    private bool _snapWired;
+
+    // Liga o gap global nas Quadras (move/resize leem o estático a cada gesto; sem timer/hook novo).
+    private void EnsureSnapWiring(ISnapSettingsService snapService)
+    {
+        QuadraWindow.CurrentSnapGap = snapService.Gap;
+        if (_snapWired)
+        {
+            return;
+        }
+
+        _snapWired = true;
+        snapService.GapChanged += (s, gap) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                QuadraWindow.CurrentSnapGap = gap;
+            });
+        };
+    }
 
     private void EnsureVisualWiring(IVisualSettingsService? visualService)
     {

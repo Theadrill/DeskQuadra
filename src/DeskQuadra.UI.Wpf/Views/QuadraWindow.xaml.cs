@@ -108,6 +108,10 @@ public partial class QuadraWindow : Window
     internal static DensityPreference CurrentDensityPreference = DensityPreference.Auto;
     internal static Func<bool>? HasTouchHardwareProvider;
 
+    // Espaçamento magnético global (Configurações → settings.json; App.EnsureSnapWiring mantém).
+    // Lido a cada gesto de move — troca no slider vale na hora, sem reabrir nada.
+    internal static double CurrentSnapGap = 8.0;
+
     // Modo roll-up (recolhimento no local, seção 10 do BRAINSTORMING)
     private double? _expandedHeight; // altura guardada antes de recolher
     private double _savedMinHeight = 140; // MinHeight original para restaurar ao expandir
@@ -849,7 +853,7 @@ public partial class QuadraWindow : Window
                 .Select(q => new Rect2D(q.Left, q.Top, q.Width, q.Height))
                 .ToList();
 
-            var snap = _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: 8);
+            var snap = _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: CurrentSnapGap);
 
             Left = snap.X;
             Top = snap.Y;
