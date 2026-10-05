@@ -34,8 +34,8 @@ O DeskQuadra detecta as capacidades gráficas e a versão do sistema operacional
 - [x] **Tooltip/Hover customizado estilo Menu Fluent:** Popover escuro posicionado no mouse com fonte branca, exibindo apenas o nome completo do item (sem caminho completo), sumindo ao sair.
 - [ ] **Drop em arquivos container (.zip, etc.):** Suporte a arrastar e soltar itens sobre arquivos compactados/containers (.zip e afins) para inclusão direta no arquivo.
 - [x] **Atualização e recuperação em tempo real de ícones restaurados da Lixeira:** Garantir invalidação e recarregamento imediato de ícones em cache quando arquivos/atalhos forem restaurados ou atualizados sem exigir reinicialização do app.
-- [ ] **Visual transparente estilo Windows 11 (Mica / Acrylic blur):** Evoluir o visual translúcido das quadras para transparência idêntica ao Windows 11 com desfoque de fundo (acrylic blur / material backdrop real) e acabamento refinado.
-- [ ] **Ícones de operações rápidas no menu de contexto estilo Windows 11:** Barra superior de ações compactas (copiar, recortar, colar, renomear, excluir, etc.) no topo do menu de contexto moderno do Windows 11.
+- [x] **Visual transparente estilo Windows 11 (Mica / Acrylic blur):** Implementado via motor híbrido de efeitos (`WindowVisualEffectService`) com suporte a Acrílico Moderno, Blur Clássico e degradação graciosa para tema sólido configurável pelo usuário.
+- [x] **Ícones de operações rápidas no menu de contexto estilo Windows 11:** Barra superior de ações compactas (copiar, recortar, colar, renomear, compartilhar e excluir) integrada, padronizada e refinada no topo do menu de contexto.
 - [ ] **Slider de espaçamento entre quadras nas Configurações:** Permitir configurar o espaçamento magnético (snap gap) entre quadras e bordas da tela via slider nas opções do app.
 - [ ] **Modernização visual das barras de rolagem (Scrollbar):** Modernizar o design e comportamento da barra de scroll por todo o aplicativo para padrão minimalista e elegante estilo Windows 11 Fluent.
 
