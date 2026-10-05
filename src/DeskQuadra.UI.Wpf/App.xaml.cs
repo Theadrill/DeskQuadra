@@ -1064,7 +1064,10 @@ public partial class App : System.Windows.Application
             _settingsWindow?.Close();
 
             var coordinator = _serviceProvider.GetService<ILayoutCoordinator>();
-            coordinator?.SaveNowAsync().GetAwaiter().GetResult();
+            if (coordinator != null && coordinator.ActiveQuadras.Count > 0)
+            {
+                coordinator.SaveNowAsync().GetAwaiter().GetResult();
+            }
 
             // Restaura instantaneamente os ícones originais do Windows na saída
             _nativeIconService?.ShowDesktopIcons();

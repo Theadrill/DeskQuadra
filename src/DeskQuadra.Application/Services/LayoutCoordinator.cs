@@ -17,6 +17,7 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
     private readonly object _lock = new();
     private CancellationTokenSource? _debounceCts;
     private bool _isDisposed;
+    private bool _isInitialized;
 
     public IReadOnlyList<Quadra> ActiveQuadras => _activeQuadras.Values.ToList();
 
@@ -104,11 +105,13 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
             await _repository.SaveLayoutAsync(_activeQuadras.Values, cancellationToken).ConfigureAwait(false);
         }
 
+        _isInitialized = true;
         LayoutLoaded?.Invoke(this, ActiveQuadras);
     }
 
     public Quadra CreateNewQuadra(string title, double left, double top, double width = 340, double height = 260)
     {
+        _isInitialized = true;
         var quadra = new Quadra(title, left, top, width, height, isDefault: false);
         _activeQuadras[quadra.Id] = quadra;
         NotifyQuadraChanged(quadra);
@@ -263,6 +266,11 @@ public sealed class LayoutCoordinator : ILayoutCoordinator
     {
         lock (_lock)
         {
+            if (_activeQuadras.IsEmpty && !_isInitialized)
+            {
+                return;
+            }
+
             CancelDebounceLocked(createNew: false);
         }
 
