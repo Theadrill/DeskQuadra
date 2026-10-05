@@ -330,7 +330,19 @@
   - Documentação viva e detalhada em `docs/PLANO_VISUAL_WIN11_E_ACOES_RAPIDAS.md`.
   - Commits locais a cada passo concluído; envio (`push`) apenas após homologação direta pelo PO.
 
+---
 
+## [Sessão 27] Modernização da Barra de Rolagem (ScrollBar Fluent Windows 11)
 
+### 1. Diretriz de Design e Geometria do Thumb
+- **Eliminação de Distorções Elípticas:** No WPF, o uso de `CornerRadius` arbitrário (ex: 99) em elementos retangulares de espessura reduzida gera pontas afiladas e deformações ("agulhas"). A regra de engenharia do DeskQuadra determina que o `CornerRadius` deve ser rigorosamente **metade exata da largura** do Pill (`CornerRadius = Width / 2`), garantindo curvatura semicircular perfeitamente simétrica em repouso e hover.
+- **Transições e Densidade Dual:**
+  - **Modo Mouse:** Espessura de 4px em repouso (raio 2px), expandindo para 8px no hover (raio 4px). Trilha translúcida discreta.
+  - **Modo Touch:** Espessura de 6px em repouso (raio 3px), expandindo para 12px no hover/ativo (raio 6px), com largura total adaptada dinamicamente via `DensityResolver`.
+- **Posicionamento Overlay:**
+  - A barra é desenhada em sobreposição flutuante (`OverlayScrollViewerStyle`), não consumindo a largura do viewport nem provocando re-wrap do `WrapPanel` ou conflitos com o snap magnético.
+  - Alinhamento refinado à direita com margem calibrada (`Margin="0,4,-3,4"`) para equilibrar o respiro visual com a borda da janela (~6px em repouso, ~4px no hover), sem excesso de espaço vazio e sem encostar na borda.
 
-
+### 2. Separação Estrita de Interação (Mouse vs. Touch)
+- **ScrollBar Exclusiva para Mouse:** A ScrollBar lateral atende unicamente a eventos de mouse (arrasto do thumb, clique na trilha e roda do mouse).
+- **Toque Direto no Miolo da Quadra:** A rolagem via toque com o dedo opera exclusivamente na área interna da Quadra (estilo smartphone), deslizando os atalhos com inércia e sem conflitar com a barra lateral.
