@@ -2826,6 +2826,44 @@ public partial class QuadraWindow : Window
         return null;
     }
 
+    // F2 drop-container (docs/PLANO_DROP_CONTAINER.md): arquivo container existente
+    // como alvo de highlight. Pastas e .lnk seguem o caminho de pasta acima; aqui
+    // só arquivo com extensão conhecida (Core puro, sem Win32/UI).
+    private static string? ResolveTargetContainerPath(DesktopItemViewModel? item)
+    {
+        if (item == null || string.IsNullOrWhiteSpace(item.FilePath))
+        {
+            return null;
+        }
+
+        if (!ArchiveFormatDetector.IsContainer(item.FilePath))
+        {
+            return null;
+        }
+
+        return item.FilePath;
+    }
+
+    // F2: fonte é o próprio container (soltar ele nele mesmo)? Nunca aceita.
+    private static bool IsSelfContainerDrop(string containerPath, string? sourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            string fullContainer = Path.GetFullPath(containerPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string fullSource = Path.GetFullPath(sourcePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(fullContainer, fullSource, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void Quadra_DragOver(object sender, DragEventArgs e)
     {
         var candidateItem = FindItemUnderDragEvent(e);
@@ -2866,6 +2904,47 @@ public partial class QuadraWindow : Window
 
             bool isControlPressed = IsCopyRequested(e);
             e.Effects = isControlPressed ? DragDropEffects.Copy : DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
+
+        // F2 drop-container: highlight + cursor Copy sempre (igual Explorer).
+        // Sem escrita nesta fatia — o Drop consome o evento para não virar move entre Quadras.
+        string? targetContainer = ResolveTargetContainerPath(candidateItem);
+        bool isValidContainerDrop = false;
+        if (!string.IsNullOrEmpty(targetContainer) && candidateItem != null)
+        {
+            if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
+            {
+                var payload = e.Data.GetData(typeof(QuadraDragPayload)) as QuadraDragPayload;
+                if (payload != null && payload.Items.Count > 0)
+                {
+                    isValidContainerDrop = payload.Items.All(i => !IsSelfContainerDrop(targetContainer, i.FilePath));
+                }
+            }
+            else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null && files.Length > 0)
+                {
+                    isValidContainerDrop = files.All(f => !IsSelfContainerDrop(targetContainer, f));
+                }
+            }
+        }
+
+        if (isValidContainerDrop && candidateItem != null)
+        {
+            if (_currentDropTargetItem != candidateItem)
+            {
+                if (_currentDropTargetItem != null)
+                {
+                    _currentDropTargetItem.IsDropTarget = false;
+                }
+                _currentDropTargetItem = candidateItem;
+                _currentDropTargetItem.IsDropTarget = true;
+            }
+
+            e.Effects = DragDropEffects.Copy;
             e.Handled = true;
             return;
         }
@@ -3014,6 +3093,28 @@ public partial class QuadraWindow : Window
         }
 
         bool isCopy = IsCopyRequested(e);
+
+        // F2 drop-container: consome o drop para não virar move entre Quadras.
+        // Escrita real (Shell-first + fallback) chega na F3/F4; aqui só aceita visualmente.
+        var containerItem = targetFolderItem != null && !string.IsNullOrEmpty(ResolveTargetContainerPath(targetFolderItem))
+            ? targetFolderItem
+            : null;
+        if (containerItem == null)
+        {
+            var containerCandidate = FindItemUnderDragEvent(e);
+            if (containerCandidate != null && !string.IsNullOrEmpty(ResolveTargetContainerPath(containerCandidate)))
+            {
+                containerItem = containerCandidate;
+            }
+        }
+
+        if (containerItem != null)
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+            FinishDrop(armPostDrop);
+            return;
+        }
 
         if (targetFolderItem != null)
         {
