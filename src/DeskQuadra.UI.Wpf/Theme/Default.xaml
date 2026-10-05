@@ -202,6 +202,36 @@
     <SolidColorBrush x:Key="TouchMove.Cancel.Background" Color="#FFB3261E"/>
     <SolidColorBrush x:Key="TouchMove.Cancel.Foreground" Color="#FFFFFFFF"/>
 
+    <!-- ===== ScrollViewer com scrollbar sobreposta (overlay): a barra flutua sobre o
+         conteúdo sem roubar largura do viewport — evita re-wrap do WrapPanel da Quadra
+         e briga com o snap (espaço morto). Nomes PART_* preservados p/ o ScrollViewer
+         rotear o arraste do thumb como no template padrão. (Só comportamento; sem estilo visual.) -->
+    <Style x:Key="OverlayScrollViewerStyle" TargetType="ScrollViewer">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid Background="{TemplateBinding Background}">
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                                Content="{TemplateBinding Content}"
+                                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                CanHorizontallyScroll="False"
+                                                CanVerticallyScroll="False"/>
+                        <ScrollBar x:Name="PART_VerticalScrollBar"
+                                   Orientation="Vertical"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Stretch"
+                                   Background="Transparent"
+                                   Maximum="{TemplateBinding ScrollableHeight}"
+                                   ViewportSize="{TemplateBinding ViewportHeight}"
+                                   Value="{TemplateBinding VerticalOffset}"
+                                   Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== Ações Rápidas do Menu de Contexto (Estilo Windows 11) ===== -->
     <SolidColorBrush x:Key="Menu.QuickAction.Accent" Color="#4CC2FF"/>
     <SolidColorBrush x:Key="Menu.QuickAction.Foreground" Color="#F0F0F0"/>
