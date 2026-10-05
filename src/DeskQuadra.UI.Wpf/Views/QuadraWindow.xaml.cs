@@ -860,28 +860,8 @@ public partial class QuadraWindow : Window
 
     private SnapResult ComputeSnapFor(Rect2D proposed, double threshold = 20.0)
     {
-        var (dpiX, dpiY) = DpiHelper.GetScale(this);
-
-        // Obter WorkArea do monitor onde a janela se encontra
-        var helper = new WindowInteropHelper(this);
-        IntPtr hMonitor = NativeMethods.MonitorFromWindow(helper.Handle, NativeMethods.MONITOR_DEFAULTTONEAREST);
-        var monitorInfo = new NativeMethods.MONITORINFO();
-        monitorInfo.cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>();
-
-        Rect2D workAreaRect;
-        if (hMonitor != IntPtr.Zero && NativeMethods.GetMonitorInfo(hMonitor, ref monitorInfo))
-        {
-            var (waLeft, waTop, waWidth, waHeight) = DpiHelper.MapPhysicalToDip(dpiX, dpiY, monitorInfo.rcWork.Left, monitorInfo.rcWork.Top, monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top);
-            workAreaRect = new Rect2D(waLeft, waTop, waWidth, waHeight);
-        }
-        else
-        {
-            workAreaRect = new Rect2D(
-                SystemParameters.WorkArea.Left,
-                SystemParameters.WorkArea.Top,
-                SystemParameters.WorkArea.Width,
-                SystemParameters.WorkArea.Height);
-        }
+        // WorkArea do monitor onde a janela se encontra (REUSO: Services/MonitorWorkArea)
+        Rect2D workAreaRect = MonitorWorkArea.GetFor(this);
 
         var obstacles = _coordinator.ActiveQuadras
             .Where(q => q.Id != _viewModel.Id)

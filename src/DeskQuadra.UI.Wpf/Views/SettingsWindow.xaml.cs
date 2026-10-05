@@ -21,6 +21,11 @@ public partial class SettingsWindow : Window
     {
         base.OnSourceInitialized(e);
 
+        // Cabe sempre na tela: trava a altura em 80% da work area (sem barra de tarefas)
+        // do monitor onde abriu. O ScrollViewer interno rola o excedente — nada se perde.
+        // Multi-monitor aware (DIPs por monitor); CenterScreen abre uma vez, sem reavaliação.
+        MaxHeight = DeskQuadra.UI.Wpf.Services.MonitorWorkArea.GetFor(this).Height * 0.8;
+
         var helper = new WindowInteropHelper(this);
         if (helper.Handle != IntPtr.Zero && _visualEffectService != null)
         {
