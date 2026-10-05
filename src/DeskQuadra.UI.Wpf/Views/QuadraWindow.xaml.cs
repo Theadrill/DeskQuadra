@@ -112,6 +112,11 @@ public partial class QuadraWindow : Window
     // Lido a cada gesto de move — troca no slider vale na hora, sem reabrir nada.
     internal static double CurrentSnapGap = 8.0;
 
+    // Gap sob o qual as posições atuais foram assentadas pela última vez.
+    // O re-snap cobre a viagem |atual - assentado| + a zona magnética do arraste (20px):
+    // sem isso, saltos grandes (ex: 0↔24 = 24px > 20px) eram ignorados silenciosamente.
+    internal static double LastAppliedSnapGap = 8.0;
+
     // Modo roll-up (recolhimento no local, seção 10 do BRAINSTORMING)
     private double? _expandedHeight; // altura guardada antes de recolher
     private double _savedMinHeight = 140; // MinHeight original para restaurar ao expandir
@@ -835,7 +840,8 @@ public partial class QuadraWindow : Window
 
     /// <summary>
     /// Reaplica o snap com o gap atual (Configurações → slider) na posição presente.
-    /// Só move Quadra já próxima de um alvo (mesmo threshold do arraste): nada teleporta.
+    /// O threshold cobre a viagem do gap (|atual - assentado|) + a zona do arraste:
+    /// só se move Quadra dentro da zona magnética — nada teleporta pela tela.
     /// Travada/recolhida/em-gesto nunca se movem (<see cref="CanTransform"/> + <c>_isDragging</c>).
     /// A persistência segue o caminho existente (mudança de Left/Top com debounce).
     /// </summary>
@@ -846,12 +852,13 @@ public partial class QuadraWindow : Window
             return;
         }
 
-        var snap = ComputeSnapFor(new Rect2D(Left, Top, Width, Height));
+        double travel = Math.Abs(CurrentSnapGap - LastAppliedSnapGap);
+        var snap = ComputeSnapFor(new Rect2D(Left, Top, Width, Height), threshold: 20.0 + travel);
         Left = snap.X;
         Top = snap.Y;
     }
 
-    private SnapResult ComputeSnapFor(Rect2D proposed)
+    private SnapResult ComputeSnapFor(Rect2D proposed, double threshold = 20.0)
     {
         var (dpiX, dpiY) = DpiHelper.GetScale(this);
 
@@ -881,7 +888,7 @@ public partial class QuadraWindow : Window
             .Select(q => new Rect2D(q.Left, q.Top, q.Width, q.Height))
             .ToList();
 
-        return _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: CurrentSnapGap);
+        return _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: threshold, gap: CurrentSnapGap);
     }
 
     private void TitleBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)

@@ -127,4 +127,31 @@ public class SnapEngineTests
         Assert.True(result.SnappedY);
         Assert.Equal(200, result.Y);
     }
+
+    [Fact]
+    public void CalculateSnap_LargeGapJumpBeyondThreshold_DoesNotSnap()
+    {
+        // Regressão do slider de gap: Quadra assentada na borda com gap 24 (Left=24).
+        // Saltar para gap 0 com o threshold do arraste (20) exige mover 24px > 20px:
+        // o motor corretamente NÃO snapa — o re-snap da UI precisa alargar o threshold.
+        var current = new Rect2D(24, 200, 300, 200);
+
+        var result = _engine.CalculateSnap(current, _workArea, threshold: 20, gap: 0);
+
+        Assert.False(result.SnappedX);
+        Assert.Equal(24, result.X);
+    }
+
+    [Fact]
+    public void CalculateSnap_LargeGapJumpWithExtendedThreshold_Snaps()
+    {
+        // Mesmo cenário com threshold alargado pela viagem (|24-0| + 20 = 44):
+        // o alvo (borda + gap 0) é recapturado.
+        var current = new Rect2D(24, 200, 300, 200);
+
+        var result = _engine.CalculateSnap(current, _workArea, threshold: 20 + 24, gap: 0);
+
+        Assert.True(result.SnappedX);
+        Assert.Equal(0, result.X);
+    }
 }

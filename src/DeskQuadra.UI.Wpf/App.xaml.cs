@@ -735,6 +735,10 @@ public partial class App : System.Windows.Application
                 // Best-effort: uma janela não bloqueia as demais.
             }
         }
+
+        // Posições assentadas sob o gap atual (lido no tick, não no evento:
+        // durante o debounce o usuário pode ter passado por vários valores).
+        QuadraWindow.LastAppliedSnapGap = QuadraWindow.CurrentSnapGap;
     }
 
     private void EnsureVisualWiring(IVisualSettingsService? visualService)
