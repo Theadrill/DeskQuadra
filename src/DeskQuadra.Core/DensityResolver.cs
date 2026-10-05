@@ -65,4 +65,16 @@ public static class DensityResolver
 
     // Título cresce 25% só no Touch; Normal preserva o token do tema.
     public static double TitleFontSize(bool isTouch) => isTouch ? TouchTitleFontSize : NormalTitleFontSize;
+
+    // Dimensões da barra de rolagem Fluent (Windows 11): trilha e thumb (repouso e hover).
+    public const double NormalScrollBarWidth = 10.0;
+    public const double TouchScrollBarWidth = 16.0;
+    public const double NormalScrollBarThumbIdleWidth = 4.0;
+    public const double TouchScrollBarThumbIdleWidth = 6.0;
+    public const double NormalScrollBarThumbHoverWidth = 8.0;
+    public const double TouchScrollBarThumbHoverWidth = 12.0;
+
+    public static double ScrollBarWidth(bool isTouch) => isTouch ? TouchScrollBarWidth : NormalScrollBarWidth;
+    public static double ScrollBarThumbIdleWidth(bool isTouch) => isTouch ? TouchScrollBarThumbIdleWidth : NormalScrollBarThumbIdleWidth;
+    public static double ScrollBarThumbHoverWidth(bool isTouch) => isTouch ? TouchScrollBarThumbHoverWidth : NormalScrollBarThumbHoverWidth;
 }

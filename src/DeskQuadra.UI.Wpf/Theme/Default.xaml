@@ -202,10 +202,121 @@
     <SolidColorBrush x:Key="TouchMove.Cancel.Background" Color="#FFB3261E"/>
     <SolidColorBrush x:Key="TouchMove.Cancel.Foreground" Color="#FFFFFFFF"/>
 
+    <!-- ===== Barra de rolagem Fluent (Padrão Windows 11) ===== -->
+    <!-- Contraste medido sobre Dialog.Background (#1F1F24): repouso 5,83:1, hover 7,64:1, pressionado 10,88:1. -->
+    <sys:Double x:Key="ScrollBar.Width">10</sys:Double>
+    <sys:Double x:Key="ScrollBar.Width.Touch">16</sys:Double>
+    <sys:Double x:Key="ScrollBar.Thumb.IdleWidth">4</sys:Double>
+    <sys:Double x:Key="ScrollBar.Thumb.IdleWidth.Touch">6</sys:Double>
+    <sys:Double x:Key="ScrollBar.Thumb.HoverWidth">8</sys:Double>
+    <sys:Double x:Key="ScrollBar.Thumb.HoverWidth.Touch">12</sys:Double>
+
+    <!-- Raio dos cantos do Thumb: SEMPRE metade exata da largura para garantir capsula circular perfeita sem distorcao eliptica no WPF -->
+    <CornerRadius x:Key="ScrollBar.Thumb.CornerRadius.Idle">2</CornerRadius>
+    <CornerRadius x:Key="ScrollBar.Thumb.CornerRadius.Hover">4</CornerRadius>
+
+    <SolidColorBrush x:Key="ScrollBar.Track.Background" Color="#00000000"/>
+    <SolidColorBrush x:Key="ScrollBar.Track.Hover.Background" Color="#0AFFFFFF"/>
+    <SolidColorBrush x:Key="ScrollBar.Thumb.Background" Color="#80FFFFFF"/>
+    <SolidColorBrush x:Key="ScrollBar.Thumb.Hover.Background" Color="#B3FFFFFF"/>
+    <SolidColorBrush x:Key="ScrollBar.Thumb.Pressed.Background" Color="#E6FFFFFF"/>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="{DynamicResource ScrollBar.Track.Background}"/>
+        <Setter Property="Width" Value="{DynamicResource ScrollBar.Width}"/>
+        <Setter Property="MinWidth" Value="{DynamicResource ScrollBar.Width}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid x:Name="Bg" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+                        <Track x:Name="PART_Track"
+                               IsDirectionReversed="True"
+                               Maximum="{TemplateBinding Maximum}"
+                               Minimum="{TemplateBinding Minimum}"
+                               Value="{TemplateBinding Value}"
+                               ViewportSize="{TemplateBinding ViewportSize}">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False"/>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb x:Name="Thumb" Focusable="False" MinHeight="24">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border x:Name="Pill"
+                                                    Background="{DynamicResource ScrollBar.Thumb.Background}"
+                                                    CornerRadius="{DynamicResource ScrollBar.Thumb.CornerRadius.Idle}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Stretch"
+                                                    Width="{DynamicResource ScrollBar.Thumb.IdleWidth}"/>
+                                            <ControlTemplate.Triggers>
+                                                <!-- Hover na ScrollBar expande o Pill de 4px para 8px mantendo cantos semicirculares perfeitos (raio 4) -->
+                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="True">
+                                                    <Setter TargetName="Pill" Property="Width" Value="{DynamicResource ScrollBar.Thumb.HoverWidth}"/>
+                                                    <Setter TargetName="Pill" Property="CornerRadius" Value="{DynamicResource ScrollBar.Thumb.CornerRadius.Hover}"/>
+                                                    <Setter TargetName="Pill" Property="Background" Value="{DynamicResource ScrollBar.Thumb.Hover.Background}"/>
+                                                </DataTrigger>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter TargetName="Pill" Property="Width" Value="{DynamicResource ScrollBar.Thumb.HoverWidth}"/>
+                                                    <Setter TargetName="Pill" Property="CornerRadius" Value="{DynamicResource ScrollBar.Thumb.CornerRadius.Hover}"/>
+                                                    <Setter TargetName="Pill" Property="Background" Value="{DynamicResource ScrollBar.Thumb.Pressed.Background}"/>
+                                                </Trigger>
+                                                <!-- Suporte a ScrollBar Horizontal -->
+                                                <DataTrigger Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="Horizontal">
+                                                    <Setter TargetName="Pill" Property="Width" Value="Auto"/>
+                                                    <Setter TargetName="Pill" Property="Height" Value="{DynamicResource ScrollBar.Thumb.IdleWidth}"/>
+                                                    <Setter TargetName="Pill" Property="HorizontalAlignment" Value="Stretch"/>
+                                                    <Setter TargetName="Pill" Property="VerticalAlignment" Value="Center"/>
+                                                </DataTrigger>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="Horizontal"/>
+                                                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter TargetName="Pill" Property="Height" Value="{DynamicResource ScrollBar.Thumb.HoverWidth}"/>
+                                                    <Setter TargetName="Pill" Property="CornerRadius" Value="{DynamicResource ScrollBar.Thumb.CornerRadius.Hover}"/>
+                                                    <Setter TargetName="Pill" Property="Background" Value="{DynamicResource ScrollBar.Thumb.Hover.Background}"/>
+                                                </MultiDataTrigger>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="Horizontal"/>
+                                                        <Condition Binding="{Binding IsDragging, RelativeSource={RelativeSource Self}}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter TargetName="Pill" Property="Height" Value="{DynamicResource ScrollBar.Thumb.HoverWidth}"/>
+                                                    <Setter TargetName="Pill" Property="CornerRadius" Value="{DynamicResource ScrollBar.Thumb.CornerRadius.Hover}"/>
+                                                    <Setter TargetName="Pill" Property="Background" Value="{DynamicResource ScrollBar.Thumb.Pressed.Background}"/>
+                                                </MultiDataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- Hover no ScrollBar dá um leve fundo translúcido para a trilha -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ScrollBar.Track.Hover.Background}"/>
+                        </Trigger>
+                        <Trigger Property="Orientation" Value="Horizontal">
+                            <Setter Property="Width" Value="Auto"/>
+                            <Setter Property="MinWidth" Value="0"/>
+                            <Setter Property="Height" Value="{DynamicResource ScrollBar.Width}"/>
+                            <Setter Property="MinHeight" Value="{DynamicResource ScrollBar.Width}"/>
+                            <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== ScrollViewer com scrollbar sobreposta (overlay): a barra flutua sobre o
          conteúdo sem roubar largura do viewport — evita re-wrap do WrapPanel da Quadra
          e briga com o snap (espaço morto). Nomes PART_* preservados p/ o ScrollViewer
-         rotear o arraste do thumb como no template padrão. (Só comportamento; sem estilo visual.) -->
+         rotear o arraste do thumb como no template padrão. -->
     <Style x:Key="OverlayScrollViewerStyle" TargetType="ScrollViewer">
         <Setter Property="Template">
             <Setter.Value>
@@ -221,6 +332,7 @@
                                    Orientation="Vertical"
                                    HorizontalAlignment="Right"
                                    VerticalAlignment="Stretch"
+                                   Margin="0,4,2,4"
                                    Background="Transparent"
                                    Maximum="{TemplateBinding ScrollableHeight}"
                                    ViewportSize="{TemplateBinding ViewportHeight}"

@@ -310,6 +310,17 @@ public partial class QuadraWindow : Window
             ? ThemeResolver.Get("Quadra.Item.Margin.Touch", new Thickness(4))
             : GetThemeBase("Quadra.Item.Margin", new Thickness(2));
 
+        // Barra de rolagem Fluent global (Quadras + Configurações): trilha e thumb acompanham a densidade.
+        // O CornerRadius é SEMPRE exatamente metade da largura em cada estado, eliminando qualquer distorção elíptica.
+        double scrollWidth = DensityResolver.ScrollBarWidth(isTouch);
+        double thumbIdle = DensityResolver.ScrollBarThumbIdleWidth(isTouch);
+        double thumbHover = DensityResolver.ScrollBarThumbHoverWidth(isTouch);
+        app.Resources["ScrollBar.Width"] = scrollWidth;
+        app.Resources["ScrollBar.Thumb.IdleWidth"] = thumbIdle;
+        app.Resources["ScrollBar.Thumb.HoverWidth"] = thumbHover;
+        app.Resources["ScrollBar.Thumb.CornerRadius.Idle"] = new CornerRadius(thumbIdle / 2.0);
+        app.Resources["ScrollBar.Thumb.CornerRadius.Hover"] = new CornerRadius(thumbHover / 2.0);
+
         // Recolhida: mantém a altura recolhida coerente com a nova barra (expandida segue no modelo).
         if (_viewModel.IsCollapsed && !_isApplyingCollapse)
         {

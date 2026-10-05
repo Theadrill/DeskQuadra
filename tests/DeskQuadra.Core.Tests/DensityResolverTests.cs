@@ -48,4 +48,20 @@ public class DensityResolverTests
         Assert.Equal(42.0, DensityResolver.TitleBarHeight(true));
         Assert.Equal(44.0, DensityResolver.TitleButtonSize(true));
     }
+
+    [Fact]
+    public void ScrollBar_NormalMatchesFluentSlimSpec()
+    {
+        Assert.Equal(10.0, DensityResolver.ScrollBarWidth(false));
+        Assert.Equal(4.0, DensityResolver.ScrollBarThumbIdleWidth(false));
+        Assert.Equal(8.0, DensityResolver.ScrollBarThumbHoverWidth(false));
+    }
+
+    [Fact]
+    public void ScrollBar_TouchMatchesGenerousHitboxSpec()
+    {
+        Assert.Equal(16.0, DensityResolver.ScrollBarWidth(true));
+        Assert.Equal(6.0, DensityResolver.ScrollBarThumbIdleWidth(true));
+        Assert.Equal(12.0, DensityResolver.ScrollBarThumbHoverWidth(true));
+    }
 }
