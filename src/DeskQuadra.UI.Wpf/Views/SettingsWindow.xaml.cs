@@ -76,35 +76,60 @@ public partial class SettingsWindow : Window
     private void ClampToWorkArea(bool center)
     {
         var wa = MonitorWorkArea.GetFor(this);
+        double beforeLeft = Left;
+        double beforeTop = Top;
 
         if (center || !_positionInitialized)
         {
             Left = wa.Left + Math.Max(0, (wa.Width - ActualWidth) / 2);
             Top = wa.Top + Math.Max(0, (wa.Height - ActualHeight) / 2);
             _positionInitialized = true;
-            return;
+        }
+        else
+        {
+            if (Top < wa.Top)
+            {
+                Top = wa.Top;
+            }
+
+            if (Left < wa.Left)
+            {
+                Left = wa.Left;
+            }
+
+            double bottomOverflow = (Top + ActualHeight) - (wa.Top + wa.Height);
+            if (bottomOverflow > 0)
+            {
+                Top = Math.Max(wa.Top, Top - bottomOverflow);
+            }
+
+            double rightOverflow = (Left + ActualWidth) - (wa.Left + wa.Width);
+            if (rightOverflow > 0)
+            {
+                Left = Math.Max(wa.Left, Left - rightOverflow);
+            }
         }
 
-        if (Top < wa.Top)
-        {
-            Top = wa.Top;
-        }
+        // TEMP-DIAG (remover após diagnóstico): prova qual build rodou e com quais números.
+        TempDiagLog($"center={center} wa=({wa.Left},{wa.Top},{wa.Width},{wa.Height}) " +
+            $"actual=({ActualWidth:F0},{ActualHeight:F0}) maxH={MaxHeight:F0} " +
+            $"before=({beforeLeft:F0},{beforeTop:F0}) after=({Left:F0},{Top:F0})");
+    }
 
-        if (Left < wa.Left)
+    private static void TempDiagLog(string line)
+    {
+        try
         {
-            Left = wa.Left;
+            string dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeskQuadra");
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(
+                System.IO.Path.Combine(dir, "settings-window.log"),
+                $"[{DateTime.Now:HH:mm:ss}] BUILD center-fix/1c81c04+ {line}{Environment.NewLine}");
         }
-
-        double bottomOverflow = (Top + ActualHeight) - (wa.Top + wa.Height);
-        if (bottomOverflow > 0)
+        catch
         {
-            Top = Math.Max(wa.Top, Top - bottomOverflow);
-        }
-
-        double rightOverflow = (Left + ActualWidth) - (wa.Left + wa.Width);
-        if (rightOverflow > 0)
-        {
-            Left = Math.Max(wa.Left, Left - rightOverflow);
+            // Diagnóstico nunca derruba a UI.
         }
     }
 }
