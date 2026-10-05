@@ -697,8 +697,11 @@ public partial class App : System.Windows.Application
     private bool _visualWired;
 
     private bool _snapWired;
+    private System.Windows.Threading.DispatcherTimer? _snapReapplyTimer;
 
-    // Liga o gap global nas Quadras (move/resize leem o estático a cada gesto; sem timer/hook novo).
+    // Liga o gap global nas Quadras (move/resize leem o estático a cada gesto; sem hook novo).
+    // Troca no slider: aplica de imediato no estático + reagenda o re-snap das abertas
+    // com debounce de 1s (só após o usuário parar de arrastar o slider).
     private void EnsureSnapWiring(ISnapSettingsService snapService)
     {
         QuadraWindow.CurrentSnapGap = snapService.Gap;
@@ -713,8 +716,25 @@ public partial class App : System.Windows.Application
             Dispatcher.Invoke(() =>
             {
                 QuadraWindow.CurrentSnapGap = gap;
+                OneShotTimer.Arm(ref _snapReapplyTimer, 1000, OnSnapReapplyTick);
             });
         };
+    }
+
+    private void OnSnapReapplyTick(object? sender, EventArgs e)
+    {
+        OneShotTimer.Cancel(ref _snapReapplyTimer, OnSnapReapplyTick);
+        foreach (var window in _quadraWindows.Values)
+        {
+            try
+            {
+                window.ReapplySnapGap();
+            }
+            catch
+            {
+                // Best-effort: uma janela não bloqueia as demais.
+            }
+        }
     }
 
     private void EnsureVisualWiring(IVisualSettingsService? visualService)

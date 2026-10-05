@@ -825,40 +825,63 @@ public partial class QuadraWindow : Window
             double rawLeft = _initialLeft + deltaX;
             double rawTop = _initialTop + deltaY;
 
-            var proposed = new Rect2D(rawLeft, rawTop, Width, Height);
-
-            // Obter WorkArea do monitor onde a janela se encontra
-            var helper = new WindowInteropHelper(this);
-            IntPtr hMonitor = NativeMethods.MonitorFromWindow(helper.Handle, NativeMethods.MONITOR_DEFAULTTONEAREST);
-            var monitorInfo = new NativeMethods.MONITORINFO();
-            monitorInfo.cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>();
-
-            Rect2D workAreaRect;
-            if (hMonitor != IntPtr.Zero && NativeMethods.GetMonitorInfo(hMonitor, ref monitorInfo))
-            {
-                var (waLeft, waTop, waWidth, waHeight) = DpiHelper.MapPhysicalToDip(dpiX, dpiY, monitorInfo.rcWork.Left, monitorInfo.rcWork.Top, monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top);
-                workAreaRect = new Rect2D(waLeft, waTop, waWidth, waHeight);
-            }
-            else
-            {
-                workAreaRect = new Rect2D(
-                    SystemParameters.WorkArea.Left,
-                    SystemParameters.WorkArea.Top,
-                    SystemParameters.WorkArea.Width,
-                    SystemParameters.WorkArea.Height);
-            }
-
-            var obstacles = _coordinator.ActiveQuadras
-                .Where(q => q.Id != _viewModel.Id)
-                .Select(q => new Rect2D(q.Left, q.Top, q.Width, q.Height))
-                .ToList();
-
-            var snap = _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: CurrentSnapGap);
+            var snap = ComputeSnapFor(new Rect2D(rawLeft, rawTop, Width, Height));
 
             Left = snap.X;
             Top = snap.Y;
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// Reaplica o snap com o gap atual (Configurações → slider) na posição presente.
+    /// Só move Quadra já próxima de um alvo (mesmo threshold do arraste): nada teleporta.
+    /// Travada/recolhida/em-gesto nunca se movem (<see cref="CanTransform"/> + <c>_isDragging</c>).
+    /// A persistência segue o caminho existente (mudança de Left/Top com debounce).
+    /// </summary>
+    internal void ReapplySnapGap()
+    {
+        if (!CanTransform() || _isDragging)
+        {
+            return;
+        }
+
+        var snap = ComputeSnapFor(new Rect2D(Left, Top, Width, Height));
+        Left = snap.X;
+        Top = snap.Y;
+    }
+
+    private SnapResult ComputeSnapFor(Rect2D proposed)
+    {
+        var (dpiX, dpiY) = DpiHelper.GetScale(this);
+
+        // Obter WorkArea do monitor onde a janela se encontra
+        var helper = new WindowInteropHelper(this);
+        IntPtr hMonitor = NativeMethods.MonitorFromWindow(helper.Handle, NativeMethods.MONITOR_DEFAULTTONEAREST);
+        var monitorInfo = new NativeMethods.MONITORINFO();
+        monitorInfo.cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>();
+
+        Rect2D workAreaRect;
+        if (hMonitor != IntPtr.Zero && NativeMethods.GetMonitorInfo(hMonitor, ref monitorInfo))
+        {
+            var (waLeft, waTop, waWidth, waHeight) = DpiHelper.MapPhysicalToDip(dpiX, dpiY, monitorInfo.rcWork.Left, monitorInfo.rcWork.Top, monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top);
+            workAreaRect = new Rect2D(waLeft, waTop, waWidth, waHeight);
+        }
+        else
+        {
+            workAreaRect = new Rect2D(
+                SystemParameters.WorkArea.Left,
+                SystemParameters.WorkArea.Top,
+                SystemParameters.WorkArea.Width,
+                SystemParameters.WorkArea.Height);
+        }
+
+        var obstacles = _coordinator.ActiveQuadras
+            .Where(q => q.Id != _viewModel.Id)
+            .Select(q => new Rect2D(q.Left, q.Top, q.Width, q.Height))
+            .ToList();
+
+        return _snapEngine.CalculateSnap(proposed, workAreaRect, obstacles, threshold: 20, gap: CurrentSnapGap);
     }
 
     private void TitleBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
