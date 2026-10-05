@@ -107,3 +107,11 @@ Histórico: toda mexida no menu quebrava densidade touch/normal e cores. Isso N�
 - **T8b TTL assimétrico:** negativo (vazio/falha) 60s, positivo 5 min; expirado refaz a query (em background via lazy).
 - **T8c tray:** `Atualizar ações de terceiros` (`ClearCache`) antes do Sair.
 - Testes: 458 verdes no push. Host persistente fica como ideia futura (one-shot mantido).
+
+## 6. Comportamentos conhecidos de handlers de terceiros (não são bug nosso)
+
+### 2026-10-05 — 7-Zip segue `.lnk` no "Adicionar para X.zip"
+- **Evidência:** `shell-menu.log` mostra `invoke path='...\Desktop\SteamController - Atalho.lnk' verb='SevenZipCompressToZip' outcome=ok`; o 7-Zip então tenta criar `C:\Program Files\SteamDeckTools\SteamController.zip` (nome/pasta do **alvo**) e falha com `Acesso negado`. `quadras.json` guarda o `.lnk` corretamente. Mesmo erro reproduzido no Explorer nativo, no mesmo arquivo.
+- **Causa:** o verbo imediato do 7-Zip resolve o link via `IShellLink` por desenho (arquivar um `.lnk` de 1KB não serve; ele arquiva o alvo). Em pasta protegida (`Program Files`) a criação ao lado do alvo exige admin.
+- **Não é bug do DeskQuadra:** entregamos o `.lnk` (query/invoke sobre o próprio link, §1). Mesmo PIDL + mesmo `IContextMenu` + mesmo verbo = mesmo resultado no Explorer.
+- **Orientação ao usuário:** para `.lnk` de app em pasta protegida, usar o verbo com diálogo ("Adicionar ao arquivo...") e escolher saída gravável (ex.: Desktop). Guardar o `.lnk` em si, só via linha de comando (`7z a -tzip saida.zip *.lnk`).
