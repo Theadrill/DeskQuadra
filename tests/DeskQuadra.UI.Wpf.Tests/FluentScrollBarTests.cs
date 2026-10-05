@@ -84,6 +84,7 @@ public class FluentScrollBarTests
 
             var bar = (ScrollBar)viewer.Template.FindName("PART_VerticalScrollBar", viewer);
             Assert.NotNull(bar);
+            Assert.Equal(new Thickness(0, 4, -3, 4), bar.Margin);
             bar.ApplyTemplate();
 
             var track = (Track)bar.Template.FindName("PART_Track", bar);

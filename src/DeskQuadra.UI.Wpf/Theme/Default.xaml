@@ -332,7 +332,7 @@
                                    Orientation="Vertical"
                                    HorizontalAlignment="Right"
                                    VerticalAlignment="Stretch"
-                                   Margin="0,4,2,4"
+                                   Margin="0,4,-3,4"
                                    Background="Transparent"
                                    Maximum="{TemplateBinding ScrollableHeight}"
                                    ViewportSize="{TemplateBinding ViewportHeight}"
