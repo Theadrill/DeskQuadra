@@ -36,7 +36,7 @@ O DeskQuadra detecta as capacidades gráficas e a versão do sistema operacional
 - [x] **Atualização e recuperação em tempo real de ícones restaurados da Lixeira:** Garantir invalidação e recarregamento imediato de ícones em cache quando arquivos/atalhos forem restaurados ou atualizados sem exigir reinicialização do app.
 - [x] **Visual transparente estilo Windows 11 (Mica / Acrylic blur):** Implementado via motor híbrido de efeitos (`WindowVisualEffectService`) com suporte a Acrílico Moderno, Blur Clássico e degradação graciosa para tema sólido configurável pelo usuário.
 - [x] **Ícones de operações rápidas no menu de contexto estilo Windows 11:** Barra superior de ações compactas (copiar, recortar, colar, renomear, compartilhar e excluir) integrada, padronizada e refinada no topo do menu de contexto.
-- [ ] **Slider de espaçamento entre quadras nas Configurações:** Permitir configurar o espaçamento magnético (snap gap) entre quadras e bordas da tela via slider nas opções do app.
+- [x] **Slider de espaçamento entre quadras nas Configurações:** configurável (0–24px, padrão 8) com re-snap das Quadras abertas após ~1s sem ajuste.
 - [ ] **Modernização visual das barras de rolagem (Scrollbar):** Modernizar o design e comportamento da barra de scroll por todo o aplicativo para padrão minimalista e elegante estilo Windows 11 Fluent.
 
 ## Créditos (bibliotecas de terceiros)

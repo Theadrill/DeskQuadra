@@ -679,30 +679,9 @@ public partial class App : System.Windows.Application
         _settingsWindow.UpdateLayout();
         _settingsWindow.Left = settingsWorkArea.Left + Math.Max(0, (settingsWorkArea.Width - _settingsWindow.ActualWidth) / 2);
         _settingsWindow.Top = settingsWorkArea.Top + Math.Max(0, (settingsWorkArea.Height - _settingsWindow.ActualHeight) / 2);
-        TempDiagLog($"sync wa=({settingsWorkArea.Left},{settingsWorkArea.Top},{settingsWorkArea.Width},{settingsWorkArea.Height}) " +
-            $"actual=({_settingsWindow.ActualWidth:F0},{_settingsWindow.ActualHeight:F0}) " +
-            $"pos=({_settingsWindow.Left:F0},{_settingsWindow.Top:F0})");
     }
 
     private bool _densityWired;
-
-    // TEMP-DIAG (remover após diagnóstico do posicionamento das Configurações).
-    private static void TempDiagLog(string line)
-    {
-        try
-        {
-            string dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeskQuadra");
-            Directory.CreateDirectory(dir);
-            File.AppendAllText(
-                Path.Combine(dir, "settings-window.log"),
-                $"[{DateTime.Now:HH:mm:ss}] BUILD sync-pos {line}{Environment.NewLine}");
-        }
-        catch
-        {
-            // Diagnóstico nunca derruba a UI.
-        }
-    }
 
     // Liga preferência global + probe para WM_DISPLAYCHANGE + aplica em todas ao trocar.
     private void EnsureDensityWiring(IDensitySettingsService densityService)
