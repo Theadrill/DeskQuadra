@@ -49,10 +49,23 @@ public static class ShellHostProtocol
     // usado para folhas SEM verbo estável.
     public const string InvokeByLabelOp = "invoke-by-label";
 
+    // F3 drop-em-container (docs/PLANO_DROP_CONTAINER.md): pedido "drop" =
+    // (container, arquivos). O host resolve o DropHandler do container via
+    // GetUIObjectOf(IID_IDropTarget) e encaminha um CF_HDROP — o app instalado
+    // (7-Zip/WinRAR/zip nativo) faz a adição. Sem handler = false silencioso
+    // (a F4 assume com fallback .zip nativo).
+    public const string DropOp = "drop";
+
     // Orçamentos T5 (§ plano: query ~3s / invoke ~30s). Fonte única: o cliente
     // espera isso no processo e o engine usa o mesmo valor na STA interna.
     public const int QueryTimeoutMs = 3000;
     public const int InvokeTimeoutMs = 30000;
+
+    // F3 drop: arquivar GBs mostra o progresso do próprio handler; orçamento
+    // maior que o invoke (diálogo modal). Kill no timeout continua valendo
+    // (host fresco na próxima operação) — arquivo grande demais cai em false
+    // e o usuário repete pelo Explorer.
+    public const int DropTimeoutMs = 120000;
 
     // Faixa válida de offset (id - idCmdFirst) p/ o HMENU fantasma (movido do
     // engine T3 p/ cá: guarda pura, usada pelo cliente ANTES de spawnar e pelo
@@ -110,6 +123,16 @@ public static class ShellHostProtocol
                 x,
                 y,
                 background),
+            JsonOptions);
+
+    // F3 drop: envelope de resposta reaproveita o do invoke (Ok/Error) —
+    // sem DTO novo (regra de reuso: só unificar/criar com comportamento idêntico).
+    public static string SerializeDropRequest(string containerPath, IReadOnlyList<string> files)
+        => JsonSerializer.Serialize(
+            new ShellHostDropRequest(
+                DropOp,
+                containerPath,
+                files is List<string> list ? list : new List<string>(files ?? Array.Empty<string>())),
             JsonOptions);
 
     // Lê o "op" sem desserializar tudo (o host despacha por ele).
@@ -223,6 +246,44 @@ public static class ShellHostProtocol
             foreach (string label in req.Labels)
             {
                 if (string.IsNullOrWhiteSpace(label))
+                {
+                    return null;
+                }
+            }
+
+            return req;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // F3 drop: container precisa ser caminho válido; lista precisa ter ao
+    // menos 1 caminho não-branco (o host valida existência/tipo de novo).
+    public static ShellHostDropRequest? ParseDropRequest(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return null;
+        }
+
+        try
+        {
+            var req = JsonSerializer.Deserialize<ShellHostDropRequest>(line, JsonOptions);
+            if (req is null || req.Op != DropOp || string.IsNullOrWhiteSpace(req.ContainerPath))
+            {
+                return null;
+            }
+
+            if (req.Files is null || req.Files.Count == 0)
+            {
+                return null;
+            }
+
+            foreach (string file in req.Files)
+            {
+                if (string.IsNullOrWhiteSpace(file))
                 {
                     return null;
                 }
@@ -364,6 +425,11 @@ public sealed record ShellHostInvokeByLabelRequest(
     int? X,
     int? Y,
     bool Background = false);
+
+// F3 drop-em-container: ContainerPath = arquivo container existente;
+// Files = caminhos de origem (arquivos ou pastas). Resposta = envelope do
+// invoke (ShellHostInvokeResponse) — sem DTO novo.
+public sealed record ShellHostDropRequest(string Op, string ContainerPath, List<string> Files);
 
 // Respostas (1 linha no stdout do host). Query SEMPRE devolve Entries
 // (vazia em falha — a UI mantém o placeholder T1); Error é diagnóstico p/

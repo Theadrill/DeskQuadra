@@ -40,7 +40,7 @@ public partial class QuadraWindow : Window
     private readonly IFileLauncherService _launcherService;
     private readonly IFileDeletionService _deletionService;
     private readonly IThirdPartyMenuService _thirdPartyMenuService;
-
+    private readonly IArchiveDropService _archiveDropService;
     private bool _isInitializing = true;
     private bool _isDragging;
     private Point _dragStartScreenPoint;
@@ -150,7 +150,8 @@ public partial class QuadraWindow : Window
         IThirdPartyMenuService thirdPartyMenuService,
         IWindowVisualEffectService? visualEffectService = null,
         IClipboardService? clipboardService = null,
-        IShareService? shareService = null)
+        IShareService? shareService = null,
+        IArchiveDropService? archiveDropService = null)
     {
         _viewModel = viewModel;
         DataContext = viewModel;
@@ -160,6 +161,7 @@ public partial class QuadraWindow : Window
         _launcherService = launcherService;
         _deletionService = deletionService;
         _thirdPartyMenuService = thirdPartyMenuService;
+        _archiveDropService = archiveDropService ?? new ArchiveDropService();
         _visualEffectService = visualEffectService;
         _clipboardService = clipboardService ?? new WindowsClipboardService();
         _shareService = shareService ?? new WindowsShareService(_clipboardService);
@@ -3110,6 +3112,43 @@ public partial class QuadraWindow : Window
 
         if (containerItem != null)
         {
+            // F3 drop-em-container: delega ao DropHandler do arquivo via
+            // ShellHost isolado (molde do ThirdPartyItem_Click: hwnd/ponto aqui,
+            // entrega no ThreadPool — verbo lento com progresso próprio não
+            // congela a Quadra). Falha = silenciosa, item continua na Quadra
+            // (a F4 assume com fallback .zip nativo).
+            string containerPath = containerItem.FilePath;
+            List<string> sources = new();
+            if (e.Data.GetDataPresent(typeof(QuadraDragPayload)))
+            {
+                var payload = e.Data.GetData(typeof(QuadraDragPayload)) as QuadraDragPayload;
+                if (payload != null)
+                {
+                    sources.AddRange(payload.Items.Select(i => i.FilePath).Where(p => !string.IsNullOrWhiteSpace(p)));
+                }
+            }
+            else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null)
+                {
+                    sources.AddRange(files.Where(f => !string.IsNullOrWhiteSpace(f)));
+                }
+            }
+
+            IArchiveDropService dropService = _archiveDropService;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    dropService.TryAddToContainer(containerPath, sources);
+                }
+                catch
+                {
+                    // Silencioso, padrão do projeto.
+                }
+            });
+
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
             FinishDrop(armPostDrop);

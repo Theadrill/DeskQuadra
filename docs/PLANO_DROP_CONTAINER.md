@@ -70,6 +70,12 @@ Permitir arrastar arquivo/pasta de dentro de uma Quadra (ou do Explorer via `Fil
 ### F3 — Shell-first (WinRAR/7-Zip reais)
 - `Drop` monta `CF_HDROP` e chama o `IDropTarget` do container via `ShellHost` (fora da UI). Handler mostra o próprio progresso.
 - Critério: com 7-Zip/WinRAR instalado, drop adiciona no arquivo; sem app, cai no F4 sem travar.
+- **Achados validados em 2026-10-05 (sonda manual no `ShellHost`):**
+  - O `IDataObject` das origens vem do próprio Shell (pai comum + `GetUIObjectOf` `IID_IDataObject`) — o `CF_HDROP` montado na mão é recusado pelo `zipfldr` sem nem ser sondado (`DragEnter` S_OK + efeito NONE). `HDropDataObject` manual mantido só como fallback (pastas distintas).
+  - `OleInitialize` na thread do drop (diretriz MS; `CoInitialize` da STA não basta).
+  - Pós-`Drop` Ok, o host segura a saída até o arquivo estabilizar (~1,5s mín, teto 60s): o `DropTarget` do zip grava em thread própria sem handle — one-shot que sai na hora mata o worker e nada é gravado.
+  - Sonda ponta a ponta (4 arquivos em zip temporário, `ShellHost` manual): todos caíram dentro do `.zip` segundos após o Ok — o worker de escrita sobrevive à saída do host (é do Shell, não nosso), então o settle é cortesia best-effort, não carga crítica.
+  - `.7z`/`.rar` nesta máquina apontam para `ArchiveFolder` (suporte nativo Win11) **sem** `DropHandler` (`E_NOTIMPL`) — caem no `false` silencioso e aguardam a F4. Com WinRAR/7-Zip registrando handler próprio, o mesmo caminho funciona.
 
 ### F4 — Fallback
 - `.zip` sem handler: escrita nativa; `.rar/.7z` sem handler: toast resx orientando instalar app.
@@ -81,3 +87,16 @@ Permitir arrastar arquivo/pasta de dentro de uma Quadra (ou do Explorer via `Fil
 - `DragDrop.DoDragDrop` é modal — forwarder roda fora da UI thread STA do `ShellHost`, nunca na thread da `QuadraWindow`.
 - `GetUIObjectOf(IDropTarget)` exige `cidl == 1` — um container por chamada; multi-drop itera.
 - Efeito é sempre `COPY` (adiciona ao arquivo, origem preservada) — `Move` apagaria a origem, divergindo do Explorer.
+
+## 8. Diário de bordo (onde parei em 2026-10-05)
+
+- **F1 pronta e pushada** (`8cc9a22`): `ArchiveFormatDetector` + 14 testes.
+- **F2 pronta e pushada** (mesmo commit): highlight `IsDropTarget` + cursor `Copy` no container; drop consumido sem escrita.
+- **Docs de apoio pushados**: este plano (`319f8b0`), comportamento conhecido "7-Zip segue `.lnk`" em `PLANO_MENU_TERCEIROS.md` (`2387891`).
+- **F3 implementada, NÃO validada no app — pendente do PO:**
+  - Protocolo `drop` no `ShellHostProtocol` (+ testes), `ShellArchiveDrop` no host isolado, `RunDrop`, `DropOntoContainer` no cliente, `IArchiveDropService` + DI, `Quadra_Drop` dispara em background.
+  - Validação técnica feita por sonda manual no `ShellHost.exe` (zip temporário em `C:\Temp`, já removido): 4/4 arquivos caíram no `.zip`. Descobertas no caminho: `IDataObject` precisa vir do Shell (HDrop manual é recusado), `OleInitialize` obrigatório, settle pós-drop best-effort.
+  - Testes: Core 184 + UI 382 + Application 53, build 0 avisos/erros.
+  - Falta: PO arrastar `teste.txt` sobre `.zip` no app e confirmar que entra no arquivo (aguardar ~5s, pois a gravação é assíncrona). `.7z` sem `DropHandler` segue no-op até a F4.
+- **Próximo (F4):** fallback `.zip` nativo (`System.IO.Compression`) + `.rar/.7z` via CLI do app instalado ou toast resx; depois F5 (validação final + `AUDITORIA_REUSO.md`).
+- Arquivos novos nesta leva: `ShellHost/Shell/ShellArchiveDrop.cs`, `Infrastructure.WindowsShell/Shell/IArchiveDropService.cs`, `.../ArchiveDropService.cs`, `tests/.../ArchiveDropServiceTests.cs` (+ `ArchiveFormatDetectorTests.cs` já pushado).

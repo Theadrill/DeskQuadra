@@ -95,8 +95,7 @@ internal sealed class ShellHostClient
     // os rótulos do caminho (o que o usuário VIU) em vez de verbo/offset. O
     // host resolve e invoca NUMA query só (sem re-query, sem VALIDATEW). O log
     // registra verb='(label:...)' (offset 0 — sem sentido neste caminho).
-    public bool InvokeMenuByLabel(
-        string path,
+    public bool InvokeMenuByLabel(        string path,
         IReadOnlyList<string> labels,
         bool extended,
         long hwnd,
@@ -133,6 +132,46 @@ internal sealed class ShellHostClient
         {
             ShellMenuLog.Log(ShellMenuLog.FormatHostInvoke(
                 path, labelVerb, 0, string.IsNullOrEmpty(response.Error) ? "rejected" : response.Error));
+        }
+
+        return response.Ok;
+    }
+
+    // F3 drop-em-container (docs/PLANO_DROP_CONTAINER.md): mesmo one-shot/
+    // timeout/kill dos invokes, com o orçamento maior do drop (o handler pode
+    // mostrar progresso próprio de arquivamento). Resposta reaproveita o
+    // envelope do invoke. Sem resposta = false silencioso (a F4 assume com
+    // fallback .zip nativo). Drops são efeitos — nunca entram em cache.
+    public bool DropOntoContainer(string containerPath, IReadOnlyList<string> files)
+    {
+        string request;
+        try
+        {
+            request = ShellHostProtocol.SerializeDropRequest(containerPath, files);
+        }
+        catch
+        {
+            return false;
+        }
+
+        string? line = RunHost(request, ShellHostProtocol.DropTimeoutMs);
+        if (line is null)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatHostInvoke(containerPath, "(drop)", 0, "no-response"));
+            return false;
+        }
+
+        var response = ShellHostProtocol.ParseInvokeResponse(line);
+        if (response is null)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatHostInvoke(containerPath, "(drop)", 0, "bad-response"));
+            return false;
+        }
+
+        if (!response.Ok)
+        {
+            ShellMenuLog.Log(ShellMenuLog.FormatHostInvoke(
+                containerPath, "(drop)", 0, string.IsNullOrEmpty(response.Error) ? "rejected" : response.Error));
         }
 
         return response.Ok;

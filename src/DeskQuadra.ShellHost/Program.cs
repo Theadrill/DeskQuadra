@@ -76,6 +76,12 @@ internal static class Program
                 return RunInvokeByLabel(stdout, line);
             }
 
+            // F3 drop-em-container: encaminha ao DropHandler do arquivo.
+            if (op == ShellHostProtocol.DropOp)
+            {
+                return RunDrop(stdout, line);
+            }
+
             WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(false, $"unknown-op {op}"));
             return 2;
         }
@@ -159,6 +165,22 @@ internal static class Program
             point,
             req.Background);
         WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(ok, ok ? null : "invoke-failed"));
+        return 0;
+    }
+
+    // F3 drop-em-container: resposta reaproveita o envelope do invoke
+    // (Ok/Error) — sem DTO novo. O motor valida e loga no shell-menu.log.
+    private static int RunDrop(TextWriter stdout, string? line)
+    {
+        var req = ShellHostProtocol.ParseDropRequest(line);
+        if (req is null)
+        {
+            WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(false, "bad-drop"));
+            return 2;
+        }
+
+        bool ok = ShellArchiveDrop.TryDrop(req.ContainerPath, req.Files);
+        WriteLine(stdout, ShellHostProtocol.SerializeInvokeResponse(ok, ok ? null : "drop-failed"));
         return 0;
     }
 

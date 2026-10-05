@@ -269,4 +269,55 @@ public class ShellHostProtocolTests
         Assert.NotNull(byLabel);
         Assert.False(byLabel.Background);
     }
+
+    [Fact]
+    public void DropTimeout_OrçamentoMaiorQueInvoke_ArquivarGBsDemora()
+    {
+        // F3: drop (120s) > invoke (30s) — o handler mostra progresso próprio.
+        Assert.Equal(120000, ShellHostProtocol.DropTimeoutMs);
+        Assert.True(ShellHostProtocol.DropTimeoutMs > ShellHostProtocol.InvokeTimeoutMs);
+    }
+
+    [Fact]
+    public void DropRequest_RoundTrip_PreservaContainerEArquivos()
+    {
+        string line = ShellHostProtocol.SerializeDropRequest(
+            @"C:\a\pacote.zip", new List<string> { @"C:\a\doc.txt", @"C:\a\pasta" });
+
+        Assert.True(ShellHostProtocol.TryReadOp(line, out string op));
+        Assert.Equal(ShellHostProtocol.DropOp, op);
+        var req = ShellHostProtocol.ParseDropRequest(line);
+
+        Assert.NotNull(req);
+        Assert.Equal(@"C:\a\pacote.zip", req.ContainerPath);
+        Assert.Equal(new List<string> { @"C:\a\doc.txt", @"C:\a\pasta" }, req.Files);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("nao-json")]
+    public void DropRequest_Lixo_RetornaNulo(string? line)
+    {
+        Assert.Null(ShellHostProtocol.ParseDropRequest(line));
+    }
+
+    [Fact]
+    public void DropRequest_ContainerVazioOuSemArquivos_RetornaNulo()
+    {
+        Assert.Null(ShellHostProtocol.SerializeDropRequest("", new List<string> { @"C:\a\doc.txt" }) is string s1
+            ? ShellHostProtocol.ParseDropRequest(s1) : null);
+        Assert.Null(ShellHostProtocol.ParseDropRequest(
+            ShellHostProtocol.SerializeDropRequest(@"C:\a\pacote.zip", new List<string>())));
+        Assert.Null(ShellHostProtocol.ParseDropRequest(
+            ShellHostProtocol.SerializeDropRequest(@"C:\a\pacote.zip", new List<string> { "  " })));
+    }
+
+    [Fact]
+    public void DropRequest_OpErrada_RetornaNulo()
+    {
+        Assert.Null(ShellHostProtocol.ParseDropRequest(
+            """{"Op":"invoke","ContainerPath":"C:\\a\\pacote.zip","Files":["C:\\a\\doc.txt"]}"""));
+    }
 }

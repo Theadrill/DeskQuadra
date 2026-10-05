@@ -147,7 +147,58 @@ internal static class ShellBindHelper
     // antes (o chamador mantém seu try/catch + using dá o dispose).
     internal static ShellBindStage BindContextMenu(string path, out ShellBindScope scope, out HRESULT hr)
     {
+        ShellBindStage stage = ParseAndBindParent(path, out scope, out hr, out IntPtr childRel);
+        if (stage != ShellBindStage.Ok)
+        {
+            return stage;
+        }
+
+        Guid iidMenu = typeof(IContextMenu).GUID;
+        hr = scope.Folder!.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidMenu, IntPtr.Zero, out object? menuObj);
+        IContextMenu? contextMenu = menuObj as IContextMenu;
+        scope.SetMenu(menuObj, contextMenu);
+        if (hr.Failed || contextMenu is null)
+        {
+            return ShellBindStage.MenuFailed;
+        }
+
+        return ShellBindStage.Ok;
+    }
+
+    // F3 drop-em-container: mesmo preâmbulo do menu (parse + bind do pai),
+    // mas resolve IID_IDropTarget em vez de IContextMenu. O Shell exige
+    // cidl == 1 para IDropTarget — um container por chamada (o chamador itera).
+    // .lnk = bind sobre o próprio link (mesma regra do menu, §1).
+    internal static ShellBindStage BindDropTarget(
+        string path, out ShellBindScope scope, out HRESULT hr, out object? dropTargetObj)
+    {
+        dropTargetObj = null;
+        ShellBindStage stage = ParseAndBindParent(path, out scope, out hr, out IntPtr childRel);
+        if (stage != ShellBindStage.Ok)
+        {
+            return stage;
+        }
+
+        Guid iidDropTarget = new("00000122-0000-0000-C000-000000000046");
+        hr = scope.Folder!.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidDropTarget, IntPtr.Zero, out dropTargetObj);
+        if (hr.Failed || dropTargetObj is null)
+        {
+            return ShellBindStage.MenuFailed;
+        }
+
+        return ShellBindStage.Ok;
+    }
+
+    // Preâmbulo compartilhado (F1 3ª auditoria, estendido na F3): parse do
+    // caminho + bind da pasta pai. Extração na 2ª repetição (menu + drop) —
+    // comportamento idêntico, ordem de dispose inalterada no scope.
+    // Internal (não private) porque o IDataObject das origens (F3) usa o
+    // mesmo preâmbulo — 3º consumidor da mesma forma, sem copiar.
+    internal static ShellBindStage ParseAndBindParent(
+        string path, out ShellBindScope scope, out HRESULT hr, out IntPtr childRel)
+    {
         scope = new ShellBindScope();
+        childRel = IntPtr.Zero;
 
         hr = SHParseDisplayName(path, null, out PIDL pidl, 0, out _);
         scope.Pidl = pidl;
@@ -156,21 +207,12 @@ internal static class ShellBindHelper
             return ShellBindStage.ParseFailed;
         }
 
-        hr = SHBindToParent(pidl, typeof(IShellFolder).GUID, out object? folderObj, out IntPtr childRel);
+        hr = SHBindToParent(pidl, typeof(IShellFolder).GUID, out object? folderObj, out childRel);
         IShellFolder? folder = folderObj as IShellFolder;
         scope.SetFolder(folderObj, folder, childRel);
         if (hr.Failed || folder is null || childRel == IntPtr.Zero)
         {
             return ShellBindStage.BindFailed;
-        }
-
-        Guid iidMenu = typeof(IContextMenu).GUID;
-        hr = folder.GetUIObjectOf(HWND.NULL, 1, new[] { childRel }, in iidMenu, IntPtr.Zero, out object? menuObj);
-        IContextMenu? contextMenu = menuObj as IContextMenu;
-        scope.SetMenu(menuObj, contextMenu);
-        if (hr.Failed || contextMenu is null)
-        {
-            return ShellBindStage.MenuFailed;
         }
 
         return ShellBindStage.Ok;
