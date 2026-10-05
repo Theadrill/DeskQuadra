@@ -93,10 +93,11 @@ Permitir arrastar arquivo/pasta de dentro de uma Quadra (ou do Explorer via `Fil
 - **F1 pronta e pushada** (`8cc9a22`): `ArchiveFormatDetector` + 14 testes.
 - **F2 pronta e pushada** (mesmo commit): highlight `IsDropTarget` + cursor `Copy` no container; drop consumido sem escrita.
 - **Docs de apoio pushados**: este plano (`319f8b0`), comportamento conhecido "7-Zip segue `.lnk`" em `PLANO_MENU_TERCEIROS.md` (`2387891`).
-- **F3 implementada, NÃO validada no app — pendente do PO:**
+- **F3 implementada, VALIDADA pelo PO no app em 2026-10-05:**
   - Protocolo `drop` no `ShellHostProtocol` (+ testes), `ShellArchiveDrop` no host isolado, `RunDrop`, `DropOntoContainer` no cliente, `IArchiveDropService` + DI, `Quadra_Drop` dispara em background.
-  - Validação técnica feita por sonda manual no `ShellHost.exe` (zip temporário em `C:\Temp`, já removido): 4/4 arquivos caíram no `.zip`. Descobertas no caminho: `IDataObject` precisa vir do Shell (HDrop manual é recusado), `OleInitialize` obrigatório, settle pós-drop best-effort.
+  - Validação técnica por sonda manual no `ShellHost.exe` (zip temporário em `C:\Temp`, já removido): 4/4 arquivos caíram no `.zip`. Descobertas no caminho: `IDataObject` precisa vir do Shell (HDrop manual é recusado), `OleInitialize` obrigatório, settle pós-drop best-effort.
   - Testes: Core 184 + UI 382 + Application 53, build 0 avisos/erros.
-  - Falta: PO arrastar `teste.txt` sobre `.zip` no app e confirmar que entra no arquivo (aguardar ~5s, pois a gravação é assíncrona). `.7z` sem `DropHandler` segue no-op até a F4.
+  - **Validação do PO no app: `teste.txt` arrastado sobre o `.zip` entrou no arquivo. F3 dada como certa.**
+  - `.7z` sem `DropHandler` segue no-op até a F4.
 - **Próximo (F4):** fallback `.zip` nativo (`System.IO.Compression`) + `.rar/.7z` via CLI do app instalado ou toast resx; depois F5 (validação final + `AUDITORIA_REUSO.md`).
 - Arquivos novos nesta leva: `ShellHost/Shell/ShellArchiveDrop.cs`, `Infrastructure.WindowsShell/Shell/IArchiveDropService.cs`, `.../ArchiveDropService.cs`, `tests/.../ArchiveDropServiceTests.cs` (+ `ArchiveFormatDetectorTests.cs` já pushado).
