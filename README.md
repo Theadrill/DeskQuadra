@@ -37,7 +37,7 @@ O DeskQuadra detecta as capacidades gráficas e a versão do sistema operacional
 - [x] **Visual transparente estilo Windows 11 (Mica / Acrylic blur):** Implementado via motor híbrido de efeitos (`WindowVisualEffectService`) com suporte a Acrílico Moderno, Blur Clássico e degradação graciosa para tema sólido configurável pelo usuário.
 - [x] **Ícones de operações rápidas no menu de contexto estilo Windows 11:** Barra superior de ações compactas (copiar, recortar, colar, renomear, compartilhar e excluir) integrada, padronizada e refinada no topo do menu de contexto.
 - [x] **Slider de espaçamento entre quadras nas Configurações:** configurável (0–24px, padrão 8) com re-snap das Quadras abertas após ~1s sem ajuste.
-- [ ] **Modernização visual das barras de rolagem (Scrollbar):** Modernizar o design e comportamento da barra de scroll por todo o aplicativo para padrão minimalista e elegante estilo Windows 11 Fluent.
+- [ ] **Modernização visual das barras de rolagem (Scrollbar):** Modernizar o design e comportamento da barra de scroll por todo o aplicativo para padrão minimalista e elegante estilo Windows 11 Fluent. Tentativa de pill global revertida (proporção do thumb não aprovada); mantido só o overlay comportamental no grid da Quadra (scrollbar fora do layout, sem brigar com o snap).
 
 ## Créditos (bibliotecas de terceiros)
 
