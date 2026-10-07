@@ -22,6 +22,17 @@ O DeskQuadra adota a mesma premissa de confiabilidade do Windows Shell:
 4. **Proibição Estrita no Registro:** É expressamente **PROIBIDO** persistir `HideIcons = 1` no registro do Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\HideIcons`). O DeskQuadra sempre sanitiza e assegura que o registro permaneça com `HideIcons = 0`.
 5. **No Próximo Boot:** O desktop sempre acorda com seus ícones visíveis. O usuário **NUNCA** fica refém de uma tela vazia.
 
+### Esclarecimento Arquitetural: Registro do Windows vs. Ocultação em Memória (Volátil)
+- **Por que falamos de "não ter persistência de ícones escondidos"?**
+  - No Windows Explorer, a opção "Mostrar ícones da área de trabalho" do menu de contexto nativo grava `HideIcons = 1` em `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\HideIcons`. Essa chave é uma persistência do sistema: se gravada como `1`, toda vez que o Windows liga, o Explorer lê o registro e omite os ícones desde o boot.
+  - O DeskQuadra **NUNCA usa essa chave para esconder ícones**. Pelo contrário: ele assegura que essa chave esteja sempre em `0` (visível).
+- **Como o DeskQuadra esconde os ícones sem persistir?**
+  - A ocultação é feita exclusivamente em **tempo de execução (em memória RAM)** via API Win32: `ShowWindow(hDesktopListView, SW_HIDE)`.
+  - Esta alteração afeta apenas a janela em exibição no momento. Ela **não grava nada em disco nem no registro**.
+  - Quando o Windows é desligado ou reiniciado, a memória é reciclada. No boot seguinte, o Explorer cria uma nova janela de desktop do zero e, como o registro está intacto (`HideIcons = 0`), os ícones nascem **100% visíveis por padrão**.
+  - O DeskQuadra só armazena em disco o arquivo `quadras.json` (layout de posições, cores e itens das Quadras). O estado de "ícones ocultos" é estritamente volátil.
+
+
 ---
 
 ## 2. Regras Permanentes do Projeto (Valem para Todas as Fases)
@@ -138,11 +149,47 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
    - Gravar timestamp de saída graciosa em `%APPDATA%\DeskQuadra\last_shutdown.timestamp`.
    - Se no boot o tempo decorrido desde o último boot do Windows indicar shutdown abrupto (sem timestamp de saída limpa), garantir que a janela nativa de ícones seja forçada para visível antes de reconfigurar o desktop.
 
-#### Critério de Aceite do PO (Validação no Windows):
+#### Critério de Aceite do PO & Roteiro Prático de Testes:
 - `dotnet test` passando 100% verde e zero avisos de compilação.
-- **Teste 1 (Saída Graciosa / Logoff):** Ao fechar o app via bandeja ou solicitar logoff/reinicialização do Windows, os ícones nativos reaparecem imediatamente no desktop.
-- **Teste 2 (Simulação de Crash):** Ao provocar uma exceção forçada de teste no app, o handler captura a falha e os ícones originais do Windows reaparecem instantaneamente na tela.
-- **Teste 3 (Registro Limpo):** A chave de registro `HideIcons` permanece rigorosamente com valor `0`.
+
+##### Roteiro de Testes da Fase 1:
+1. **Teste 1 (Saída Graciosa / Bandeja):**
+   - *Procedimento:* Iniciar o DeskQuadra. Verificar que as Quadras abrem e os ícones nativos somem. Clicar com o botão direito no ícone da bandeja (System Tray) e selecionar **"Sair"**.
+   - *Resultado esperado:* As janelas de Quadras fecham e os ícones originais do Windows reaparecem instantaneamente (< 50ms).
+2. **Teste 2 (Simulação de Crash - Exception Handler):**
+   - *Script Auxiliar:* `tests/helpers/test-crash.cmd`:
+     ```cmd
+     @echo off
+     echo Disparando crash intencional no DeskQuadra...
+     dotnet run --project src/DeskQuadra.UI.Wpf -- --crash-test
+     ```
+   - *Procedimento:* Executar `tests/helpers/test-crash.cmd`. O app forçará uma exceção não tratada na UI thread.
+   - *Resultado esperado:* O handler estático `EmergencyRestoreIcons()` captura a falha e os ícones nativos reaparecem imediatamente no desktop antes do processo ser finalizado.
+3. **Teste 3 (Simulação de Logoff / Shutdown - `SessionEnding`):**
+   - *Script Auxiliar:* `tests/helpers/test-session-ending.ps1`:
+     ```powershell
+     # Envia WM_QUERYENDSESSION para a janela principal do DeskQuadra sem deslogar o PC
+     $hwnd = (Get-Process -Name "DeskQuadra.UI.Wpf" -ErrorAction SilentlyContinue).MainWindowHandle
+     if ($hwnd) {
+         Add-Type @"
+             using System;
+             using System.Runtime.InteropServices;
+             public class Win32 {
+                 [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+             }
+"@
+         [Win32]::SendMessage($hwnd, 0x0011, [IntPtr]::Zero, [IntPtr]::Zero) # WM_QUERYENDSESSION
+         Write-Host "Sinal de encerramento de sessao enviado."
+     }
+     ```
+   - *Resultado esperado:* O DeskQuadra salva o estado em `quadras.json` e chama `ShowWindow(SW_SHOW)`.
+4. **Teste 4 (Sanitização do Registro do Windows):**
+   - *Script Auxiliar:* `tests/helpers/check-registry.cmd`:
+     ```cmd
+     @echo off
+     powershell -Command "Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'HideIcons' | Select-Object HideIcons"
+     ```
+   - *Resultado esperado:* O valor `HideIcons` retornado deve ser rigorosamente `0`.
 
 ---
 
@@ -155,7 +202,7 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
    - Lógica do processo:
      - Argumento `--force`: Restaura imediatamente sem checar processos ativos e sai.
      - Execução padrão:
-       1. Verifica se `DeskQuadra.UI.Wpf` está rodando. Se sim, encerra sem ação.
+       1. Verifica se `DeskQuadra.UI.Wpf` está rodando. Se sim, encerra sem ação (< 5ms).
        2. Verifica se `DeskQuadra.Guardian` está rodando. Se sim, encerra sem ação (o Guardian cuida).
        3. Se NENHUM está rodando E a janela de ícones nativa está oculta (`!IsWindowVisible`):
           - Restaura a visibilidade via Win32 `ShowWindow(SW_SHOW)`.
@@ -169,9 +216,26 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
 4. **Configuração de Build e Cópia:**
    - Atualizar `DeskQuadra.UI.Wpf.csproj` para compilar e copiar `DeskQuadra.Restorer.exe` para as pastas de saída (`bin` e `publish`), idêntico ao padrão já consolidado do `DeskQuadra.Guardian`.
 
-#### Critério de Aceite do PO (Validação no Windows):
-- **Teste 1 (Recuperação Manual via Menu Iniciar):** Com o app rodando ou fechado, pressionar a tecla Windows, digitar "restaurar", clicar no atalho -> os ícones nativos aparecem na hora.
-- **Teste 2 (Comportamento do Restorer Isolado):** Finalizar o DeskQuadra no Gerenciador de Tarefas e rodar o `DeskQuadra.Restorer.exe` diretamente via terminal -> os ícones reaparecem e o DeskQuadra é reaberto exibindo a notificação de restauração.
+#### Critério de Aceite do PO & Roteiro Prático de Testes:
+
+##### Roteiro de Testes da Fase 2:
+1. **Teste 1 (Atalho Manual de Emergência no Menu Iniciar):**
+   - *Procedimento:*
+     1. Com o app rodando (ícones ocultos), matar o DeskQuadra forçadamente: `taskkill /F /IM DeskQuadra.UI.Wpf.exe`.
+     2. Pressionar a tecla `Windows` no teclado, digitar `restaurar` e clicar no atalho *"Restaurar Ícones do Desktop"*.
+   - *Resultado esperado:* O atalho invoca `DeskQuadra.Restorer.exe --force` e os ícones nativos reaparecem imediatamente no desktop.
+2. **Teste 2 (Restorer Standalone com Auto-Restart e Toast):**
+   - *Script Auxiliar:* `tests/helpers/test-restorer-recovery.cmd`:
+     ```cmd
+     @echo off
+     echo Finalizando DeskQuadra e Guardian brutalmente...
+     taskkill /F /IM DeskQuadra.UI.Wpf.exe
+     taskkill /F /IM DeskQuadra.Guardian.exe
+     echo Executando DeskQuadra.Restorer.exe em modo verificacao...
+     DeskQuadra.Restorer.exe
+     ```
+   - *Procedimento:* Rodar o script auxiliar no terminal.
+   - *Resultado esperado:* O `Restorer.exe` detecta a ausência de processos e o desktop oculto, restaura os ícones e dispara `DeskQuadra.UI.Wpf.exe --recovered`. O app abre e exibe o toast informativo comunicando a recuperação bem-sucedida.
 
 ---
 
@@ -190,14 +254,33 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
    - No modo portátil, o app auto-registra a tarefa agendada apontando para o executável em sua pasta de execução.
    - Respeita configuração do usuário (se o usuário desativar inicialização automática, a tarefa correspondente é ajustada de acordo).
 
-#### Critério de Aceite do PO (Validação no Windows):
-- **Teste Extremo do Pior Caso:**
-  1. Abrir o Gerenciador de Tarefas do Windows.
-  2. Selecionar `DeskQuadra.exe` e `DeskQuadra.Guardian.exe`.
-  3. Clicar em "Finalizar tarefa" em AMBOS simultaneamente.
-  4. O desktop fica momentaneamente vazio.
-  5. Aguardar até 60 segundos sem tocar em nada.
-  6. **Resultado:** A tarefa agendada dispara o `DeskQuadra.Restorer.exe`, os ícones do desktop voltam e o DeskQuadra reabre com a notificação explicativa.
+#### Critério de Aceite do PO & Roteiro Prático de Testes:
+
+##### Roteiro de Testes da Fase 3:
+1. **Teste 1 (O Pior Caso Absoluto: Kill Simultâneo de App e Guardian):**
+   - *Script Auxiliar:* `tests/helpers/kill-both-pior-caso.cmd`:
+     ```cmd
+     @echo off
+     echo ========================================================
+     echo MATANDO DESKQUADRA E GUARDIAN SIMULTANEAMENTE (KILL /F)
+     echo ========================================================
+     taskkill /F /IM DeskQuadra.UI.Wpf.exe /IM DeskQuadra.Guardian.exe
+     echo Ambos os processos estao mortos. O desktop esta vazio.
+     echo Aguarde ate 60 segundos sem tocar em nada...
+     ```
+   - *Procedimento:*
+     1. Com DeskQuadra e Guardian ativos, dê duplo clique em `tests/helpers/kill-both-pior-caso.cmd`.
+     2. Os processos morrem simultaneamente. O desktop fica temporariamente vazio.
+     3. **Não toque no mouse ou teclado.** Aguarde o ciclo de 60 segundos do Task Scheduler disparar.
+   - *Resultado esperado:* Em até 60 segundos, a tarefa agendada executa `DeskQuadra.Restorer.exe`, que restaura a visibilidade do desktop e reinicia o DeskQuadra exibindo o toast de auto-recuperação.
+2. **Teste 2 (Disparo Manual Imediato da Tarefa Agendada):**
+   - *Script Auxiliar:* `tests/helpers/trigger-safety-task.cmd`:
+     ```cmd
+     @echo off
+     powershell -Command "Start-ScheduledTask -TaskName 'DeskQuadra Safety Restore'"
+     ```
+   - *Procedimento:* Para validar a tarefa sem aguardar o relógio de 60s, execute o script após derrubar os processos.
+   - *Resultado esperado:* Restauração e reinicialização imediatas.
 
 ---
 
@@ -221,10 +304,19 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
    - Adicionar o atalho de emergência na pasta do Menu Iniciar.
    - Limpeza completa e desregistro do serviço e das chaves de registro na desinstalação.
 
-#### Critério de Aceite do PO (Validação no Windows):
-- **Teste de Menu de Contexto:** Clicar com o botão direito em uma área livre do papel de parede do Windows -> a opção de restauração aparece e funciona perfeitamente ao ser clicada.
-- **Teste de Redundância com o Serviço:** Matar os processos na instalação completa -> o serviço restaura os ícones em cerca de 30 segundos (antes do ciclo de 1 minuto do Task Scheduler).
-- **Teste de Portabilidade:** Executar o executável portátil -> confirma que nenhuma chave do Shell Extension ou Serviço é instalada no sistema operacional.
+#### Critério de Aceite do PO & Roteiro Prático de Testes:
+
+##### Roteiro de Testes da Fase 4:
+1. **Teste 1 (Menu de Contexto do Papel de Parede):**
+   - *Procedimento:* Em uma máquina com a instalação completa realizada, clicar com o botão direito em um espaço vazio da área de trabalho do Windows.
+   - *Resultado esperado:* O menu de contexto nativo exibe o item *"Restaurar Ícones do Desktop (DeskQuadra)"* com ícone próprio, que restaura a visibilidade dos ícones ao ser clicado.
+2. **Teste 2 (Redundância Rápida via Windows Service - 30s):**
+   - *Procedimento:* Executar `tests/helpers/kill-both-pior-caso.cmd` no ambiente instalado.
+   - *Resultado esperado:* O Windows Service detecta o estado e restaura os ícones em cerca de 30 segundos (antecipando o gatilho de 1 minuto do Task Scheduler).
+3. **Teste 3 (Garantia de Isolamento no Modo Portátil):**
+   - *Procedimento:* Rodar o executável portátil (`DeskQuadra.UI.Wpf.exe`).
+   - *Resultado esperado:* Verificar no `services.msc` e no registro do Windows que o serviço e a Shell Extension **NÃO** foram instalados, mantendo o modo portátil 100% limpo e sem poluição do sistema.
+
 
 ---
 
