@@ -365,3 +365,31 @@
   - Invocação da chamada Win32 `QuickHideDesktopIcons()` em menos de 2ms, ocultando os ícones da área de trabalho antes da inicialização do pipeline gráfico do WPF e XAML.
 - **Auto-Configuração no Primeiro Boot:**
   - O aplicativo verifica se o usuário optou por desativar o início automático (`StartupDisabledByUser` em `settings.json`). Caso contrário, se o app não estiver registrado para autostart, auto-configura as 3 camadas no primeiro boot de forma transparente e resiliente.
+
+---
+
+## [Sessão 29] Resiliência de Desktop, Boot Seguro & Arquitetura Safety Net (Tolerância Zero a Ícones Ocultos)
+
+### 1. Diagnóstico do Problema & O Paradigma do Desktop Seguro
+- **O Problema Diagnosticado:** Se o computador for desligado, se houver queda de energia, ou se o DeskQuadra for encerrado/cair abruptamente, o usuário não pode sob hipótese alguma iniciar o Windows com a área de trabalho vazia. Ele precisa poder ver e clicar em seus ícones normalmente enquanto o sistema operacional carrega, sem depender de comandos complexos caso o DeskQuadra demore a subir ou não inicialize.
+- **A Mudança de Paradigma:**
+  - O Windows Explorer SEMPRE inicia com os ícones visíveis por padrão (`HideIcons = 0`).
+  - É terminantemente proibido persistir `HideIcons = 1` no registro do Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\HideIcons`). O DeskQuadra atua exclusivamente em memória de janelas via Win32 `ShowWindow(hListView, SW_HIDE)` e sanitiza o registro garantindo `HideIcons = 0`.
+  - Qualquer terminação do processo (saída graciosa pelo tray, desligamento/logoff do Windows via `SessionEnding`, crash em exception handler, ou kill externo) deve invocar Win32 `ShowWindow(SW_SHOW)`.
+
+### 2. Estratégia de Defesa em Profundidade contra Falha Simultânea
+- **O Cenário de Morte Simultânea:** Caso o usuário finalize tanto o processo principal `DeskQuadra.exe` quanto o vigilante `DeskQuadra.Guardian.exe` simultaneamente via Gerenciador de Tarefas do Windows, nenhum código em memória roda e os ícones ficariam invisíveis.
+- **Arquitetura de Resiliência Definida (Decisão PO & Tech Lead):**
+  1. **Exception Handlers Estáticos:** Chamada de emergência estática `NativeDesktopIconService.EmergencyRestoreIcons()` em `AppDomain.UnhandledException` e `DispatcherUnhandledException`.
+  2. **Tratamento de `SessionEnding`:** Captura do encerramento da sessão do Windows (`SystemEvents.SessionEnding` e `Application.SessionEnding`), salvando o layout e exibindo os ícones nativos instantaneamente.
+  3. **Processo Guardião (`DeskQuadra.Guardian`):** Mantido como vigilante de primeira linha (delay 5-10s) e botão de pânico global (`Ctrl + Shift + Alt + Q`).
+  4. **Novo Executável Dedicado `DeskQuadra.Restorer.exe`:** Binário C# ultraleve (~25KB) independente do app principal e imune a bloqueios de script PowerShell. Se detectar processos ausentes com ícones escondidos, restaura via `ShowWindow(SW_SHOW)` e reinicia o `DeskQuadra.exe` com a flag `--recovered`.
+  5. **Notificação de Auto-Recuperação:** O app principal, ao iniciar com `--recovered`, exibe notificação/toast informativa explicando que foi recuperado de uma interrupção inesperada e preservou os ícones.
+  6. **Task Scheduler Safety Net:** Tarefa agendada nativa (`DeskQuadra Safety Restore`) com frequência de **1 minuto** que executa o `Restorer.exe` silenciosamente em segundo plano tanto na versão instalada quanto na versão portátil.
+  7. **Atalho de Emergência no Menu Iniciar:** Criado em `%APPDATA%\Microsoft\Windows\Start Menu\Programs\DeskQuadra\Restaurar Ícones do Desktop.lnk` apontando para o Restorer com flag `--force`.
+  8. **Camadas Específicas para Instalação Completa (`!isPortable`):**
+     - **Windows Service Dedicado (`DeskQuadra.Service`):** Serviço Windows independente com ciclo de 30 segundos como redundância rápida.
+     - **Shell Extension no Menu de Contexto:** Opção "Restaurar Ícones do Desktop (DeskQuadra)" ao clicar com o botão direito no papel de parede.
+  9. **Proteção em Modo Seguro (`SafeMode`):** Se iniciado em Modo Seguro (`SystemInformation.BootMode != Normal`), restaura os ícones, exibe aviso e encerra sem subir a interface pesada.
+- **Plano de Ação e Fases Testáveis:** Documentação completa estruturada em 4 fatias verticais no documento vivo `docs/PLANO_RESILIENCIA_ICONES_E_SAFETY_NET.md`.
+
