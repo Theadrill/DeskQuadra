@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\DeskQuadra.Core\DeskQuadra.Core.csproj" />
@@ -77,7 +77,15 @@
     <UseWindowsForms>true</UseWindowsForms>
     <!-- Ícone próprio (Fase 5): exe + janelas + tray a partir de Assets/DeskQuadra.ico. -->
     <ApplicationIcon>Assets\DeskQuadra.ico</ApplicationIcon>
+    <!-- Ponto de entrada ultra-precoce explícito (BRAINSTORMING Seção 22) -->
+    <StartupObject>DeskQuadra.UI.Wpf.Program</StartupObject>
   </PropertyGroup>
+
+  <!-- Transforma App.xaml em Page para evitar geração duplicada do método Main() pelo MSBuild -->
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
 
   <!-- Fonte única do ícone (Resource embutido: XAML via Icon + AppIcon.cs via pack URI).
        Tray usa variante própria com crop justo (a arte cheia some na taskbar escura em 16px). -->

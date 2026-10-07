@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\DeskQuadra.Core\DeskQuadra.Core.csproj" />
@@ -14,5 +14,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DeskQuadra.UI.Wpf" />
+    <InternalsVisibleTo Include="DeskQuadra.UI.Wpf.Tests" />
+  </ItemGroup>
 
 </Project>

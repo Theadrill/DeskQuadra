@@ -47,28 +47,35 @@ public partial class App : System.Windows.Application
     // Live sync do Desktop (Fase 6): watcher + debounce 250ms; null se falhar.
     private Services.DesktopLiveSync? _liveSync;
     // Trava de instância única (PO): segunda instância sai quieta, primeira intocada.
+    internal static Mutex? SingleInstanceMutex { get; set; }
     // Guardado em campo até o fim do processo (nunca liberado).
     private Mutex? _singleInstanceMutex;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
-        // Segunda instância: sai imediato sem tocar em nada (sem janela, sem tray,
-        // sem fechar a instância dona — perfil não salvo não pode ser tocado).
-        try
+        if (SingleInstanceMutex != null)
         {
-            _singleInstanceMutex = new Mutex(true, @"Local\DeskQuadra.UI.Wpf", out bool createdNew);
-            if (!createdNew)
-            {
-                _singleInstanceMutex.Dispose();
-                _singleInstanceMutex = null;
-                Shutdown();
-                return;
-            }
+            _singleInstanceMutex = SingleInstanceMutex;
         }
-        catch
+        else
         {
-            // Best-effort: falha na trava nunca impede o app de abrir.
-            _singleInstanceMutex = null;
+            // Fallback defensivo para quando o App for instanciado sem passar pelo Program.Main (ex: testes)
+            try
+            {
+                _singleInstanceMutex = new Mutex(true, @"Local\DeskQuadra.UI.Wpf", out bool createdNew);
+                if (!createdNew)
+                {
+                    _singleInstanceMutex.Dispose();
+                    _singleInstanceMutex = null;
+                    Shutdown();
+                    return;
+                }
+            }
+            catch
+            {
+                // Best-effort: falha na trava nunca impede o app de abrir.
+                _singleInstanceMutex = null;
+            }
         }
 
         base.OnStartup(e);
@@ -78,6 +85,7 @@ public partial class App : System.Windows.Application
         try
         {
             var gracefulExit = new EventWaitHandle(false, EventResetMode.AutoReset, "DeskQuadraGracefulExit");
+            gracefulExit.Reset(); // Limpa qualquer sinal residual anterior antes de começar a escutar
             _ = Task.Run(() =>
             {
                 try
@@ -182,6 +190,11 @@ public partial class App : System.Windows.Application
         // visíveis via coordinator.InitializeAsync + OpenQuadraWindow) e nunca
         // abre Configurações sozinho — a flag fica documentada aqui para a Fatia 1.
         _ = StartupCommandBuilder.IsSilentLaunch(e.Args);
+
+        // Garante autostart de alta velocidade configurado por padrão (Task Scheduler + Serialize + Run)
+        var startupService = _serviceProvider.GetRequiredService<IStartupService>();
+        EnsureStartupRegistration(startupService);
+
         var coordinator = _serviceProvider.GetRequiredService<ILayoutCoordinator>();
         _drawingService = _serviceProvider.GetRequiredService<IDesktopDrawingService>();
 
@@ -1208,6 +1221,29 @@ public partial class App : System.Windows.Application
         catch
         {
             // Log best-effort: nunca interfere no startup.
+        }
+    }
+
+    private static void EnsureStartupRegistration(IStartupService startupService)
+    {
+        try
+        {
+            string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeskQuadra", "settings.json");
+            var settings = DeskQuadra.Infrastructure.Persistence.Repositories.SettingsJsonMerge.ReadAll(settingsPath);
+            if (settings != null && settings.TryGetValue("StartupDisabledByUser", out var el) && el.ValueKind == System.Text.Json.JsonValueKind.True)
+            {
+                // Usuário desmarcou explicitamente nas configurações; respeita a decisão.
+                return;
+            }
+
+            if (!startupService.IsEnabled())
+            {
+                startupService.SetEnabled(true);
+            }
+        }
+        catch
+        {
+            // Best-effort: falha no autostart nunca derruba a UI.
         }
     }
 }

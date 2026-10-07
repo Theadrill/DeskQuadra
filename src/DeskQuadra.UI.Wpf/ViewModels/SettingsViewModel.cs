@@ -23,6 +23,8 @@ public sealed class SettingsViewModel : ViewModelBase
     private bool _enableWindows11VisualEffects;
     private DensityPreference _densityPreference;
 
+    private readonly string _settingsFilePath;
+
     public bool StartWithWindows
     {
         get => _startWithWindows;
@@ -31,7 +33,23 @@ public sealed class SettingsViewModel : ViewModelBase
             if (SetProperty(ref _startWithWindows, value))
             {
                 _startupService.SetEnabled(value);
+                PersistStartupDisabledPreference(!value);
             }
+        }
+    }
+
+    private void PersistStartupDisabledPreference(bool disabledByUser)
+    {
+        try
+        {
+            DeskQuadra.Infrastructure.Persistence.Repositories.SettingsJsonMerge.WriteMerge(_settingsFilePath, dict =>
+            {
+                dict["StartupDisabledByUser"] = disabledByUser;
+            });
+        }
+        catch
+        {
+            // Best-effort: nunca interfere na UI
         }
     }
 
@@ -299,8 +317,10 @@ public sealed class SettingsViewModel : ViewModelBase
         IVisualSettingsService? visualSettings = null,
         IWindowsVisualCapabilityService? visualCapability = null,
         IWindowVisualEffectService? visualEffectService = null,
-        ISnapSettingsService? snapSettings = null)
+        ISnapSettingsService? snapSettings = null,
+        string? customSettingsFilePath = null)
     {
+        _settingsFilePath = customSettingsFilePath ?? System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeskQuadra", "settings.json");
         _startupService = startupService;
         _densitySettings = densitySettings;
         _visualSettings = visualSettings;

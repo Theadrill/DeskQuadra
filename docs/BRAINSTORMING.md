@@ -346,3 +346,22 @@
 ### 2. Separação Estrita de Interação (Mouse vs. Touch)
 - **ScrollBar Exclusiva para Mouse:** A ScrollBar lateral atende unicamente a eventos de mouse (arrasto do thumb, clique na trilha e roda do mouse).
 - **Toque Direto no Miolo da Quadra:** A rolagem via toque com o dedo opera exclusivamente na área interna da Quadra (estilo smartphone), deslizando os atalhos com inércia e sem conflitar com a barra lateral.
+
+---
+
+## [Sessão 28] Inicialização de Alta Prioridade (Zero-Delay Boot & Fura-Fila do Windows)
+
+### 1. Diagnóstico do Throttling do Windows Explorer
+- **O Problema:** Aplicativos registrados unicamente na chave `HKCU\...\Run` sofrem atraso intencional de 10 a 30 segundos imposto pelo Windows Explorer (*Startup Delay*) para liberar CPU/disco para a barra de tarefas.
+- **A Solução em Três Camadas Integradas:**
+  1. **Windows Task Scheduler (Prioridade 4 & Delay 0):** Registro programático via API COM `Schedule.Service` de uma tarefa com gatilho `AtLogon`, `Delay = PT0S`, `ExecutionTimeLimit = PT0S` e flags `DisallowStartIfOnBatteries = false` (compatível com laptops e Steam Deck em bateria). Roda sob o token interativo do usuário sem exigir UAC/elevação. O Task Scheduler inicia o processo instantaneamente no logon, furando o atraso de 10-30s do Explorer.
+  2. **Explorer Serialize (Zero Delay):** Configuração de `StartupDelayInMSec = 0` (DWORD) em `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize`, instruindo o Explorer a não reter a inicialização de programas da sessão do usuário.
+  3. **Chave `Run` Espelhada:** Manutenção do registro na chave `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` para que o DeskQuadra continue visível na aba "Aplicativos de Inicialização" do Gerenciador de Tarefas do Windows.
+
+### 2. Ponto de Entrada Ultra-Precoce (`Program.cs`) e Zero-Flicker
+- **Concretização da Sessão 22:**
+  - Ponto de entrada explícito `Program.cs` com `[STAThread] static void Main(string[] args)`.
+  - Checagem da trava de instância única (`Mutex`) em menos de 1ms, encerrando instâncias secundárias silenciosamente antes de carregar o WPF ou alocar memória.
+  - Invocação da chamada Win32 `QuickHideDesktopIcons()` em menos de 2ms, ocultando os ícones da área de trabalho antes da inicialização do pipeline gráfico do WPF e XAML.
+- **Auto-Configuração no Primeiro Boot:**
+  - O aplicativo verifica se o usuário optou por desativar o início automático (`StartupDisabledByUser` em `settings.json`). Caso contrário, se o app não estiver registrado para autostart, auto-configura as 3 camadas no primeiro boot de forma transparente e resiliente.

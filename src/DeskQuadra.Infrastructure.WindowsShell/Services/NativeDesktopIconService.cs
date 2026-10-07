@@ -68,13 +68,26 @@ public sealed class NativeDesktopIconService : INativeDesktopIconService
         }
     }
 
-    private IntPtr GetDesktopListViewHandle()
+    /// <summary>
+    /// Ocultação Win32 ultra-precoce (< 2ms) para chamada no ponto de entrada Main()
+    /// antes do pipeline WPF/XAML iniciar (BRAINSTORMING Seção 22: Zero-Flicker Startup).
+    /// </summary>
+    public static bool QuickHideDesktopIcons()
     {
-        if (_cachedListViewHandle != IntPtr.Zero && NativeMethods.IsWindowVisible(_cachedListViewHandle))
+        IntPtr hListView = FindDesktopListViewHandle(out _);
+        if (hListView == IntPtr.Zero)
         {
-            return _cachedListViewHandle;
+            return false;
         }
 
+        return NativeMethods.ShowWindow(hListView, NativeMethods.SW_HIDE);
+    }
+
+    public static IntPtr FindDesktopListViewHandle() => FindDesktopListViewHandle(out _);
+
+    public static IntPtr FindDesktopListViewHandle(out IntPtr shellViewHandle)
+    {
+        shellViewHandle = IntPtr.Zero;
         IntPtr shellView = IntPtr.Zero;
 
         // 1. Tenta localizar SHELLDLL_DefView no Progman
@@ -105,6 +118,8 @@ public sealed class NativeDesktopIconService : INativeDesktopIconService
             return IntPtr.Zero;
         }
 
+        shellViewHandle = shellView;
+
         // 3. Dentro do SHELLDLL_DefView, busca SysListView32 (ícones do desktop) ou DirectUIHWND
         IntPtr listView = NativeMethods.FindWindowEx(shellView, IntPtr.Zero, "SysListView32", null);
         if (listView == IntPtr.Zero)
@@ -112,9 +127,19 @@ public sealed class NativeDesktopIconService : INativeDesktopIconService
             listView = NativeMethods.FindWindowEx(shellView, IntPtr.Zero, "DirectUIHWND", null);
         }
 
-        // Se a classe interna não for encontrada, o próprio SHELLDLL_DefView é a camada controladora
+        return listView != IntPtr.Zero ? listView : shellView;
+    }
+
+    private IntPtr GetDesktopListViewHandle()
+    {
+        if (_cachedListViewHandle != IntPtr.Zero && NativeMethods.IsWindowVisible(_cachedListViewHandle))
+        {
+            return _cachedListViewHandle;
+        }
+
+        IntPtr listView = FindDesktopListViewHandle(out IntPtr shellView);
         _cachedShellViewHandle = shellView;
-        _cachedListViewHandle = listView != IntPtr.Zero ? listView : shellView;
+        _cachedListViewHandle = listView;
         return _cachedListViewHandle;
     }
 }
