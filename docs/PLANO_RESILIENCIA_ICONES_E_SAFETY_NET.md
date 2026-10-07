@@ -56,10 +56,10 @@ Conforme a governança de engenharia estabelecida na Sessão 1 do `docs/BRAINSTO
 
 | Fase | Foco Técnico | Skills Obrigatórias |
 |---|---|---|
-| **Fase 1** | Handlers de término, `SessionEnding`, sanitização de registro e proteção de SafeMode | `dotnet-pinvoke`, `wpf-windows-desktop`, `coding-guidelines`, `csharp-refactoring`, `run-tests` |
-| **Fase 2** | Novo executável leve `DeskQuadra.Restorer`, auto-restart com notificação e atalho Menu Iniciar | `dotnet-pinvoke`, `msbuild-modernization`, `coding-guidelines`, `csharp-refactoring`, `run-tests`, `assertion-quality` |
-| **Fase 3** | Windows Task Scheduler Safety Net (verificação a cada 1 min) | `dotnet-pinvoke`, `wpf-windows-desktop`, `analyzing-dotnet-performance`, `coding-guidelines` |
-| **Fase 4** | Windows Service dedicado (30s) e Shell Extension de contexto para instalação completa (`!isPortable`) | `dotnet-pinvoke`, `msbuild-modernization`, `coding-guidelines`, `docs-writer` |
+| **Fase 1** | Handlers de término, `SessionEnding`, sanitização de registro, proteção SafeMode e correção do Guardian | `dotnet-pinvoke`, `wpf-windows-desktop`, `coding-guidelines`, `csharp-refactoring`, `run-tests` |
+| **Fase 2** | Novo executável leve `DeskQuadra.Restorer`, auto-restart com notificação toast nativa e atalho Menu Iniciar | `dotnet-pinvoke`, `msbuild-modernization`, `coding-guidelines`, `csharp-refactoring`, `run-tests`, `assertion-quality` |
+| **Fase 3** | Task Scheduler único de boot + Safety Net (verificação a cada 1 min) | `dotnet-pinvoke`, `wpf-windows-desktop`, `analyzing-dotnet-performance`, `coding-guidelines` |
+| **Fase 4** | Windows Service (Session 0 → dispatcher) e Shell Extension de contexto para instalação completa (`!isPortable`) | `dotnet-pinvoke`, `msbuild-modernization`, `coding-guidelines`, `docs-writer` |
 
 ---
 
@@ -83,7 +83,7 @@ flowchart TD
         A --> F["Processo Morre / Kill no Task Manager"]
         F --> G{"Guardian Vivo?"}
         G -- "Sim (5s - 10s)" --> H["Guardian detecta queda do Pai"]
-        H --> R3["ShowWindow(SW_SHOW) + Avisa"]
+        H --> R3["ShowWindow(SW_SHOW) APENAS"]
         
         G -- "Não (Kill Simultâneo)" --> I["Ambos Mortos: Desktop Vazio"]
         I --> J["Task Scheduler dispara DeskQuadra.Restorer.exe (a cada 1 min)"]
@@ -96,10 +96,10 @@ flowchart TD
 
     subgraph Camadas_Instalacao_Completa["3. Camadas Adicionais (!isPortable)"]
         I --> P["Windows Service Dedicado (a cada 30s)"]
-        P --> R4["ShowWindow(SW_SHOW) via Desktop Handle"]
+        P --> R4["Dispatcher: CreateProcessAsUser + DeskQuadra.Restorer.exe"]
         
-        I --> Q["Botão Direito no Desktop: Shell Extension"]
-        Q --> R5["Clique em 'Restaurar Ícones do Desktop'"]
+        I --> Q["Botão Direito no Desktop: Shell Extension (Registry Entry)"]
+        Q --> R5["Clique em 'Restaurar Ícones do Desktop' → Restorer --force"]
     end
 
     subgraph Camada_Manual["4. Camada de Controle Manual"]
@@ -111,16 +111,17 @@ flowchart TD
 ### Detalhamento das Camadas e Decisões Tomadas:
 1. **Camada 1 — Exception Handlers (0ms):** Invocação de método estático seguro `NativeDesktopIconService.EmergencyRestoreIcons()` em `AppDomain.CurrentDomain.UnhandledException` e `DispatcherUnhandledException`, sem depender de instâncias de DI que possam ser nulas.
 2. **Camada 2 — Evento `SessionEnding` (0ms):** Captura tanto no `System.Windows.Application.SessionEnding` quanto em `Microsoft.Win32.SystemEvents.SessionEnding`. Salva as Quadras ativas e restaura imediatamente os ícones nativos antes que o Windows encerre o subsistema de janelas.
-3. **Camada 3 — Processo Guardião (`DeskQuadra.Guardian`, 5-10s):** Monitora o PID do processo pai. Se o processo pai for encerrado abruptamente, restaura os ícones. Atalho de emergência `Ctrl + Shift + Alt + Q` existente mantido.
-4. **Camada 4 — Windows Service Dedicado (30s) [Opção A confirmada para `!isPortable`]:** Serviço nativo leve do Windows que verifica a cada 30 segundos se nenhum processo do DeskQuadra está rodando com ícones invisíveis. Presente apenas na instalação completa (`!isPortable`).
-5. **Camada 5 — Task Scheduler Safety Net (1 min) + `DeskQuadra.Restorer.exe` [Opção A + Opção B confirmadas]:**
-   - Agendamento nativo a cada 1 minuto (Opção 3 confirmada: 1 min).
-   - Executa `DeskQuadra.Restorer.exe` (executável leve C# de ~25KB, sem dependência de script PowerShell que possa ser bloqueado por antivírus ou política de execução).
-   - Comportamento de Recuperação (Opção B confirmada): O Restorer restaura os ícones e reinicia o `DeskQuadra.exe` automaticamente com a flag `--recovered`. Ao subir, o app exibe uma notificação/toast informativa explicando a recuperação.
+3. **Camada 3 — Processo Guardião (`DeskQuadra.Guardian`, 5-10s):** Monitora o PID do processo pai. **APENAS restaura ícones via `ShowWindow(SW_SHOW)`.** Não reinicia o app principal. Mantém hotkey de pânico `Ctrl + Shift + Alt + Q`.
+4. **Camada 4 — Windows Service Dedicado (30s) [Para `!isPortable`]:** Serviço Windows que atua como dispatcher inteligente. Usa `WTSGetActiveConsoleSessionId()` + `CreateProcessAsUser()` para disparar `DeskQuadra.Restorer.exe` na sessão do usuário (Session 1+), contornando a limitação de Session 0. Presente apenas na instalação completa.
+5. **Camada 5 — Task Scheduler Safety Net (1 min) + `DeskQuadra.Restorer.exe`:**
+   - Agendamento nativo a cada 1 minuto via Task Scheduler.
+   - Executa `DeskQuadra.Restorer.exe` (executável leve C# de ~25KB).
+   - O Restorer restaura os ícones e reinicia o `DeskQuadra.UI.Wpf.exe` automaticamente com a flag `--recovered`. Ao subir, o app exibe notificação toast nativa do Windows informando a recuperação.
 6. **Camada 6 — Atalho no Menu Iniciar:** Criado em `%APPDATA%\Microsoft\Windows\Start Menu\Programs\DeskQuadra\Restaurar Ícones do Desktop.lnk`, permitindo ao usuário abrir o Menu Iniciar, digitar "restaurar" e recuperar seus ícones instantaneamente.
-7. **Camada 7 — Shell Extension no Menu de Contexto [Confirmado para `!isPortable`]:** Opção no clique com botão direito no papel de parede: "Restaurar Ícones do Desktop (DeskQuadra)".
-8. **Camada 8 — Detecção de Modo Seguro (`SafeMode`):** Se o Windows iniciar em Modo Seguro (`SystemInformation.BootMode != Normal`), restaura os ícones, exibe aviso informativo e encerra imediatamente sem subir o app completo.
-9. **Camada 9 — Sanitização de Registro & Boot Forçado:** Verificação contínua para assegurar que `HideIcons` seja sempre `0` no registro e tratamento de reinício pós-queda de energia.
+7. **Camada 7 — Shell Extension no Menu de Contexto [Para `!isPortable`]:** Registry Entry simples em `HKCU\Software\Classes\DesktopBackground\Shell\DeskQuadraRestore` que adiciona item "Restaurar Ícones do Desktop (DeskQuadra)" ao menu de contexto do papel de parede, executando `DeskQuadra.Restorer.exe --force`.
+8. **Camada 8 — Detecção de Modo Seguro (`SafeMode`):** Se o Windows iniciar em Modo Seguro (`SystemInformation.BootMode != Normal`), restaura os ícones via `MessageBoxW` Win32 (antes do WPF), exibe aviso informativo e encerra imediatamente.
+9. **Camada 9 — Sanitização de Registro:** Verificação para assegurar que `HideIcons` seja sempre `0` no registro Windows, impedindo persistência de ícones ocultos entre boots.
+10. **Camada 10 — Detecção de Corrupção de Dados (Sistema `.tmp` Existente):** Utiliza o mecanismo de transação dupla já implementado (`quadras.json` / `.tmp` / `.bak`) da Sessão 21 do BRAINSTORMING.md para detectar e recuperar de quedas de energia e crashes durante gravação.
 
 ---
 
@@ -141,13 +142,10 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
    - Executar persistência rápida de layout (`SaveNowAsync`) e restauração imediata dos ícones nativos (`ShowWindow(SW_SHOW)`).
 4. **Proteção de Modo Seguro (`SafeModeGuard`):**
    - No início de `Program.Main`, verificar `SystemInformation.BootMode`.
-   - Se diferente de `Normal`, chamar restauração estática dos ícones, exibir mensagem informativa leve e sair (`return`) antes de inicializar o WPF.
+   - Se diferente de `Normal`, chamar restauração estática dos ícones via Win32 `MessageBoxW` (antes do WPF), exibir aviso informativo e sair (`return`) antes de inicializar o WPF.
 5. **Sanitização da Chave de Registro `HideIcons`:**
    - Assegurar que nenhuma rotina grave `HideIcons = 1` no registro.
    - Criar rotina de sanitização na inicialização e no encerramento que garante `HideIcons = 0` em `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced`.
-6. **Detecção de Desligamento Forçado / Queda de Energia:**
-   - Gravar timestamp de saída graciosa em `%APPDATA%\DeskQuadra\last_shutdown.timestamp`.
-   - Se no boot o tempo decorrido desde o último boot do Windows indicar shutdown abrupto (sem timestamp de saída limpa), garantir que a janela nativa de ícones seja forçada para visível antes de reconfigurar o desktop.
 
 #### Critério de Aceite do PO & Roteiro Prático de Testes:
 - `dotnet test` passando 100% verde e zero avisos de compilação.
@@ -239,25 +237,57 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
 
 ---
 
-### Fase 3 — Task Scheduler Safety Net (Monitoramento a cada 1 Minuto)
-**Objetivo:** Automatizar o monitoramento em segundo plano sem novos processos residentes pesados, garantindo recuperação em no máximo 1 minuto mesmo se o usuário matar DeskQuadra e Guardian simultaneamente.
+### Fase 3 — Task Scheduler Boot Único + Safety Net (Monitoramento a cada 1 Minuto)
+**Objetivo:** Estabelecer Task Scheduler como ponto único de boot e automatizar monitoramento em segundo plano via Safety Net, garantindo recuperação em no máximo 1 minuto em caso de falha catastrófica.
+
+#### Decisão Arquitetural: Por Que Task Scheduler Único?
+Após análise de custo-benefício e pesquisa de melhores práticas da indústria, decidimos por um **único ponto de boot** (Task Scheduler) pelos seguintes motivos:
+
+1. **Probabilidade de falha é ínfima:** Task Scheduler é serviço crítico do Windows. Se falhar, o sistema inteiro está comprometido.
+2. **Safety Net cobre cenários extremos:** Em caso de falha do Task Scheduler, o Restorer detecta e reinicia o app em até 60 segundos.
+3. **Over-engineering aumenta complexidade:** Adicionar processos de monitoramento e watchdogs de boot (Registry Run, WTS, etc.) aumenta a superfície de ataque, consome RAM e viola nossos princípios de simplicidade cirúrgica.
+4. **Downtime aceitável:** 60 segundos de desktop vazio em um cenário de probabilidade < 0.01% é um trade-off aceitável vs. complexidade.
 
 #### O que será feito:
-1. **Serviço de Agendamento Nativo (`SafetyTaskSchedulerService`):**
+1. **Task Scheduler de Boot (Primário):**
    - Utilizar a API COM `Schedule.Service` (reusando as regras estabelecidas na Sessão 28 do Brainstorming).
-   - Criar e gerenciar a tarefa agendada:
+   - Criar tarefa:
+     - **Nome:** `DeskQuadra Autostart`
+     - **Gatilho:** `AtLogon`, `Delay = PT0S` (sem delay)
+     - **Ação:** Executar `DeskQuadra.UI.Wpf.exe` (sem flags especiais)
+     - **Prioridade:** 4 (alta prioridade de boot)
+     - **Condições:** `DisallowStartIfOnBatteries = false`, `ExecutionTimeLimit = PT0S` (sem limite)
+
+2. **Task Scheduler Safety Net:**
+   - Criar tarefa:
      - **Nome:** `DeskQuadra Safety Restore`
-     - **Gatilho:** `AtLogon` com repetição a cada 1 minuto indefinidamente (`PT1M`).
-     - **Ação:** Executar `DeskQuadra.Restorer.exe` (modo silencioso padrão).
-     - **Condições:** `DisallowStartIfOnBatteries = false` (funciona em laptops e portáteis), `ExecutionTimeLimit = PT1M`, sem privilégios elevados (token de usuário normal).
-2. **Suporte nos Modos Portátil e Instalador:**
-   - No modo portátil, o app auto-registra a tarefa agendada apontando para o executável em sua pasta de execução.
-   - Respeita configuração do usuário (se o usuário desativar inicialização automática, a tarefa correspondente é ajustada de acordo).
+     - **Gatilho:** `AtLogon` com repetição a cada 1 minuto indefinidamente (`Repetition.Interval = PT1M`, `Repetition.Duration` = indefinido)
+     - **Ação:** Executar `DeskQuadra.Restorer.exe` (modo silencioso padrão)
+     - **Condições:** `DisallowStartIfOnBatteries = false`, `ExecutionTimeLimit = PT1M`, sem privilégios elevados (token de usuário normal)
+
+3. **Mutex Simples (Sem Timeout):**
+   - Implementar mutex atômico em `Program.Main`:
+     ```csharp
+     bool createdNew;
+     using var mutex = new Mutex(true, "Global\\DeskQuadra_SingleInstance", out createdNew);
+     if (!createdNew) return; // Já rodando, sair silenciosamente
+     ```
+   - Primeira instância vence, segunda morre imediatamente (sem aguardar 8s).
+
+4. **Suporte nos Modos Portátil e Instalador:**
+   - No modo portátil, o app auto-registra ambas as tarefas agendadas apontando para o executável em sua pasta de execução.
+   - Respeita configuração do usuário (se o usuário desativar inicialização automática via Settings, ambas as tarefas são removidas).
 
 #### Critério de Aceite do PO & Roteiro Prático de Testes:
 
 ##### Roteiro de Testes da Fase 3:
-1. **Teste 1 (O Pior Caso Absoluto: Kill Simultâneo de App e Guardian):**
+1. **Teste 1 (Boot Normal - Task Scheduler Primário):**
+   - *Procedimento:*
+     1. Reiniciar o computador.
+     2. Observar o boot do Windows.
+   - *Resultado esperado:* O Task Scheduler dispara `DeskQuadra.UI.Wpf.exe` em 2-5 segundos após login. Ícones nativos são ocultados e Quadras aparecem suavemente.
+
+2. **Teste 2 (O Pior Caso Absoluto: Kill Simultâneo de App e Guardian):**
    - *Script Auxiliar:* `tests/helpers/kill-both-pior-caso.cmd`:
      ```cmd
      @echo off
@@ -273,7 +303,8 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
      2. Os processos morrem simultaneamente. O desktop fica temporariamente vazio.
      3. **Não toque no mouse ou teclado.** Aguarde o ciclo de 60 segundos do Task Scheduler disparar.
    - *Resultado esperado:* Em até 60 segundos, a tarefa agendada executa `DeskQuadra.Restorer.exe`, que restaura a visibilidade do desktop e reinicia o DeskQuadra exibindo o toast de auto-recuperação.
-2. **Teste 2 (Disparo Manual Imediato da Tarefa Agendada):**
+
+3. **Teste 3 (Disparo Manual Imediato da Tarefa Agendada):**
    - *Script Auxiliar:* `tests/helpers/trigger-safety-task.cmd`:
      ```cmd
      @echo off
@@ -284,35 +315,49 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
 
 ---
 
-### Fase 4 — Blindagem da Instalação Completa (Windows Service + Shell Extension)
-**Objetivo:** Adicionar as camadas de proteção máxima exclusivas para o modo instalado (`!isPortable`), aproveitando os privilégios do instalador para redundância via Windows Service e menu de contexto no papel de parede.
+### Fase 4 — Blindagem da Instalação Completa (Windows Service Dispatcher + Shell Extension)
+**Objetivo:** Adicionar as camadas de proteção máxima exclusivas para o modo instalado (`!isPortable`), aproveitando os privilégios do instalador para redundância via Windows Service (contornando Session 0) e menu de contexto no papel de parede.
 
 #### O que será feito:
-1. **Windows Service Dedicado (`DeskQuadra.Service`):**
+1. **Windows Service Dedicado (`DeskQuadra.Service`) como Dispatcher Inteligente:**
    - Serviço em C# (.NET 8 LTS) configurado para rodar como serviço do Windows.
-   - Timer em background de 30 segundos: verifica se os processos interativos do usuário estão ausentes e se a janela de ícones do desktop interativo está oculta; em caso positivo, dispara a restauração.
+   - **Arquitetura para contornar Session 0:**
+     - O Service não tenta acessar janelas diretamente (bloqueado por Session 0 isolation).
+     - Timer em background de 30 segundos detecta ausência de `DeskQuadra.UI.Wpf.exe` via `Process.GetProcessesByName()`.
+     - Se detectar ausência + ícones ocultos: usa `WTSGetActiveConsoleSessionId()` para obter a sessão do usuário ativo (Session 1+).
+     - Usa `WTSQueryUserToken()` + `CreateProcessAsUser()` para disparar `DeskQuadra.Restorer.exe` **na sessão do usuário**, com privilégios corretos.
+     - O Restorer (rodando como usuário) tem acesso ao `SysListView32` e executa `ShowWindow(SW_SHOW)` normalmente.
    - Condicionado estritamente a `!isPortable` (nunca ativado no modo portátil).
-2. **Shell Extension no Menu de Contexto do Desktop:**
+
+2. **Shell Extension no Menu de Contexto do Desktop (Registry Entry Simples):**
    - Registro em `HKCU\Software\Classes\DesktopBackground\Shell\DeskQuadraRestore`:
-     - Título: *"Restaurar Ícones do Desktop (DeskQuadra)"*
-     - Comando: Invocação de `DeskQuadra.Restorer.exe --force`
-     - Exibição de ícone dedicado.
+     - `(Default)` = *"Restaurar Ícones do Desktop (DeskQuadra)"*
+     - `Icon` = caminho para ícone dedicado
+     - `Command\(Default)` = `"<caminho>\DeskQuadra.Restorer.exe" --force`
+   - Não requer DLL COM complexa, apenas entrada de registro simples.
    - Condicionado estritamente a `!isPortable`.
+
 3. **Atualização do Script Inno Setup (`installer/DeskQuadra.iss`):**
    - Adicionar arquivos de `DeskQuadra.Restorer` e `DeskQuadra.Service` no payload.
    - Registrar/iniciar o serviço do Windows no fim da instalação.
+   - Registrar a entrada de registry para Shell Extension.
    - Adicionar o atalho de emergência na pasta do Menu Iniciar.
    - Limpeza completa e desregistro do serviço e das chaves de registro na desinstalação.
 
 #### Critério de Aceite do PO & Roteiro Prático de Testes:
 
 ##### Roteiro de Testes da Fase 4:
-1. **Teste 1 (Menu de Contexto do Papel de Parede):**
+1. **Teste 1 (Windows Service como Dispatcher - Session 0 → Session 1+):**
+   - *Procedimento:*
+     1. Instalar DeskQuadra em modo completo (`!isPortable`).
+     2. Verificar que o serviço `DeskQuadra.Service` está rodando em `services.msc`.
+     3. Matar App + Guardian: `taskkill /F /IM DeskQuadra.UI.Wpf.exe /IM DeskQuadra.Guardian.exe`
+   - *Resultado esperado:* Em até 30 segundos, o Service detecta ausência e dispara `DeskQuadra.Restorer.exe` via `CreateProcessAsUser()`. Ícones são restaurados e app reinicia.
+
+2. **Teste 2 (Menu de Contexto do Papel de Parede):**
    - *Procedimento:* Em uma máquina com a instalação completa realizada, clicar com o botão direito em um espaço vazio da área de trabalho do Windows.
-   - *Resultado esperado:* O menu de contexto nativo exibe o item *"Restaurar Ícones do Desktop (DeskQuadra)"* com ícone próprio, que restaura a visibilidade dos ícones ao ser clicado.
-2. **Teste 2 (Redundância Rápida via Windows Service - 30s):**
-   - *Procedimento:* Executar `tests/helpers/kill-both-pior-caso.cmd` no ambiente instalado.
-   - *Resultado esperado:* O Windows Service detecta o estado e restaura os ícones em cerca de 30 segundos (antecipando o gatilho de 1 minuto do Task Scheduler).
+   - *Resultado esperado:* O menu de contexto nativo exibe o item *"Restaurar Ícones do Desktop (DeskQuadra)"* com ícone próprio, que ao ser clicado executa `DeskQuadra.Restorer.exe --force` e restaura a visibilidade dos ícones imediatamente.
+
 3. **Teste 3 (Garantia de Isolamento no Modo Portátil):**
    - *Procedimento:* Rodar o executável portátil (`DeskQuadra.UI.Wpf.exe`).
    - *Resultado esperado:* Verificar no `services.msc` e no registro do Windows que o serviço e a Shell Extension **NÃO** foram instalados, mantendo o modo portátil 100% limpo e sem poluição do sistema.
@@ -320,20 +365,87 @@ As entregas estão estruturadas em fatias verticais coesas, permitindo que o PO 
 
 ---
 
-## 6. Riscos Conhecidos & Mitigações
+## 6. Padrão de Logs (Reuso do Padrão Existente)
 
-- **Risco 1: Falso Positivo de Antivírus em Scripts PowerShell:**
-  - *Mitigação:* Descartamos completamente o uso de scripts `.ps1`. O `DeskQuadra.Restorer.exe` é um binário C# compilado, assinado e enxuto (~25KB), executando chamadas Win32 padronizadas.
-- **Risco 2: Múltiplas Instâncias de Restauração Concorrentes:**
-  - *Mitigação:* O `DeskQuadra.Restorer.exe` utiliza verificação rápida de instâncias e mutex local de execução para não disputar recursos caso um ciclo coincida com outro.
-- **Risco 3: Conflito de Restauração com o Guardian Ativo:**
-  - *Mitigação:* O `DeskQuadra.Restorer` só atua se `DeskQuadra.Guardian` também estiver ausente. O Guardian tem prioridade de ação.
-- **Risco 4: Bloqueio de Permissões no Modo Portátil:**
-  - *Mitigação:* As tarefas do Task Scheduler e atalhos do Menu Iniciar no modo portátil rodam estritamente no escopo de usuário (`HKCU` e token interativo normal), nunca exigindo elevação de Administrador (UAC).
+Conforme identificado no código existente (`DeskQuadra.Guardian\Program.cs`, `DeskQuadra.Core\ThirdParty\ShellMenuLog.cs`), o projeto já possui padrão de logs estabelecido:
+
+### Formato Padrão:
+```
+[yyyy-MM-dd HH:mm:ss.fff] {message}
+```
+
+### Características:
+- **Best-effort:** `try/catch`, nunca quebra o app
+- **Append simples:** `File.AppendAllText()`
+- **Localização:** `%APPDATA%\DeskQuadra\`
+- **Zero dependências:** Apenas `System.IO`
+
+### Arquivos de Log por Componente:
+- `guardian.log` - Processo Guardian
+- `shell-menu.log` - Menu de contexto de terceiros
+- `chord-diag.log` - Diagnóstico temporário (remover antes de release)
+- **NOVOS:**
+  - `restorer.log` - DeskQuadra.Restorer
+  - `service.log` - DeskQuadra.Service (modo instalado)
+
+### Implementação Padrão (Para Restorer e Service):
+```csharp
+public static class Logger
+{
+    private const string LogFileName = "restorer.log"; // ou "service.log"
+    
+    public static void Log(string message)
+    {
+        try
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "DeskQuadra");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(
+                Path.Combine(dir, LogFileName),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Best-effort: log nunca quebra o processo.
+        }
+    }
+}
+```
+
+**Rotação:** Não há rotação nos logs existentes. Manter simplicidade por consistência.
 
 ---
 
-## 7. Diário de Bordo & Status das Fases
+## 7. Riscos Conhecidos & Mitigações
+
+- **Risco 1: Falso Positivo de Antivírus:**
+  - *Mitigação:* Zero scripts (`.ps1`, `.cmd`, `.bat`). Todos os executáveis são binários C# compilados (~25KB), executando apenas chamadas Win32 padronizadas.
+- **Risco 2: Múltiplas Instâncias de Restauração Concorrentes:**
+  - *Mitigação:* O `DeskQuadra.Restorer.exe` utiliza verificação rápida de processos ativos (< 5ms) e mutex local de execução para evitar disputas de recursos.
+- **Risco 3: Conflito de Restauração (Guardian vs Restorer):**
+  - *Mitigação:* O `DeskQuadra.Restorer` só atua se `DeskQuadra.Guardian` também estiver ausente. Guardian tem prioridade de ação.
+- **Risco 4: Bloqueio de Permissões no Modo Portátil:**
+  - *Mitigação:* As tarefas do Task Scheduler e atalhos do Menu Iniciar no modo portátil rodam estritamente no escopo de usuário (`HKCU` e token interativo normal), nunca exigindo elevação de Administrador (UAC).
+- **Risco 5: Windows Service em Session 0 (Sem Acesso ao Desktop):**
+  - *Mitigação:* Service atua como dispatcher inteligente, usando `CreateProcessAsUser()` para lançar `Restorer.exe` na sessão do usuário (Session 1+), contornando a limitação de Session 0.
+
+---
+
+## 8. Dependências do Projeto
+
+Todos os projetos utilizam:
+- **Runtime:** .NET 8 LTS (`<TargetFramework>net8.0-windows</TargetFramework>`)
+- **SDK:** `Microsoft.NET.Sdk` (console) ou `Microsoft.NET.Sdk.WindowsDesktop` (WPF)
+- **Packages NuGet (App Principal):**
+  - `Windows.UI.Notifications` (toast nativo do Windows)
+  - Bibliotecas já existentes no projeto (verificar `.csproj`)
+- **Packages NuGet (Restorer/Guardian/Service):** ZERO (apenas BCL)
+
+---
+
+## 9. Diário de Bordo & Status das Fases
 
 - [ ] **Fase 1 — Núcleo de Resiliência no Ciclo de Vida do App** (Pendente)
 - [ ] **Fase 2 — Executável Dedicado `DeskQuadra.Restorer` & Atalho no Menu Iniciar** (Pendente)

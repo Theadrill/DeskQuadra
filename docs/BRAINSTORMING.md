@@ -130,13 +130,17 @@
   - *A Proteção Técnica:* Inscrição de handlers globais de emergência (`AppDomain.CurrentDomain.UnhandledException` e `DispatcherUnhandledException`). Antes de qualquer encerramento abrupto, o sistema executa a chamada Win32 `ShowWindow(hDesktopListView, SW_SHOW)`, garantindo que os ícones originais do Windows sempre reapareçam, mesmo em caso de falha catastrófica.
 
 ### 14. Inicialização com o Windows (Startup / Boot)
-- **Decisão de Produto (Opção A):**
+- **Decisão de Produto:**
   - **Ativado por padrão** no primeiro uso para garantir a sensação de sistema operacional integrado.
   - **Toggle nas Configurações Gerais do App:** Uma opção clara *"Iniciar DeskQuadra com o Windows"* que permite ao usuário ligar ou desligar o recurso a qualquer momento com um único clique.
   - Sobe em modo 100% silencioso diretamente para a bandeja do sistema (System Tray), restaurando as Quadras sem telas de carregamento ou janelas intrusivas.
+- **Decisão Arquitetural (Task Scheduler Único):**
+  - **Ponto único de boot:** Windows Task Scheduler com prioridade 4 e delay zero (`PT0S`).
+  - **Sem redundância de boot:** Registry Run foi descartado após análise de custo-benefício. Task Scheduler é serviço crítico do Windows; se falhar, o sistema inteiro está comprometido. Redundância aumentaria complexidade sem benefício prático mensurável.
+  - **Mutex simples:** Primeira instância vence, segunda morre imediatamente. Sem timeout ou flags de origem.
 - **Engenharia de Performance de Boot (Startup Impact Mínimo):**
   - *O Risco:* O Gerenciador de Tarefas do Windows classifica programas que demoram no boot como "Impacto Alto na Inicialização", gerando atrito com o usuário.
-  - *A Solução Técnica:* Injeção na chave de registro do usuário (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`) com a flag de inicialização silenciosa (`--silent` ou `--autostart`). O carregamento do `quadras.json` e dos ícones é feito de forma assíncrona e ultrarrápida (< 30ms), mantendo o impacto no boot classificado como "Nenhum / Baixo".
+  - *A Solução Técnica:* Task Scheduler com prioridade 4 e delay zero. O carregamento do `quadras.json` e dos ícones é feito de forma assíncrona e ultrarrápida (< 30ms), mantendo o impacto no boot classificado como "Nenhum / Baixo".
 
 ### 15. Ordenação e Alinhamento de Ícones dentro da Quadra
 - **Decisão de Produto:** Suporte a dois modos de organização selecionáveis via menu de contexto da Quadra (*"Classificar por..."*):
@@ -208,6 +212,7 @@
   - **Temporizador de Integridade:** Se em até 3,0 segundos após a notificação o `WorkerW` válido não for localizado ou as janelas não confirmarem reancoragem bem-sucedida (estado de corrupção do subsistema gráfico do Explorer):
     - O DeskQuadra salva o estado atual e dispara uma reinicialização limpa do próprio processo (`Process.Start(Environment.ProcessPath)` com a flag `--recovery`), encerrando a instância zumbi com `Environment.Exit(0)`.
   - **Garantia:** O software nunca fica "congelado" ou invisível após falhas do sistema operacional.
+- **Nota sobre o Guardian:** O `DeskQuadra.Guardian.exe` monitora o PID do processo pai e **apenas restaura ícones do desktop via `ShowWindow(SW_SHOW)`**. Ele não reinicia o app principal. Sua função é exclusivamente ser um restaurador de ícones + botão de pânico (`Ctrl+Shift+Alt+Q`).
 
 ### 21. Integridade de Persistência, Backups Rotativos & Recuperação de Queda de Energia
 - **Ciclo Transacional de Gravação (Double-Buffering):**
