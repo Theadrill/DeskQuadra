@@ -79,6 +79,7 @@ public partial class App : System.Windows.Application
         }
 
         base.OnStartup(e);
+        LogDiag("App.OnStartup enter");
 
         // Dono do botão de pânico é o Guardian (hotkey global vive lá: com a UI travada o app não recebe WM_HOTKEY).
         // Aqui o app só escuta o pedido de saída limpa do Guardian; caminho não-crítico (se travar, o Guardian faz kill).
@@ -92,17 +93,26 @@ public partial class App : System.Windows.Application
                 {
                     if (gracefulExit.WaitOne())
                     {
+                        LogDiag("DeskQuadraGracefulExit disparado! Chamando Shutdown().");
                         Dispatcher.Invoke(() => Shutdown());
                     }
                 }
-                catch { /* saída limpa é best-effort; o Guardian segue para o kill */ }
+                catch (Exception ex) { LogDiag($"Erro no listener de GracefulExit: {ex.Message}"); }
             });
         }
-        catch { /* evento nomeado indisponível: o Guardian segue para o kill; nunca derruba o startup */ }
+        catch (Exception ex) { LogDiag($"Erro ao registrar GracefulExit: {ex.Message}"); }
 
         // Proteção técnica global para garantir que os ícones do Windows sejam restaurados em caso de falha não tratada
-        AppDomain.CurrentDomain.UnhandledException += (s, args) => _nativeIconService?.ShowDesktopIcons();
-        DispatcherUnhandledException += (s, args) => _nativeIconService?.ShowDesktopIcons();
+        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+        {
+            LogDiag($"AppDomain.UnhandledException: {args.ExceptionObject}");
+            _nativeIconService?.ShowDesktopIcons();
+        };
+        DispatcherUnhandledException += (s, args) =>
+        {
+            LogDiag($"DispatcherUnhandledException: {args.Exception}");
+            _nativeIconService?.ShowDesktopIcons();
+        };
 
         var services = new ServiceCollection();
         services.AddSingleton<IInputDeviceDetector, DeskQuadra.UI.Wpf.Services.InputDeviceDetector>();
@@ -341,6 +351,7 @@ public partial class App : System.Windows.Application
         };
 
         _drawingService.Start();
+        LogDiag("DesktopDrawingService iniciado.");
 
         // 3c. Recuperação de queda de energia (BRAINSTORMING 21/219-224): .tmp íntegro
         // avaliado ANTES do .bak dentro do repositório; aqui só o caso com diálogo
@@ -351,6 +362,7 @@ public partial class App : System.Windows.Application
             var pendingRecovery = await layoutRepository.CheckCrashRecoveryAsync();
             if (pendingRecovery is not null)
             {
+                LogDiag("Recuperação pendente detectada!");
                 bool restoreRecent = Services.DarkDialog.Show(
                     UiStrings.Dialog_RecoveryTitle,
                     UiStrings.Dialog_RecoveryMessage,
@@ -361,22 +373,25 @@ public partial class App : System.Windows.Application
                 await layoutRepository.ResolveCrashRecoveryAsync(restoreRecent);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Sem .tmp ou falha transitória: segue com o fluxo idêntico ao atual.
+            LogDiag($"Exceção em CheckCrashRecoveryAsync: {ex.Message}");
         }
 
-        // 4. Carrega o layout transacional persistido em disco (%APPDATA%\DeskQuadra\quadras.json)
+        LogDiag("Chamando coordinator.InitializeAsync()...");
         await coordinator.InitializeAsync();
+        LogDiag($"coordinator.InitializeAsync() concluiu. Quadras ativas: {coordinator.ActiveQuadras.Count}");
 
         // 5. Instancia e exibe as janelas de cada Quadra visível (escondidas ficam só no tray)
         foreach (var quadra in coordinator.ActiveQuadras)
         {
             if (quadra.IsHidden)
             {
+                LogDiag($"Quadra '{quadra.Title}' está oculta, pulando.");
                 continue;
             }
 
+            LogDiag($"Abrindo Quadra '{quadra.Title}' (Id={quadra.Id})...");
             OpenQuadraWindow(quadra);
         }
 
@@ -387,9 +402,11 @@ public partial class App : System.Windows.Application
         {
             var scanner = _serviceProvider.GetRequiredService<IDesktopScannerService>();
             _liveSync = new Services.DesktopLiveSync(coordinator, scanner, Dispatcher);
+            LogDiag("DesktopLiveSync iniciado.");
         }
-        catch
+        catch (Exception ex)
         {
+            LogDiag($"Exceção em DesktopLiveSync: {ex.Message}");
             _liveSync = null;
         }
 
@@ -398,6 +415,8 @@ public partial class App : System.Windows.Application
         {
             _ = Dispatcher.BeginInvoke(OpenSettings);
         }
+
+        LogDiag("App.OnStartup concluído.");
     }
 
     // Abre a janela da Quadra e passa a rastreá-la pelo Id (ignora se já aberta)
@@ -1112,8 +1131,20 @@ public partial class App : System.Windows.Application
         services.AddApplicationServices();
     }
 
+    private static void LogDiag(string message)
+    {
+        try
+        {
+            string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeskQuadra");
+            Directory.CreateDirectory(appData);
+            File.AppendAllText(Path.Combine(appData, "startup-diag.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [App PID {Environment.ProcessId}] {message}{Environment.NewLine}");
+        }
+        catch { }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        LogDiag($"App.OnExit enter. ApplicationExitCode: {e.ApplicationExitCode}");
         if (_trayIcon != null)
         {
             _trayIcon.Visible = false;

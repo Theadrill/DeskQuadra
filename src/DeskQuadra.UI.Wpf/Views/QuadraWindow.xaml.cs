@@ -2096,9 +2096,15 @@ public partial class QuadraWindow : Window
 
     private void ItemMenuOpen_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
+        var targetItem = sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item ? item : _contextMenuItem;
+        CloseActiveItemContextMenu();
+        var items = GetSelectedOrTargetItems(targetItem);
+        foreach (var it in items)
         {
-            _launcherService.Launch(item.FilePath);
+            if (!string.IsNullOrWhiteSpace(it.FilePath))
+            {
+                _launcherService.Launch(it.FilePath);
+            }
         }
     }
 
@@ -2152,22 +2158,15 @@ public partial class QuadraWindow : Window
         return _contextMenuItem;
     }
 
+    private IReadOnlyList<DesktopItemViewModel> GetSelectedOrTargetItems(DesktopItemViewModel? fallbackItem) =>
+        ItemSelectionResolver.ResolveTargetItems(_viewModel.Items, fallbackItem);
+
     private IReadOnlyList<string> GetSelectedOrTargetFilePaths(DesktopItemViewModel? fallbackItem)
     {
-        var selected = _viewModel.Items.Where(i => i.IsSelected && !string.IsNullOrWhiteSpace(i.FilePath))
-                                       .Select(i => i.FilePath)
-                                       .ToList();
-        if (selected.Count > 0)
-        {
-            return selected;
-        }
-
-        if (fallbackItem != null && !string.IsNullOrWhiteSpace(fallbackItem.FilePath))
-        {
-            return new[] { fallbackItem.FilePath };
-        }
-
-        return Array.Empty<string>();
+        return GetSelectedOrTargetItems(fallbackItem)
+            .Where(i => !string.IsNullOrWhiteSpace(i.FilePath))
+            .Select(i => i.FilePath!)
+            .ToList();
     }
 
     private void QuickActionCut_Click(object sender, RoutedEventArgs e)
@@ -2228,9 +2227,10 @@ public partial class QuadraWindow : Window
     {
         var item = ResolveTargetItem(sender);
         CloseActiveItemContextMenu();
-        if (item == null) return;
+        var items = GetSelectedOrTargetItems(item);
+        if (items.Count == 0) return;
 
-        HandleItemDelete(item);
+        HandleItemsDelete(items);
     }
 
     private void QuickActionPaste_Click(object sender, RoutedEventArgs e)
@@ -2328,31 +2328,60 @@ public partial class QuadraWindow : Window
 
     private void ItemMenuRemove_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item)
-        {
-            _viewModel.RemoveItem(item);
-            _coordinator.NotifyQuadraChanged(_viewModel.Model);
-        }
+        var targetItem = sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item ? item : _contextMenuItem;
+        CloseActiveItemContextMenu();
+        var items = GetSelectedOrTargetItems(targetItem);
+        if (items.Count == 0) return;
+
+        _viewModel.RemoveItems(items);
+        _coordinator.NotifyQuadraChanged(_viewModel.Model);
     }
 
     // Excluir-via-ícone: 1º modal escuro (Lixeira direto / Permanentemente com 2ª
-    // confirmação / Cancelar nada). Execução no Shell; o item some da Quadra pelo
+    // confirmação / Cancelar nada). Execução no Shell; os itens somem da Quadra pelo
     // caminho existente (desvincula + persiste, como o Remover).
     private void ItemMenuDelete_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not MenuItem mi || mi.DataContext is not DesktopItemViewModel item)
-        {
-            return;
-        }
+        var targetItem = sender is MenuItem mi && mi.DataContext is DesktopItemViewModel item ? item : _contextMenuItem;
+        CloseActiveItemContextMenu();
+        var items = GetSelectedOrTargetItems(targetItem);
+        if (items.Count == 0) return;
 
-        HandleItemDelete(item);
+        HandleItemsDelete(items);
     }
 
     private void HandleItemDelete(DesktopItemViewModel item)
     {
+        HandleItemsDelete(new[] { item });
+    }
+
+    private void HandleItemsDelete(IReadOnlyList<DesktopItemViewModel> items)
+    {
+        if (items.Count == 0) return;
+
+        string title;
+        string message;
+        string permanentTitle;
+        string permanentMessage;
+
+        if (items.Count == 1)
+        {
+            title = Strings.Dialog_DeleteItemTitle;
+            message = string.Format(Strings.Dialog_DeleteItemMessageFormat, items[0].Name);
+            permanentTitle = Strings.Dialog_DeletePermanentTitle;
+            permanentMessage = string.Format(Strings.Dialog_DeletePermanentMessageFormat, items[0].Name);
+        }
+        else
+        {
+            title = Strings.Dialog_DeleteMultipleItemsTitle;
+            message = string.Format(Strings.Dialog_DeleteMultipleItemsMessageFormat, items.Count);
+            permanentTitle = Strings.Dialog_DeletePermanentTitle;
+            permanentMessage = string.Format(Strings.Dialog_DeletePermanentMultipleMessageFormat, items.Count);
+        }
+
         int choice = DarkDialog.ShowOptions(
-            Strings.Dialog_DeleteItemTitle,
-            string.Format(Strings.Dialog_DeleteItemMessageFormat, item.Name),
+            title,
+            message,
             this,
             330,
             (Strings.Dialog_RecycleBin, true),
@@ -2361,21 +2390,21 @@ public partial class QuadraWindow : Window
 
         if (ItemDeletionPlan.Resolve(choice, permanentConfirmed: false) == ItemDeleteAction.Recycle)
         {
-            ExecuteItemDelete(item, recycle: true);
+            ExecuteItemsDelete(items, recycle: true);
             return;
         }
 
         if (choice == 1)
         {
             bool confirmed = DarkDialog.Show(
-                Strings.Dialog_DeletePermanentTitle,
-                string.Format(Strings.Dialog_DeletePermanentMessageFormat, item.Name),
+                permanentTitle,
+                permanentMessage,
                 Strings.Dialog_Delete,
                 Strings.Dialog_Cancel,
                 owner: this);
             if (ItemDeletionPlan.Resolve(choice, confirmed) == ItemDeleteAction.Permanent)
             {
-                ExecuteItemDelete(item, recycle: false);
+                ExecuteItemsDelete(items, recycle: false);
             }
         }
         // Cancelar/fechar: sem efeito.
@@ -2383,23 +2412,35 @@ public partial class QuadraWindow : Window
 
     private void ExecuteItemDelete(DesktopItemViewModel item, bool recycle)
     {
-        bool deleted;
-        try
+        ExecuteItemsDelete(new[] { item }, recycle);
+    }
+
+    private void ExecuteItemsDelete(IReadOnlyList<DesktopItemViewModel> items, bool recycle)
+    {
+        var deletedItems = new List<DesktopItemViewModel>();
+        foreach (var item in items)
         {
-            deleted = _deletionService.Delete(item.FilePath, recycle);
-        }
-        catch
-        {
-            deleted = false; // Silencioso, padrão do projeto.
+            bool deleted;
+            try
+            {
+                deleted = _deletionService.Delete(item.FilePath, recycle);
+            }
+            catch
+            {
+                deleted = false; // Silencioso, padrão do projeto.
+            }
+
+            if (deleted)
+            {
+                deletedItems.Add(item);
+            }
         }
 
-        if (!deleted)
+        if (deletedItems.Count > 0)
         {
-            return;
+            _viewModel.RemoveItems(deletedItems);
+            _coordinator.NotifyQuadraChanged(_viewModel.Model);
         }
-
-        _viewModel.RemoveItem(item);
-        _coordinator.NotifyQuadraChanged(_viewModel.Model);
     }
 
     // MOVER-via-touch: arma o modo mover (só chega aqui pelo menu touch).
@@ -3730,6 +3771,17 @@ public partial class QuadraWindow : Window
                     BeginItemRename(selected);
                     e.Handled = true;
                 }
+            }
+        }
+
+        if (e.Key == Key.Delete && !_isRenaming && !_viewModel.Items.Any(i => i.IsRenaming))
+        {
+            var selected = GetSelectedOrTargetItems(null);
+            if (selected.Count > 0)
+            {
+                HandleItemsDelete(selected);
+                e.Handled = true;
+                return;
             }
         }
     }

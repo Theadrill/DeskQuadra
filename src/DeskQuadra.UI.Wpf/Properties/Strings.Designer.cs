@@ -152,6 +152,10 @@ namespace DeskQuadra.UI.Wpf.Properties
 
         public static string Dialog_DeleteItemMessageFormat => ResourceManager.GetString("Dialog_DeleteItemMessageFormat", resourceCulture);
 
+        public static string Dialog_DeleteMultipleItemsTitle => ResourceManager.GetString("Dialog_DeleteMultipleItemsTitle", resourceCulture);
+
+        public static string Dialog_DeleteMultipleItemsMessageFormat => ResourceManager.GetString("Dialog_DeleteMultipleItemsMessageFormat", resourceCulture);
+
         public static string Dialog_RecycleBin => ResourceManager.GetString("Dialog_RecycleBin", resourceCulture);
 
         public static string Dialog_DeletePermanently => ResourceManager.GetString("Dialog_DeletePermanently", resourceCulture);
@@ -159,6 +163,8 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string Dialog_DeletePermanentTitle => ResourceManager.GetString("Dialog_DeletePermanentTitle", resourceCulture);
 
         public static string Dialog_DeletePermanentMessageFormat => ResourceManager.GetString("Dialog_DeletePermanentMessageFormat", resourceCulture);
+
+        public static string Dialog_DeletePermanentMultipleMessageFormat => ResourceManager.GetString("Dialog_DeletePermanentMultipleMessageFormat", resourceCulture);
 
         public static string Dialog_AddFilesTitle => ResourceManager.GetString("Dialog_AddFilesTitle", resourceCulture);
 

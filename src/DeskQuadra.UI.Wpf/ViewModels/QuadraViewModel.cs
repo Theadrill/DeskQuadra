@@ -220,6 +220,35 @@ public sealed class QuadraViewModel : ViewModelBase
         return removed;
     }
 
+    public int RemoveItems(IEnumerable<DesktopItemViewModel> items)
+    {
+        if (items == null)
+        {
+            return 0;
+        }
+
+        int removedCount = 0;
+        foreach (var item in items.ToList())
+        {
+            if (Items.Remove(item))
+            {
+                _quadra.Items.Remove(item.Model);
+                removedCount++;
+            }
+        }
+
+        if (removedCount > 0)
+        {
+            for (int i = 0; i < Items.Count; i++)
+            {
+                Items[i].Model.OrderIndex = i;
+            }
+            NotifyItemsChanged();
+        }
+
+        return removedCount;
+    }
+
     public void SortItems(SortMode mode)
     {
         _quadra.SortMode = mode;

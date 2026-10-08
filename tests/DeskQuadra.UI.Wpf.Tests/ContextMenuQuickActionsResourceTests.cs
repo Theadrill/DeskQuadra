@@ -22,6 +22,11 @@ public class ContextMenuQuickActionsResourceTests
         Assert.Equal("Compartilhar", Strings.QuickAction_Share);
         Assert.Equal("Excluir", Strings.QuickAction_Delete);
         Assert.Equal("Colar", Strings.QuickAction_Paste);
+
+        Assert.False(string.IsNullOrWhiteSpace(Strings.Dialog_DeleteMultipleItemsTitle));
+        Assert.False(string.IsNullOrWhiteSpace(Strings.Dialog_DeleteMultipleItemsMessageFormat));
+        Assert.False(string.IsNullOrWhiteSpace(Strings.Dialog_DeletePermanentMultipleMessageFormat));
+        Assert.Equal("Excluir itens", Strings.Dialog_DeleteMultipleItemsTitle);
     }
 
     [Fact]

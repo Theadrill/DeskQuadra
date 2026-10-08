@@ -398,3 +398,21 @@
   9. **Proteção em Modo Seguro (`SafeMode`):** Se iniciado em Modo Seguro (`SystemInformation.BootMode != Normal`), restaura os ícones, exibe aviso e encerra sem subir a interface pesada.
 - **Plano de Ação e Fases Testáveis:** Documentação completa estruturada em 4 fatias verticais no documento vivo `docs/PLANO_RESILIENCIA_ICONES_E_SAFETY_NET.md`.
 
+---
+
+## [Sessão 30] Ações em Lote na Seleção Múltipla (Excluir, Remover, Abrir e Atalhos de Teclado)
+
+### 1. Diagnóstico do Comportamento
+- Ao selecionar múltiplos itens (via caixa de seleção / marquee, `Ctrl`+clique ou `Shift`+clique) e acionar a ação rápida de contexto "Excluir", o sistema resolvia apenas o item individual sob o cursor (`ResolveTargetItem`), excluindo apenas 1 arquivo em vez de todos os itens selecionados.
+
+### 2. Resolução Arquitetural & Fidelidade ao Windows Shell
+- **Resolução Unificada de Alvo (`ItemSelectionResolver`):**
+  - Se múltiplos itens estiverem selecionados e o clique com botão direito ocorrer sobre um item que faz parte da seleção (ou via tecla de atalho): todas as operações em lote aplicam-se ao conjunto selecionado completo.
+  - Se o clique ocorrer sobre um item fora da seleção: o foco e a operação isolam-se exclusivamente a ele (comportamento nativo do Windows Explorer).
+- **Ações Contempladas:**
+  - **Excluir:** Diálogo contextual com contagem dinâmica (`"{0} itens selecionados: enviar para a Lixeira ou excluir permanentemente?"`). Envia todos os arquivos selecionados para a Lixeira ou exclusão permanente e desvincula-os da Quadra em lote via `QuadraViewModel.RemoveItems`.
+  - **Remover da Quadra:** Desvincula todos os itens selecionados da Quadra em lote atualizando índices (`OrderIndex`) uma única vez.
+  - **Abrir:** Inicia todos os arquivos ou atalhos selecionados.
+  - **Atalho Teclado `Delete`:** Suporte a tecla `Delete` direto na Quadra para excluir itens selecionados quando não estiver em modo de renomeação.
+
+

@@ -192,6 +192,12 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="Dialog_DeleteItemMessageFormat" xml:space="preserve">
     <value>"{0}": enviar para a Lixeira ou excluir permanentemente?</value>
   </data>
+  <data name="Dialog_DeleteMultipleItemsTitle" xml:space="preserve">
+    <value>Excluir itens</value>
+  </data>
+  <data name="Dialog_DeleteMultipleItemsMessageFormat" xml:space="preserve">
+    <value>"{0} itens selecionados": enviar para a Lixeira ou excluir permanentemente?</value>
+  </data>
   <data name="Dialog_RecycleBin" xml:space="preserve">
     <value>Lixeira</value>
   </data>
@@ -203,6 +209,9 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   </data>
   <data name="Dialog_DeletePermanentMessageFormat" xml:space="preserve">
     <value>Tem certeza? "{0}" será excluído para sempre e não poderá ser recuperado.</value>
+  </data>
+  <data name="Dialog_DeletePermanentMultipleMessageFormat" xml:space="preserve">
+    <value>Tem certeza? {0} itens selecionados serão excluídos para sempre e não poderão ser recuperados.</value>
   </data>
   <data name="Dialog_AddFilesTitle" xml:space="preserve">
     <value>Adicionar Atalhos ou Arquivos à Quadra</value>
