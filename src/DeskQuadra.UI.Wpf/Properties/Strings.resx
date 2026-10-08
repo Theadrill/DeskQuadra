@@ -318,4 +318,10 @@ A interface vai congelar de propósito e será preciso usar a tecla de emergênc
   <data name="QuickAction_Paste" xml:space="preserve">
     <value>Colar</value>
   </data>
+  <data name="ContainerMissingAppTitle" xml:space="preserve">
+    <value>Compactador não encontrado</value>
+  </data>
+  <data name="ContainerMissingAppMessage" xml:space="preserve">
+    <value>Para adicionar arquivos a contêineres '{0}', é necessário ter o {1} instalado.</value>
+  </data>
 </root>

@@ -10,4 +10,7 @@ public interface IArchiveDropService
     // Retorna true se o handler aceitou e processou o drop. Qualquer falha
     // (container inválido, sem fontes existentes, sem handler, timeout) = false.
     bool TryAddToContainer(string? containerPath, IReadOnlyList<string>? sourcePaths);
+
+    // Evento disparado quando um container necessita de um compactador externo não instalado.
+    event EventHandler<ArchiveToolMissingEventArgs>? ToolMissing;
 }

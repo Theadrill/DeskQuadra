@@ -410,6 +410,28 @@ public partial class App : System.Windows.Application
             _liveSync = null;
         }
 
+        // 7. Notificações de drop em containers (Fase F4): avisa caso falte compactador
+        try
+        {
+            var archiveDropService = _serviceProvider.GetService<IArchiveDropService>();
+            if (archiveDropService != null)
+            {
+                archiveDropService.ToolMissing += (s, args) =>
+                {
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        string title = UiStrings.ContainerMissingAppTitle;
+                        string message = string.Format(UiStrings.ContainerMissingAppMessage, args.Extension, args.RequiredToolName);
+                        ShowNotification(title, message);
+                    });
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Exceção ao assinar ToolMissing: {ex.Message}");
+        }
+
         // Flag de CLI para abrir as Configurações direto na inicialização (facilita testes de simulação)
         if (Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--open-settings", StringComparison.OrdinalIgnoreCase)))
         {
@@ -417,6 +439,24 @@ public partial class App : System.Windows.Application
         }
 
         LogDiag("App.OnStartup concluído.");
+    }
+
+    /// <summary>
+    /// Exibe uma notificação nativa através do ícone da bandeja do sistema (balloon tip).
+    /// </summary>
+    public static void ShowNotification(string title, string message)
+    {
+        try
+        {
+            if (Current is App app && app._trayIcon != null)
+            {
+                app._trayIcon.ShowBalloonTip(4000, title, message, WinForms.ToolTipIcon.Info);
+            }
+        }
+        catch
+        {
+            // Best-effort: notificação nunca quebra a execução.
+        }
     }
 
     // Abre a janela da Quadra e passa a rastreá-la pelo Id (ignora se já aberta)

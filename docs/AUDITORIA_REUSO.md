@@ -433,3 +433,14 @@ Projeto `tests/DeskQuadra.TestDoubles/`.
 
 - Corrigido, validado pelo PO no app e pushado junto: F1, F2, F3 + fundo real no vazio + supressão de complementos no fundo + denylist "conceder acesso a".
 - Observar: F4, F5. Sem-ação: S1–S6.
+
+---
+
+## Delta pós-F3/F4 (2026-10-08) — Drop Container Fallback (.zip, .7z, .tar, .rar)
+
+- **Veredito:** Código novo limpo, desacoplado via interfaces (`IExternalArchiverLocator`, `IArchiveFallbackHandler`) e sem duplicação.
+- **Reusos:**
+  - `ShellMenuLog` para diagnóstico padronizado de drop e fallback (`E10-infra`).
+  - `Strings.resx` para novos textos de notificação ao usuário.
+  - Testes com fakes isolados (`FakeArchiverLocator`, `FakeFallbackHandler`) em `ArchiveFallbackHandlerTests.cs`.
+- **Status:** Validado e homologado pelo PO no Windows.

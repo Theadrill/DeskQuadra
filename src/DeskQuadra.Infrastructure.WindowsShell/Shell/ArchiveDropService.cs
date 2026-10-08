@@ -3,22 +3,27 @@ using DeskQuadra.Core.FileSystem;
 
 namespace DeskQuadra.Infrastructure.WindowsShell.Shell;
 
-// F3 drop-em-container: validação pura aqui (container + fontes existentes,
-// sem auto-drop), execução no ShellHost via ShellHostClient (one-shot +
-// timeout/kill, molde do InvokeMenu). Injeção do cliente p/ xUnit, mesmo
-// molde do ThirdPartyMenuService.
+// F3 e F4 drop-em-container (docs/PLANO_DROP_CONTAINER.md):
+// Validação pura inicial (container + fontes existentes, sem auto-drop).
+// Execução Shell-First via ShellHostClient (F3).
+// Se o Shell não possuir DropHandler (ex: .7z, .tar, .rar no Win11),
+// aciona o fallback em camadas via IArchiveFallbackHandler (F4: .NET Zip, 7-Zip, WinRAR).
 public sealed class ArchiveDropService : IArchiveDropService
 {
     private readonly ShellHostClient _host;
+    private readonly IArchiveFallbackHandler _fallback;
+
+    public event EventHandler<ArchiveToolMissingEventArgs>? ToolMissing;
 
     public ArchiveDropService()
-        : this(new ShellHostClient())
+        : this(new ShellHostClient(), new ArchiveFallbackHandler())
     {
     }
 
-    internal ArchiveDropService(ShellHostClient host)
+    internal ArchiveDropService(ShellHostClient host, IArchiveFallbackHandler? fallback = null)
     {
         _host = host;
+        _fallback = fallback ?? new ArchiveFallbackHandler();
     }
 
     public bool TryAddToContainer(string? containerPath, IReadOnlyList<string>? sourcePaths)
@@ -64,12 +69,33 @@ public sealed class ArchiveDropService : IArchiveDropService
                 return false;
             }
 
-            return _host.DropOntoContainer(containerPath!, existing);
+            // 1. Tenta Shell-First (F3: IShellDropTarget via ShellHost isolado)
+            bool hostOk = _host.DropOntoContainer(containerPath!, existing);
+            if (hostOk)
+            {
+                return true;
+            }
+
+            // 2. Fallback (F4: .NET Zip nativo ou ferramentas CLI instaladas: 7-Zip / WinRAR)
+            bool fallbackOk = _fallback.TryAddToArchive(containerPath!, existing, out string? missingTool);
+            if (fallbackOk)
+            {
+                return true;
+            }
+
+            // Se falhou por falta de ferramenta externa compatível, dispara evento para notificação amigável
+            if (!string.IsNullOrEmpty(missingTool))
+            {
+                string ext = Path.GetExtension(containerPath!) ?? string.Empty;
+                ToolMissing?.Invoke(this, new ArchiveToolMissingEventArgs(containerPath!, ext, missingTool));
+            }
+
+            return false;
         }
         catch
         {
             // Silencioso, padrão do projeto: drop falhou = item continua
-            // na Quadra, sem erro na cara do usuário (a F4 assume).
+            // na Quadra, sem exceção na cara do usuário.
             return false;
         }
     }

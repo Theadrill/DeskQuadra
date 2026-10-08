@@ -99,5 +99,10 @@ Permitir arrastar arquivo/pasta de dentro de uma Quadra (ou do Explorer via `Fil
   - Testes: Core 184 + UI 382 + Application 53, build 0 avisos/erros.
   - **Validação do PO no app: `teste.txt` arrastado sobre o `.zip` entrou no arquivo. F3 dada como certa.**
   - `.7z` sem `DropHandler` segue no-op até a F4.
-- **Próximo (F4):** fallback `.zip` nativo (`System.IO.Compression`) + `.rar/.7z` via CLI do app instalado ou toast resx; depois F5 (validação final + `AUDITORIA_REUSO.md`).
-- Arquivos novos nesta leva: `ShellHost/Shell/ShellArchiveDrop.cs`, `Infrastructure.WindowsShell/Shell/IArchiveDropService.cs`, `.../ArchiveDropService.cs`, `tests/.../ArchiveDropServiceTests.cs` (+ `ArchiveFormatDetectorTests.cs` já pushado).
+- **F4 implementada e testada (2026-10-08):**
+  - Fallback in-box nativo para `.zip` via `System.IO.Compression.ZipArchive` (suporte a arquivos e pastas recursivas, sem dependência externa).
+  - Detecção dinâmica de utilitários externos em tempo de execução via `IExternalArchiverLocator` / `ExternalArchiverLocator` (localiza 7-Zip em `Program Files`, registro e PATH; localiza WinRAR).
+  - Execução de compactadores externos via `IArchiveFallbackHandler` / `ArchiveFallbackHandler` (`7zG.exe a -y -scsUTF-8` para `.7z`, `.tar`, `.gz`, etc., com suporte a listfile UTF-8 para listas longas; `WinRAR.exe a -ibck -y` para `.rar`).
+  - Notificação suave ao usuário via evento `ToolMissing` em `IArchiveDropService` e balloon tip nativo na bandeja (`App.ShowNotification` com textos em `Strings.resx`) caso o contêiner exija um compactador ausente.
+  - Testes: 6 novos testes em `ArchiveFallbackHandlerTests.cs`, suite com 634 testes 100% passando.
+- **Próximo (F5):** Validação prática pelo PO no Windows e auditoria final em `AUDITORIA_REUSO.md`.

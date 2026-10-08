@@ -219,5 +219,7 @@ namespace DeskQuadra.UI.Wpf.Properties
         public static string QuickAction_Share => ResourceManager.GetString("QuickAction_Share", resourceCulture);
         public static string QuickAction_Delete => ResourceManager.GetString("QuickAction_Delete", resourceCulture);
         public static string QuickAction_Paste => ResourceManager.GetString("QuickAction_Paste", resourceCulture);
+        public static string ContainerMissingAppTitle => ResourceManager.GetString("ContainerMissingAppTitle", resourceCulture);
+        public static string ContainerMissingAppMessage => ResourceManager.GetString("ContainerMissingAppMessage", resourceCulture);
     }
 }

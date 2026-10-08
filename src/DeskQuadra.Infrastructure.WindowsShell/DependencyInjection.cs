@@ -20,7 +20,9 @@ public static class DependencyInjection
         services.AddSingleton<IStartupService, RegistryStartupService>();
         // T2 terceiros: detecção só leitura (lista, não executa) com cache por extensão.
         services.AddSingleton<IThirdPartyMenuService, ThirdPartyMenuService>();
-        // F3 drop-em-container: delega ao DropHandler do container via ShellHost.
+        // F3 e F4 drop-em-container: delega ao DropHandler do container ou fallback em camadas.
+        services.AddSingleton<IExternalArchiverLocator, ExternalArchiverLocator>();
+        services.AddSingleton<IArchiveFallbackHandler, ArchiveFallbackHandler>();
         services.AddSingleton<IArchiveDropService, ArchiveDropService>();
         services.AddSingleton<IWindowsVisualCapabilityService, WindowsVisualCapabilityService>();
         services.AddSingleton<IWindowVisualEffectService, WindowVisualEffectService>();
